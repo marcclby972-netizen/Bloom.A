@@ -1,0 +1,1177 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { store } from '@/lib/store'
+import { applyTheme } from '@/components/ThemeProvider'
+import { DEFAULT_SETTINGS, AI_MODELS, INTEGRATION_PROVIDERS, FONT_OPTIONS, AI_NAME } from '@/lib/types'
+import type { AppSettings, Integration, AIModel, IntegrationStatus, Category } from '@/lib/types'
+import Image from 'next/image'
+import { cn } from '@/lib/utils'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+
+// ── Settings sections ──
+const SECTIONS = [
+  { id: 'integrations', label: 'Intégrations', icon: <PlugIcon /> },
+  { id: 'ai', label: 'IA & Modèles', icon: <BrainIcon /> },
+  { id: 'voice', label: 'Voix & Audio', icon: <MicIcon /> },
+  { id: 'notifications', label: 'Notifications', icon: <BellIcon /> },
+  { id: 'appearance', label: 'Personnalisation', icon: <PaletteIcon /> },
+  { id: 'general', label: 'Général', icon: <SlidersIcon /> },
+  { id: 'data', label: 'Données', icon: <DatabaseIcon /> },
+] as const
+
+type SectionId = (typeof SECTIONS)[number]['id']
+
+export default function SettingsPage() {
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
+  const [activeSection, setActiveSection] = useState<SectionId>('integrations')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    setSettings(store.getSettings())
+  }, [])
+
+  const save = useCallback((updated: AppSettings) => {
+    setSettings(updated)
+    store.saveSettings(updated)
+    applyTheme() // Apply theme changes immediately
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }, [])
+
+  const updateField = useCallback(<K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    const updated = { ...settings, [key]: value }
+    save(updated)
+  }, [settings, save])
+
+  return (
+    <div className="flex h-full overflow-hidden">
+      {/* Settings sidebar */}
+      <div className="w-52 shrink-0 border-r border-border bg-muted/30 p-3 flex flex-col gap-1">
+        <h2 className="text-sm font-semibold px-2 py-2 text-foreground">Paramètres</h2>
+        {SECTIONS.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setActiveSection(s.id)}
+            className={cn(
+              'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors text-left w-full',
+              activeSection === s.id
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            )}
+          >
+            <span className="shrink-0 [&_svg]:w-4 [&_svg]:h-4">{s.icon}</span>
+            {s.label}
+          </button>
+        ))}
+
+        {/* Save indicator */}
+        <div className="mt-auto px-2 py-2">
+          {saved && (
+            <div className="flex items-center gap-1.5 text-xs text-green-600">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M4 7l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Enregistré
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto p-6">
+        <div className="max-w-2xl space-y-6">
+          {activeSection === 'integrations' && (
+            <IntegrationsSection settings={settings} onUpdate={(integrations) => updateField('integrations', integrations)} />
+          )}
+          {activeSection === 'ai' && (
+            <AISection settings={settings} onUpdate={(ai) => updateField('ai', ai)} />
+          )}
+          {activeSection === 'voice' && (
+            <VoiceSection settings={settings} onUpdate={(voice) => updateField('voice', voice)} />
+          )}
+          {activeSection === 'notifications' && (
+            <NotificationsSection settings={settings} onUpdate={(notif) => updateField('notifications', notif)} />
+          )}
+          {activeSection === 'appearance' && (
+            <AppearanceSection settings={settings} onSave={save} />
+          )}
+          {activeSection === 'general' && (
+            <GeneralSection settings={settings} onSave={save} />
+          )}
+          {activeSection === 'data' && (
+            <DataSection />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
+// INTEGRATIONS SECTION
+// ════════════════════════════════════════════
+
+function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; onUpdate: (i: Integration[]) => void }) {
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [keyInput, setKeyInput] = useState('')
+
+  const getIntegration = (providerId: string) => settings.integrations.find((i) => i.provider === providerId)
+
+  const connectProvider = (providerId: string, apiKey: string) => {
+    const existing = settings.integrations.filter((i) => i.provider !== providerId)
+    const provider = INTEGRATION_PROVIDERS.find((p) => p.id === providerId)
+    const integration: Integration = {
+      id: providerId,
+      name: provider?.name || providerId,
+      provider: providerId,
+      status: 'connected' as IntegrationStatus,
+      apiKey,
+      lastSync: Date.now(),
+    }
+    onUpdate([...existing, integration])
+    setEditingKey(null)
+    setKeyInput('')
+  }
+
+  const disconnectProvider = (providerId: string) => {
+    onUpdate(settings.integrations.filter((i) => i.provider !== providerId))
+  }
+
+  const testConnection = async (providerId: string) => {
+    const integration = getIntegration(providerId)
+    if (!integration?.apiKey) return
+
+    const markResult = (status: IntegrationStatus) => {
+      const updated = settings.integrations.map((i) =>
+        i.provider === providerId ? { ...i, status, lastSync: Date.now() } : i
+      )
+      onUpdate(updated)
+    }
+
+    try {
+      const res = await fetch('/api/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: providerId, apiKey: integration.apiKey }),
+      })
+      const data = await res.json()
+      markResult(data.ok ? 'connected' : 'error')
+    } catch {
+      markResult('error')
+    }
+  }
+
+  const categories = [
+    { id: 'ai', label: 'Intelligence Artificielle', description: 'Fournisseurs de modèles IA pour le chat et l\'analyse' },
+    { id: 'health', label: 'Santé & Bien-être', description: 'Données de recovery, sommeil et activité physique' },
+    { id: 'productivity', label: 'Productivité', description: 'Calendrier, notes et outils de travail' },
+    { id: 'analytics', label: 'Analytics', description: 'Suivi et métriques avancées' },
+  ]
+
+  return (
+    <>
+      <div>
+        <h3 className="text-base font-semibold">Intégrations</h3>
+        <p className="text-sm text-muted-foreground mt-1">Connectez vos services pour enrichir Bloom</p>
+      </div>
+
+      {categories.map((cat) => {
+        const providers = INTEGRATION_PROVIDERS.filter((p) => p.category === cat.id)
+        if (providers.length === 0) return null
+        return (
+          <div key={cat.id} className="space-y-3">
+            <div>
+              <h4 className="text-sm font-medium">{cat.label}</h4>
+              <p className="text-xs text-muted-foreground">{cat.description}</p>
+            </div>
+
+            {providers.map((provider) => {
+              const integration = getIntegration(provider.id)
+              const isConnected = integration?.status === 'connected'
+              const isError = integration?.status === 'error'
+              const isEditing = editingKey === provider.id
+
+              return (
+                <Card key={provider.id}>
+                  <CardContent className="flex items-start gap-4">
+                    <div className={cn(
+                      'h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden',
+                      !['anthropic', 'openai', 'google'].includes(provider.id) && 'bg-muted'
+                    )}>
+                      <ProviderIcon provider={provider.id} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{provider.name}</span>
+                        {isConnected && (
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                            Connecté
+                          </span>
+                        )}
+                        {isError && (
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                            Erreur
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{provider.description}</p>
+
+                      {integration?.lastSync && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Dernière sync : {new Date(integration.lastSync).toLocaleString('fr-FR')}
+                        </p>
+                      )}
+
+                      {isEditing && (
+                        <div className="flex items-center gap-2 mt-3">
+                          <Input
+                            type="password"
+                            placeholder={provider.id === 'anthropic' ? 'sk-ant-...' : provider.id === 'openai' ? 'sk-...' : provider.id === 'google' ? 'AIza...' : 'Clé API...'}
+                            value={keyInput}
+                            onChange={(e) => setKeyInput(e.target.value)}
+                            className="text-xs h-7 flex-1"
+                          />
+                          <Button size="sm" onClick={() => connectProvider(provider.id, keyInput)} disabled={!keyInput.trim()}>
+                            Connecter
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => { setEditingKey(null); setKeyInput('') }}>
+                            Annuler
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isConnected ? (
+                        <>
+                          <Button size="xs" variant="ghost" onClick={() => testConnection(provider.id)}>
+                            Tester
+                          </Button>
+                          <Button size="xs" variant="destructive" onClick={() => disconnectProvider(provider.id)}>
+                            Déconnecter
+                          </Button>
+                        </>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => { setEditingKey(provider.id); setKeyInput(integration?.apiKey || '') }}>
+                          {provider.id === 'whoop' ? 'Connecter OAuth' : 'Ajouter clé API'}
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )
+      })}
+
+      {/* Webhooks section */}
+      <div className="space-y-3">
+        <div>
+          <h4 className="text-sm font-medium">Webhooks</h4>
+          <p className="text-xs text-muted-foreground">Recevez des notifications en temps réel</p>
+        </div>
+        <Card>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">URL de webhook</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Les événements seront envoyés à cette URL</p>
+              </div>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">Bientôt</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
+// AI SECTION
+// ════════════════════════════════════════════
+
+function AISection({ settings, onUpdate }: { settings: AppSettings; onUpdate: (ai: AppSettings['ai']) => void }) {
+  const ai = settings.ai
+
+  return (
+    <>
+      <div>
+        <h3 className="text-base font-semibold">IA & Modèles</h3>
+        <p className="text-sm text-muted-foreground mt-1">Configurez le comportement de l'assistant IA</p>
+      </div>
+
+      {/* Assistant name (fixed) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Assistant IA</CardTitle>
+          <CardDescription>L'intelligence artificielle intégrée à Bloom</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+              <span className="text-white font-bold text-sm">I</span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{AI_NAME}</p>
+              <p className="text-[10px] text-muted-foreground">Nom permanent — ne peut pas être modifié</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Model selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Modèle par défaut</CardTitle>
+          <CardDescription>Le modèle utilisé pour les conversations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {AI_MODELS.map((model) => (
+              <button
+                key={model.value}
+                onClick={() => onUpdate({ ...ai, model: model.value })}
+                className={cn(
+                  'flex items-center gap-3 w-full rounded-lg border px-3 py-2.5 text-left transition-colors',
+                  ai.model === model.value
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:bg-muted'
+                )}
+              >
+                <div className={cn(
+                  'h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0',
+                  ai.model === model.value ? 'border-primary' : 'border-muted-foreground/40'
+                )}>
+                  {ai.model === model.value && <div className="h-2 w-2 rounded-full bg-primary" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium">{model.label}</span>
+                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{model.provider}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{model.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Temperature */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Paramètres du modèle</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-medium">Température</label>
+              <span className="text-xs text-muted-foreground tabular-nums">{ai.temperature.toFixed(1)}</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={ai.temperature}
+              onChange={(e) => onUpdate({ ...ai, temperature: parseFloat(e.target.value) })}
+              className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
+            />
+            <div className="flex justify-between mt-1">
+              <span className="text-[10px] text-muted-foreground">Précis</span>
+              <span className="text-[10px] text-muted-foreground">Créatif</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium">Tokens max par réponse</label>
+            <Input
+              type="number"
+              value={ai.maxTokens}
+              onChange={(e) => onUpdate({ ...ai, maxTokens: parseInt(e.target.value, 10) || 2048 })}
+              className="mt-1 text-xs h-7"
+              min={256}
+              max={8192}
+              step={256}
+            />
+          </div>
+
+          <SettingRow
+            label="Suggestions automatiques"
+            description="L'IA propose des actions basées sur votre activité"
+          >
+            <Switch
+              checked={ai.autoSuggest}
+              onCheckedChange={(checked) => onUpdate({ ...ai, autoSuggest: !!checked })}
+            />
+          </SettingRow>
+
+          <div>
+            <label className="text-xs font-medium">Langue de l'assistant</label>
+            <div className="flex gap-2 mt-1.5">
+              {[
+                { value: 'fr' as const, label: 'Français' },
+                { value: 'en' as const, label: 'English' },
+              ].map((lang) => (
+                <button
+                  key={lang.value}
+                  onClick={() => onUpdate({ ...ai, language: lang.value })}
+                  className={cn(
+                    'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                    ai.language === lang.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* System prompt */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Instructions personnalisées</CardTitle>
+          <CardDescription>Instructions supplémentaires ajoutées au prompt système</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <textarea
+            value={ai.systemPromptExtra}
+            onChange={(e) => onUpdate({ ...ai, systemPromptExtra: e.target.value })}
+            placeholder="Ex: Réponds toujours de manière concise. Propose des estimations de temps réalistes..."
+            rows={4}
+            className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none resize-none"
+          />
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
+// VOICE SECTION
+// ════════════════════════════════════════════
+
+function VoiceSection({ settings, onUpdate }: { settings: AppSettings; onUpdate: (v: AppSettings['voice']) => void }) {
+  const voice = settings.voice
+
+  return (
+    <>
+      <div>
+        <h3 className="text-base font-semibold">Voix & Audio</h3>
+        <p className="text-sm text-muted-foreground mt-1">Paramètres de transcription et reconnaissance vocale</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Transcription</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SettingRow
+            label="Transcription automatique"
+            description="Transcrire automatiquement les enregistrements vocaux"
+          >
+            <Switch
+              checked={voice.autoTranscribe}
+              onCheckedChange={(checked) => onUpdate({ ...voice, autoTranscribe: !!checked })}
+            />
+          </SettingRow>
+
+          <div>
+            <label className="text-xs font-medium">Langue de reconnaissance</label>
+            <div className="flex gap-2 mt-1.5">
+              {[
+                { value: 'fr-FR', label: 'Français' },
+                { value: 'en-US', label: 'English' },
+                { value: 'es-ES', label: 'Español' },
+              ].map((lang) => (
+                <button
+                  key={lang.value}
+                  onClick={() => onUpdate({ ...voice, language: lang.value })}
+                  className={cn(
+                    'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                    voice.language === lang.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium">Qualité audio</label>
+            <div className="flex gap-2 mt-1.5">
+              {[
+                { value: 'low' as const, label: 'Basse', desc: 'Fichiers légers' },
+                { value: 'medium' as const, label: 'Moyenne', desc: 'Bon compromis' },
+                { value: 'high' as const, label: 'Haute', desc: 'Meilleure qualité' },
+              ].map((q) => (
+                <button
+                  key={q.value}
+                  onClick={() => onUpdate({ ...voice, quality: q.value })}
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-lg border text-center transition-colors',
+                    voice.quality === q.value
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:bg-muted'
+                  )}
+                >
+                  <div className="text-xs font-medium">{q.label}</div>
+                  <div className="text-[10px] text-muted-foreground">{q.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
+// NOTIFICATIONS SECTION
+// ════════════════════════════════════════════
+
+function NotificationsSection({ settings, onUpdate }: { settings: AppSettings; onUpdate: (n: AppSettings['notifications']) => void }) {
+  const notif = settings.notifications
+
+  return (
+    <>
+      <div>
+        <h3 className="text-base font-semibold">Notifications</h3>
+        <p className="text-sm text-muted-foreground mt-1">Gérez vos alertes et rappels</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Alertes</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SettingRow
+            label="Fin du timer"
+            description="Notification quand le compteur arrive à zéro"
+          >
+            <Switch
+              checked={notif.timerEnd}
+              onCheckedChange={(checked) => onUpdate({ ...notif, timerEnd: !!checked })}
+            />
+          </SettingRow>
+
+          <SettingRow
+            label="Rappels de tâches"
+            description="Notification avant le début d'une tâche planifiée"
+          >
+            <Switch
+              checked={notif.taskReminders}
+              onCheckedChange={(checked) => onUpdate({ ...notif, taskReminders: !!checked })}
+            />
+          </SettingRow>
+
+          <SettingRow
+            label="Sons"
+            description="Jouer un son pour les alertes"
+          >
+            <Switch
+              checked={notif.sound}
+              onCheckedChange={(checked) => onUpdate({ ...notif, sound: !!checked })}
+            />
+          </SettingRow>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Résumé quotidien</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SettingRow
+            label="Résumé quotidien"
+            description="Recevoir un résumé de vos tâches chaque matin"
+          >
+            <Switch
+              checked={notif.dailyDigest}
+              onCheckedChange={(checked) => onUpdate({ ...notif, dailyDigest: !!checked })}
+            />
+          </SettingRow>
+
+          {notif.dailyDigest && (
+            <div>
+              <label className="text-xs font-medium">Heure du résumé</label>
+              <Input
+                type="time"
+                value={notif.digestTime}
+                onChange={(e) => onUpdate({ ...notif, digestTime: e.target.value })}
+                className="mt-1 text-xs h-7 w-28"
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
+// APPEARANCE SECTION
+// ════════════════════════════════════════════
+
+function AppearanceSection({ settings, onSave }: { settings: AppSettings; onSave: (s: AppSettings) => void }) {
+  const [categories, setCategories] = useState<Category[]>([])
+  const [newCatName, setNewCatName] = useState('')
+  const [newCatColor, setNewCatColor] = useState('#3B82F6')
+  const [editingCat, setEditingCat] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editColor, setEditColor] = useState('')
+
+  useEffect(() => {
+    setCategories(store.getCategories())
+  }, [])
+
+  const refreshCategories = () => setCategories(store.getCategories())
+
+  const handleAddCategory = () => {
+    const name = newCatName.trim()
+    if (!name) return
+    store.createCategory(name, newCatColor)
+    setNewCatName('')
+    setNewCatColor('#3B82F6')
+    refreshCategories()
+  }
+
+  const handleDeleteCategory = (id: string) => {
+    store.deleteCategory(id)
+    refreshCategories()
+  }
+
+  const startEditing = (cat: Category) => {
+    setEditingCat(cat.id)
+    setEditName(cat.name)
+    setEditColor(cat.color)
+  }
+
+  const handleUpdateCategory = (id: string) => {
+    const name = editName.trim()
+    if (!name) return
+    store.updateCategory(id, { name, color: editColor })
+    setEditingCat(null)
+    refreshCategories()
+  }
+
+  return (
+    <>
+      <div>
+        <h3 className="text-base font-semibold">Personnalisation</h3>
+        <p className="text-sm text-muted-foreground mt-1">Apparence, polices et catégories</p>
+      </div>
+
+      {/* Theme */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Thème</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div>
+            <label className="text-xs font-medium">Mode d'affichage</label>
+            <div className="flex gap-2 mt-1.5">
+              {[
+                { value: 'light' as const, label: 'Clair', icon: '☀' },
+                { value: 'dark' as const, label: 'Sombre', icon: '🌙' },
+                { value: 'system' as const, label: 'Système', icon: '💻' },
+              ].map((t) => (
+                <button
+                  key={t.value}
+                  onClick={() => onSave({ ...settings, theme: t.value })}
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-lg border text-center transition-colors',
+                    settings.theme === t.value
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:bg-muted'
+                  )}
+                >
+                  <div className="text-sm">{t.icon}</div>
+                  <div className="text-xs font-medium mt-0.5">{t.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Font */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Police</CardTitle>
+          <CardDescription>Choisissez la police de l'interface</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-2">
+            {FONT_OPTIONS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => onSave({ ...settings, font: f.value })}
+                className={cn(
+                  'rounded-lg border px-3 py-3 text-center transition-colors',
+                  settings.font === f.value
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:bg-muted'
+                )}
+              >
+                <div className="text-sm font-medium" style={{ fontFamily: f.cssVar }}>Aa Bb Cc</div>
+                <div className="text-xs font-medium mt-1">{f.label}</div>
+                <div className="text-[10px] text-muted-foreground">{f.description}</div>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Categories */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Catégories</CardTitle>
+          <CardDescription>Gérez les catégories de vos tâches</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {categories.map((cat) => (
+            <div key={cat.id} className="flex items-center gap-2">
+              {editingCat === cat.id ? (
+                <>
+                  <input
+                    type="color"
+                    value={editColor}
+                    onChange={(e) => setEditColor(e.target.value)}
+                    className="h-6 w-6 shrink-0 rounded border border-border cursor-pointer"
+                  />
+                  <Input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="text-xs h-7 flex-1"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateCategory(cat.id) }}
+                  />
+                  <Button size="xs" onClick={() => handleUpdateCategory(cat.id)}>OK</Button>
+                  <Button size="xs" variant="ghost" onClick={() => setEditingCat(null)}>Annuler</Button>
+                </>
+              ) : (
+                <>
+                  <span
+                    className="h-3 w-3 rounded-full shrink-0"
+                    style={{ backgroundColor: cat.color }}
+                  />
+                  <span className="text-xs font-medium flex-1">{cat.name}</span>
+                  <Button size="xs" variant="ghost" onClick={() => startEditing(cat)}>
+                    <EditIcon />
+                  </Button>
+                  <Button size="xs" variant="ghost" onClick={() => handleDeleteCategory(cat.id)}>
+                    <TrashIcon />
+                  </Button>
+                </>
+              )}
+            </div>
+          ))}
+
+          {/* Add category form */}
+          <div className="h-px bg-border" />
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={newCatColor}
+              onChange={(e) => setNewCatColor(e.target.value)}
+              className="h-6 w-6 shrink-0 rounded border border-border cursor-pointer"
+            />
+            <Input
+              value={newCatName}
+              onChange={(e) => setNewCatName(e.target.value)}
+              placeholder="Nouvelle catégorie..."
+              className="text-xs h-7 flex-1"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory() }}
+            />
+            <Button size="sm" onClick={handleAddCategory} disabled={!newCatName.trim()}>
+              Ajouter
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
+// GENERAL SECTION
+// ════════════════════════════════════════════
+
+function GeneralSection({ settings, onSave }: { settings: AppSettings; onSave: (s: AppSettings) => void }) {
+  return (
+    <>
+      <div>
+        <h3 className="text-base font-semibold">Général</h3>
+        <p className="text-sm text-muted-foreground mt-1">Préférences générales de l'application</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Calendrier</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-xs font-medium">Premier jour de la semaine</label>
+            <div className="flex gap-2 mt-1.5">
+              {[
+                { value: 1 as const, label: 'Lundi' },
+                { value: 0 as const, label: 'Dimanche' },
+              ].map((d) => (
+                <button
+                  key={d.value}
+                  onClick={() => onSave({ ...settings, weekStartsOn: d.value })}
+                  className={cn(
+                    'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                    settings.weekStartsOn === d.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium">Vue par défaut</label>
+            <div className="flex gap-2 mt-1.5">
+              {[
+                { value: 'jour' as const, label: 'Jour' },
+                { value: 'semaine' as const, label: 'Semaine' },
+                { value: 'mois' as const, label: 'Mois' },
+              ].map((v) => (
+                <button
+                  key={v.value}
+                  onClick={() => onSave({ ...settings, defaultView: v.value })}
+                  className={cn(
+                    'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                    settings.defaultView === v.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
+// DATA SECTION
+// ════════════════════════════════════════════
+
+function DataSection() {
+  const [storageInfo, setStorageInfo] = useState({ used: '0 KB', items: 0 })
+  const [showConfirm, setShowConfirm] = useState(false)
+
+  useEffect(() => {
+    setStorageInfo(store.getStorageSize())
+  }, [])
+
+  const handleExport = () => {
+    const data: Record<string, string | null> = {}
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key?.startsWith('bloom_')) {
+        data[key] = localStorage.getItem(key)
+      }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bloom-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImport = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      const text = await file.text()
+      try {
+        const data = JSON.parse(text) as Record<string, string>
+        for (const [key, value] of Object.entries(data)) {
+          if (key.startsWith('bloom_') && typeof value === 'string') {
+            localStorage.setItem(key, value)
+          }
+        }
+        window.location.reload()
+      } catch {
+        alert('Fichier invalide')
+      }
+    }
+    input.click()
+  }
+
+  const handleClearAll = () => {
+    store.clearAllData()
+    window.location.reload()
+  }
+
+  return (
+    <>
+      <div>
+        <h3 className="text-base font-semibold">Données & Stockage</h3>
+        <p className="text-sm text-muted-foreground mt-1">Gérez vos données locales</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Stockage local</CardTitle>
+          <CardDescription>Toutes vos données sont stockées dans le navigateur</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
+              <DatabaseIcon />
+            </div>
+            <div>
+              <div className="text-lg font-semibold tabular-nums">{storageInfo.used}</div>
+              <div className="text-xs text-muted-foreground">{storageInfo.items} entrées localStorage</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Sauvegarde & Restauration</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium">Exporter les données</p>
+              <p className="text-[10px] text-muted-foreground">Télécharger un fichier JSON avec toutes vos données</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={handleExport}>
+              Exporter
+            </Button>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium">Importer des données</p>
+              <p className="text-[10px] text-muted-foreground">Restaurer depuis un fichier de sauvegarde</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={handleImport}>
+              Importer
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm text-red-600">Zone de danger</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!showConfirm ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium">Supprimer toutes les données</p>
+                <p className="text-[10px] text-muted-foreground">Cette action est irréversible</p>
+              </div>
+              <Button size="sm" variant="destructive" onClick={() => setShowConfirm(true)}>
+                Tout supprimer
+              </Button>
+            </div>
+          ) : (
+            <div className="border border-red-200 bg-red-50 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-red-800">Êtes-vous sûr ?</p>
+              <p className="text-[10px] text-red-600">Toutes vos tâches, contacts, projets et paramètres seront supprimés définitivement.</p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="destructive" onClick={handleClearAll}>
+                  Oui, tout supprimer
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>
+                  Annuler
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
+// SHARED COMPONENTS
+// ════════════════════════════════════════════
+
+function SettingRow({ label, description, children }: { label: string; description: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-xs font-medium">{label}</p>
+        <p className="text-[10px] text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function ProviderIcon({ provider }: { provider: string }) {
+  switch (provider) {
+    case 'anthropic':
+      return <Image src="/assets/icon-claude.svg" alt="Claude" width={28} height={28} className="rounded" />
+    case 'openai':
+      return <Image src="/assets/icon-gpt.png" alt="GPT" width={28} height={28} className="rounded" />
+    case 'google':
+      return <Image src="/assets/icon-gemini.webp" alt="Gemini" width={28} height={28} className="rounded" />
+    case 'whoop':
+      return (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M3 10c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M6 10a4 4 0 0 1 8 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          <circle cx="10" cy="12" r="2" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M10 14v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      )
+    case 'google_calendar':
+      return (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M3 8h14" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M7 2v4M13 2v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          <circle cx="10" cy="12.5" r="1.5" fill="currentColor" opacity="0.4" />
+        </svg>
+      )
+    case 'notion':
+      return (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="4" y="3" width="12" height="14" rx="2" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M7 7h6M7 10h4M7 13h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+        </svg>
+      )
+    case 'mixpanel':
+      return (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M3 17 8 10l3 4 6-10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="17" cy="4" r="1.5" fill="currentColor" opacity="0.3" />
+        </svg>
+      )
+    default:
+      return <PlugIcon />
+  }
+}
+
+// ── Section icons ──
+
+function PlugIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 2v3M10 2v3" />
+      <rect x="4" y="5" width="8" height="4" rx="1" />
+      <path d="M8 9v5" />
+      <path d="M5 14h6" />
+    </svg>
+  )
+}
+
+function BrainIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 2c-1.2 1.5-3 2.5-3 5.5a3 3 0 0 0 6 0c0-3-1.8-4-3-5.5Z" />
+      <circle cx="8" cy="8" r="1" fill="currentColor" opacity="0.4" />
+      <path d="M6 11.5c-.4 1 .3 2.5 2 2.5s2.4-1.5 2-2.5" opacity="0.5" />
+    </svg>
+  )
+}
+
+function MicIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5.5" y="2" width="5" height="8" rx="2.5" />
+      <path d="M3 8a5 5 0 0 0 10 0" />
+      <path d="M8 13v2" />
+    </svg>
+  )
+}
+
+function BellIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 2a4 4 0 0 0-4 4c0 2-1 3-1 4h10s-1-2-1-4a4 4 0 0 0-4-4Z" />
+      <path d="M6.5 13a1.5 1.5 0 0 0 3 0" />
+    </svg>
+  )
+}
+
+function SlidersIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+      <path d="M2 4h12M2 8h12M2 12h12" />
+      <circle cx="5" cy="4" r="1.5" fill="currentColor" />
+      <circle cx="10" cy="8" r="1.5" fill="currentColor" />
+      <circle cx="7" cy="12" r="1.5" fill="currentColor" />
+    </svg>
+  )
+}
+
+function PaletteIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="6" />
+      <circle cx="6" cy="6" r="1" fill="currentColor" opacity="0.6" />
+      <circle cx="10" cy="6" r="1" fill="currentColor" opacity="0.6" />
+      <circle cx="5.5" cy="9" r="1" fill="currentColor" opacity="0.6" />
+      <circle cx="9" cy="10" r="1" fill="currentColor" opacity="0.6" />
+    </svg>
+  )
+}
+
+function EditIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.5 2.5l3 3L4.5 12.5H1.5v-3l7-7Z" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 4h10M5 4V2.5h4V4M3.5 4v8a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V4" />
+    </svg>
+  )
+}
+
+function DatabaseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <ellipse cx="8" cy="4" rx="5" ry="2" />
+      <path d="M3 4v4c0 1.1 2.2 2 5 2s5-.9 5-2V4" />
+      <path d="M3 8v4c0 1.1 2.2 2 5 2s5-.9 5-2V8" />
+    </svg>
+  )
+}
