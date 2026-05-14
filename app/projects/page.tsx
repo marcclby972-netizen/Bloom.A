@@ -15,6 +15,37 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
+// ── Local error boundary ──
+// Scoped to the kanban list so a single bad project (eg. corrupted date)
+// can't blank the whole page. Falls back to a tiny banner instead.
+class CardListBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(err: unknown) {
+    console.error('[Projects] Card list crashed, isolated:', err)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        this.props.fallback ?? (
+          <div className="text-[10px] text-muted-foreground italic px-2 py-1.5">
+            Affichage indisponible
+          </div>
+        )
+      )
+    }
+    return this.props.children
+  }
+}
+
 // ── Helpers ──
 
 function formatTime(seconds: number): string {
@@ -91,51 +122,61 @@ export default function ProjectsPage() {
                     <span className="ml-auto text-[10px] text-muted-foreground">{projects.length}</span>
                   </div>
                   <div className="p-2 space-y-1.5 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 130px)' }}>
-                    {projects.map((project) => (
-                      <div
-                        key={project.id}
-                        draggable
-                        onDragStart={(e) => e.dataTransfer.setData('projectId', project.id)}
-                        className={cn(
-                          "rounded-lg border bg-background p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all group relative",
-                          selectedProjectId === project.id
-                            ? "border-primary ring-1 ring-primary/30"
-                            : "border-border"
-                        )}
-                        style={project.color ? {
-                          borderLeftColor: project.color,
-                          borderLeftWidth: '3px',
-                        } : undefined}
-                        onClick={() => handleSelectProject(project)}
-                      >
-                        <div className="flex items-start justify-between gap-1">
-                          <h3 className="text-xs font-medium leading-tight line-clamp-2">{project.name}</h3>
-                          <button
-                            className="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (selectedProjectId === project.id) setSelectedProjectId(null)
-                              app.deleteProject(project.id)
-                            }}
+                    <CardListBoundary>
+                      {projects.map((project) => {
+                        // Belt-and-suspenders: even though formatRelative is hardened,
+                        // protect each card from any future crash so one bad row
+                        // can't take down the whole column.
+                        let updatedLabel = ''
+                        try { updatedLabel = formatRelative(project.updatedAt) } catch {/* swallow */}
+                        const tags = Array.isArray(project.tags) ? project.tags : []
+                        return (
+                          <div
+                            key={project.id}
+                            draggable
+                            onDragStart={(e) => e.dataTransfer.setData('projectId', project.id)}
+                            className={cn(
+                              "rounded-lg border bg-background p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all group relative",
+                              selectedProjectId === project.id
+                                ? "border-primary ring-1 ring-primary/30"
+                                : "border-border"
+                            )}
+                            style={project.color ? {
+                              borderLeftColor: project.color,
+                              borderLeftWidth: '3px',
+                            } : undefined}
+                            onClick={() => handleSelectProject(project)}
                           >
-                            ×
-                          </button>
-                        </div>
-                        {!selectedProject && project.description && (
-                          <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{project.description}</p>
-                        )}
-                        {project.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-0.5 mt-1.5">
-                            {project.tags.slice(0, selectedProject ? 2 : 4).map((tag) => (
-                              <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5 text-[9px]">{tag}</span>
-                            ))}
+                            <div className="flex items-start justify-between gap-1">
+                              <h3 className="text-xs font-medium leading-tight line-clamp-2">{project.name}</h3>
+                              <button
+                                className="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (selectedProjectId === project.id) setSelectedProjectId(null)
+                                  app.deleteProject(project.id)
+                                }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                            {!selectedProject && project.description && (
+                              <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{project.description}</p>
+                            )}
+                            {tags.length > 0 && (
+                              <div className="flex flex-wrap gap-0.5 mt-1.5">
+                                {tags.slice(0, selectedProject ? 2 : 4).map((tag) => (
+                                  <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5 text-[9px]">{tag}</span>
+                                ))}
+                              </div>
+                            )}
+                            <div className="text-[9px] text-muted-foreground mt-1.5">
+                              {updatedLabel}
+                            </div>
                           </div>
-                        )}
-                        <div className="text-[9px] text-muted-foreground mt-1.5">
-                          {formatRelative(project.updatedAt)}
-                        </div>
-                      </div>
-                    ))}
+                        )
+                      })}
+                    </CardListBoundary>
                   </div>
                 </div>
               )

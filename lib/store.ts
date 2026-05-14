@@ -471,8 +471,40 @@ function getPipelineStats() {
 
 // ── Projects ──
 
+/**
+ * Coerce a value into a valid epoch-ms number. Accepts numbers, ISO strings,
+ * Date objects. Falls back to Date.now() so downstream code never sees NaN.
+ */
+function coerceMs(v: unknown): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string') {
+    const t = new Date(v).getTime()
+    if (!Number.isNaN(t)) return t
+  }
+  if (v instanceof Date) {
+    const t = v.getTime()
+    if (!Number.isNaN(t)) return t
+  }
+  return Date.now()
+}
+
+/**
+ * Normalize project timestamps at read time so the rest of the app NEVER sees
+ * a string or invalid value in createdAt/updatedAt — even if the cache was
+ * written by an older buggy version of the code.
+ */
+function normalizeProject(p: Project): Project {
+  return {
+    ...p,
+    createdAt: coerceMs(p.createdAt),
+    updatedAt: coerceMs(p.updatedAt),
+  }
+}
+
 function getProjects(): Project[] {
-  return read<Project>(KEYS.projects).sort((a, b) => b.updatedAt - a.updatedAt)
+  return read<Project>(KEYS.projects)
+    .map(normalizeProject)
+    .sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
 function getProjectsByStatus(status: ProjectStatus): Project[] {
@@ -480,7 +512,8 @@ function getProjectsByStatus(status: ProjectStatus): Project[] {
 }
 
 function getProject(id: string): Project | undefined {
-  return read<Project>(KEYS.projects).find((p) => p.id === id)
+  const p = read<Project>(KEYS.projects).find((p) => p.id === id)
+  return p ? normalizeProject(p) : undefined
 }
 
 type ProjectCreateData = Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'linkedTaskIds' | 'linkedContactIds' | 'linkedPostIds' | 'revenue' | 'collaborators'> & {

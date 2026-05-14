@@ -137,13 +137,14 @@ function writeLocal(key: string, data: unknown) {
 
 /**
  * Heal a corrupted localStorage cache: convert any createdAt/updatedAt that's
- * a string (ISO) or invalid into a number (ms since epoch). Runs once at boot
- * to repair caches that were written before the normalizeRow fix landed.
+ * a string (ISO) or invalid into a number (ms since epoch).
+ *
+ * Runs on EVERY initCloudSync (not just once) — cheap because of early-exits
+ * for already-valid numbers. This way, if the cloud or another tab writes
+ * something invalid back into the cache, the next page load self-repairs.
  */
-const HEAL_FLAG = 'bloom_cache_healed_v1'
 function healLocalStorageDates() {
   if (typeof window === 'undefined') return
-  if (localStorage.getItem(HEAL_FLAG)) return
 
   const dateFields = ['createdAt', 'updatedAt', 'publishedAt']
   let fixedCount = 0
@@ -186,7 +187,6 @@ function healLocalStorageDates() {
     }
   }
 
-  localStorage.setItem(HEAL_FLAG, '1')
   if (fixedCount > 0) console.log(`[cloud-sync] Healed ${fixedCount} corrupted date fields in localStorage`)
 }
 
