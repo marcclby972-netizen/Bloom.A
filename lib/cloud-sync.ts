@@ -88,7 +88,10 @@ const ENTITY_TABLE_MAP: Record<Exclude<EntityKey, 'settings'>, TableName> = {
 let supabase: ReturnType<typeof createClient> | null = null
 let currentUserId: string | null = null
 let initialized = false
-let pendingUpserts = new Map<string, ReturnType<typeof setTimeout>>()
+const pendingUpserts = new Map<string, ReturnType<typeof setTimeout>>()
+// Track pending records by their (table, id) so we can flush on unload
+const pendingRecords = new Map<string, { table: TableName; row: Record<string, unknown> }>()
+const pendingDeletes = new Map<string, { table: TableName; id: string }>()
 
 function getClient() {
   if (!supabase) supabase = createClient()
@@ -178,7 +181,34 @@ export async function initCloudSync(): Promise<{ ok: boolean; userId: string | n
     if (pushed > 0) console.log(`[cloud-sync] Migrated ${pushed} local rows to cloud`)
   }
 
-  // Replace local cache with cloud data
+  // MERGE strategy: local items NOT in cloud are uploaded (they were created
+  // recently and the debounced upsert didn't fire before a page refresh)
+  for (const [entityKey, table] of Object.entries(ENTITY_TABLE_MAP) as [Exclude<EntityKey, 'settings'>, TableName][]) {
+    const cloudRows = cloudData[entityKey]
+    if (!cloudRows) continue
+    const cloudIds = new Set(cloudRows.map((r) => r.id as string).filter(Boolean))
+    const localRows = readLocal(KEYS[entityKey])
+    const orphans = localRows.filter((r) => {
+      const id = (r as { id?: string }).id
+      return id && !cloudIds.has(id)
+    })
+    if (orphans.length > 0) {
+      const toUpsert = orphans.map((r) => ({
+        ...camelToSnake(r as AnyRecord),
+        user_id: user.id,
+      }))
+      const { error } = await client.from(table).upsert(toUpsert, { onConflict: 'id' })
+      if (error) {
+        console.warn(`[cloud-sync] Orphan push failed for ${table}:`, error.message)
+      } else {
+        // Add orphans to cloudData so the local cache below preserves them
+        cloudData[entityKey] = [...cloudRows, ...toUpsert]
+        console.log(`[cloud-sync] Saved ${orphans.length} local-only rows in ${table}`)
+      }
+    }
+  }
+
+  // Replace local cache with merged cloud data
   for (const [entityKey, rows] of Object.entries(cloudData) as [Exclude<EntityKey, 'settings'>, AnyRecord[]][]) {
     if (!rows) continue
     const camelRows = rows.map((r) => {
@@ -198,7 +228,8 @@ export async function initCloudSync(): Promise<{ ok: boolean; userId: string | n
 }
 
 /**
- * Queue an upsert for a single record. Debounced per-record-id.
+ * Queue an upsert for a single record. Debounced per-record-id with a short
+ * window so a quick page refresh doesn't lose the write.
  */
 export function queueUpsert(entityKey: Exclude<EntityKey, 'settings'>, record: AnyRecord) {
   if (!currentUserId) return
@@ -206,15 +237,18 @@ export function queueUpsert(entityKey: Exclude<EntityKey, 'settings'>, record: A
   const id = record.id as string
   if (!id) return
   const key = `${table}:${id}`
+  const row = { ...camelToSnake(record), user_id: currentUserId }
+  pendingRecords.set(key, { table, row })
+
   const existing = pendingUpserts.get(key)
   if (existing) clearTimeout(existing)
   pendingUpserts.set(key, setTimeout(async () => {
     pendingUpserts.delete(key)
+    pendingRecords.delete(key)
     const client = getClient()
-    const row = { ...camelToSnake(record), user_id: currentUserId }
     const { error } = await client.from(table).upsert(row, { onConflict: 'id' })
     if (error) console.warn(`[cloud-sync] Upsert ${table}/${id} failed:`, error.message)
-  }, 500))
+  }, 50))
 }
 
 /**
@@ -223,11 +257,46 @@ export function queueUpsert(entityKey: Exclude<EntityKey, 'settings'>, record: A
 export function queueDelete(entityKey: Exclude<EntityKey, 'settings'>, id: string) {
   if (!currentUserId) return
   const table = ENTITY_TABLE_MAP[entityKey]
+  const key = `${table}:${id}:del`
+  pendingDeletes.set(key, { table, id })
   setTimeout(async () => {
+    pendingDeletes.delete(key)
     const client = getClient()
     const { error } = await client.from(table).delete().eq('id', id).eq('user_id', currentUserId)
     if (error) console.warn(`[cloud-sync] Delete ${table}/${id} failed:`, error.message)
-  }, 100)
+  }, 50)
+}
+
+/**
+ * Force-flush all pending upserts and deletes immediately (no debounce).
+ * Called on `beforeunload` to avoid losing writes when the user closes the tab.
+ */
+export async function flushPending(): Promise<void> {
+  if (!currentUserId) return
+  // Cancel pending debounce timers — we'll fire them now
+  for (const t of pendingUpserts.values()) clearTimeout(t)
+  pendingUpserts.clear()
+
+  const client = getClient()
+
+  // Group upserts by table
+  const byTable = new Map<TableName, Record<string, unknown>[]>()
+  for (const { table, row } of pendingRecords.values()) {
+    if (!byTable.has(table)) byTable.set(table, [])
+    byTable.get(table)!.push(row)
+  }
+  pendingRecords.clear()
+
+  const promises: Promise<unknown>[] = []
+  for (const [table, rows] of byTable) {
+    promises.push(Promise.resolve(client.from(table).upsert(rows, { onConflict: 'id' })))
+  }
+  for (const { table, id } of pendingDeletes.values()) {
+    promises.push(Promise.resolve(client.from(table).delete().eq('id', id).eq('user_id', currentUserId)))
+  }
+  pendingDeletes.clear()
+
+  await Promise.allSettled(promises)
 }
 
 /**

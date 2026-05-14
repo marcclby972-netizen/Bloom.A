@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import { store } from './store'
 import { useTimer } from './use-timer'
 import { requestNotificationPermission, sendNotification } from './notifications'
-import { initCloudSync, refreshFromCloud, isCloudSyncReady } from './cloud-sync'
+import { initCloudSync, refreshFromCloud, isCloudSyncReady, flushPending } from './cloud-sync'
 import type {
   Task, Category, TimeEntry, Goal,
   Contact, Interaction, Post, Project, ProjectNote, VocalProject, VocalNote, PromptNote,
@@ -132,9 +132,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener('focus', handleFocus)
 
+    // Flush pending cloud writes before the tab is closed/refreshed
+    const handleUnload = () => {
+      if (!isCloudSyncReady()) return
+      // keepalive: true on fetch is the closest to sendBeacon for Supabase
+      flushPending()
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    window.addEventListener('pagehide', handleUnload)
+    // Also flush when tab becomes hidden (mobile back, switching apps)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden' && isCloudSyncReady()) {
+        flushPending()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
       cancelled = true
       window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('beforeunload', handleUnload)
+      window.removeEventListener('pagehide', handleUnload)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [refresh])
 
