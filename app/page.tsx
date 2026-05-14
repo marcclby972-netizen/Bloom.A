@@ -112,8 +112,9 @@ export default function DashboardPage() {
       </div>
 
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* Row 0: Revenue highlight (shown only if there's revenue activity) */}
-        {(revenueStats.totalRevenue > 0 || revenueStats.totalAdSpend > 0) && (
+        {/* Row 0: Revenue highlight — always visible */}
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Revenus</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <Card className="border-primary/40 bg-primary/5">
               <CardHeader className="pb-2">
@@ -155,28 +156,32 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
-        )}
+        </div>
 
-        {/* MRR / ARR */}
-        {revenueStats.totalMRR > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        {/* MRR / ARR + projection chart — always visible */}
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Revenu récurrent</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
             <Card className="border-primary/40 bg-primary/5">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">MRR — Revenu récurrent mensuel</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground">MRR</CardTitle>
+                <span className="text-[10px] text-muted-foreground">Revenu mensuel récurrent</span>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold tabular-nums">{revenueStats.totalMRR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {revenueStats.mrrByProject.length} projet{revenueStats.mrrByProject.length > 1 ? 's' : ''} avec revenu récurrent
+                  {revenueStats.mrrByProject.length === 0
+                    ? 'Aucun projet récurrent. Ajoute un type /mois sur un projet.'
+                    : `${revenueStats.mrrByProject.length} projet${revenueStats.mrrByProject.length > 1 ? 's' : ''} récurrent${revenueStats.mrrByProject.length > 1 ? 's' : ''}`}
                 </div>
                 {revenueStats.mrrByProject.length > 0 && (
                   <div className="mt-3 space-y-1">
                     {revenueStats.mrrByProject.slice(0, 4).map(({ project, mrr }) => (
-                      <div key={project.id} className="flex items-center gap-2 text-xs">
+                      <Link key={project.id} href="/projects" className="flex items-center gap-2 text-xs hover:bg-muted/50 -mx-1 px-1 rounded">
                         {project.color && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: project.color }} />}
                         <span className="truncate flex-1">{project.name}</span>
                         <span className="font-medium tabular-nums shrink-0">{mrr.toFixed(0)} €/mo</span>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}
@@ -184,24 +189,33 @@ export default function DashboardPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">ARR — Revenu récurrent annuel</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground">ARR</CardTitle>
+                <span className="text-[10px] text-muted-foreground">Annual Recurring Revenue</span>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold tabular-nums">{revenueStats.totalARR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Projection annuelle sur la base du MRR actuel
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  Par mois : <strong>{revenueStats.totalMRR.toFixed(0)} €</strong>
-                  · Par jour : <strong>{(revenueStats.totalMRR / 30).toFixed(2)} €</strong>
+                <div className="text-xs text-muted-foreground mt-1">Projection sur 12 mois</div>
+                <div className="mt-3 text-xs text-muted-foreground space-y-0.5">
+                  <div>Mensuel : <strong className="text-foreground">{revenueStats.totalMRR.toFixed(0)} €</strong></div>
+                  <div>Quotidien : <strong className="text-foreground">{(revenueStats.totalMRR / 30).toFixed(2)} €</strong></div>
                 </div>
               </CardContent>
             </Card>
+            <Card className="lg:col-span-1">
+              <CardHeader className="pb-1">
+                <CardTitle className="text-xs font-medium text-muted-foreground">Projection 12 mois</CardTitle>
+                <span className="text-[10px] text-muted-foreground">À MRR constant</span>
+              </CardHeader>
+              <CardContent>
+                <MRRProjectionChart mrr={revenueStats.totalMRR} />
+              </CardContent>
+            </Card>
           </div>
-        )}
+        </div>
 
-        {/* Ads vs Revenue cross-chart */}
-        {revenueStats.adsVsRevenue.length > 0 && (
+        {/* Ads vs Revenue cross-chart — always visible */}
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Performance ads vs revenu</h2>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Ad spend vs revenu par projet</CardTitle>
@@ -210,47 +224,54 @@ export default function DashboardPage() {
               </span>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {revenueStats.adsVsRevenue.map(({ project, adSpend, revenue, roi }) => (
-                  <div key={project.id} className="space-y-1">
-                    <div className="flex items-center gap-2 text-xs">
-                      {project.color && <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />}
-                      <span className="truncate flex-1 font-medium">{project.name}</span>
-                      {roi !== null && (
-                        <span className={cn(
-                          'text-[10px] font-medium px-1.5 py-0.5 rounded',
-                          roi >= 0 ? 'text-green-700 bg-green-100 dark:bg-green-950/40 dark:text-green-400' : 'text-red-700 bg-red-100 dark:bg-red-950/40 dark:text-red-400'
-                        )}>
-                          ROI {roi.toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
-                    {/* Ad spend bar */}
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="w-16 text-[10px] text-muted-foreground shrink-0">Ad spend</span>
-                      <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-red-400 dark:bg-red-500" style={{ width: `${(adSpend / maxCrossValue) * 100}%` }} />
+              {revenueStats.adsVsRevenue.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-sm">Aucun projet avec activité financière.</p>
+                  <p className="text-xs mt-1">Crée un projet, ajoute-lui un revenu, et lie des posts marketing pour voir cette analyse.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {revenueStats.adsVsRevenue.map(({ project, adSpend, revenue, roi }) => (
+                      <div key={project.id} className="space-y-1">
+                        <div className="flex items-center gap-2 text-xs">
+                          {project.color && <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />}
+                          <span className="truncate flex-1 font-medium">{project.name}</span>
+                          {roi !== null && (
+                            <span className={cn(
+                              'text-[10px] font-medium px-1.5 py-0.5 rounded',
+                              roi >= 0 ? 'text-green-700 bg-green-100 dark:bg-green-950/40 dark:text-green-400' : 'text-red-700 bg-red-100 dark:bg-red-950/40 dark:text-red-400'
+                            )}>
+                              ROI {roi.toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="w-16 text-[10px] text-muted-foreground shrink-0">Ad spend</span>
+                          <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-red-400 dark:bg-red-500" style={{ width: `${(adSpend / maxCrossValue) * 100}%` }} />
+                          </div>
+                          <span className="font-medium tabular-nums shrink-0 w-16 text-right">{adSpend.toFixed(0)} €</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="w-16 text-[10px] text-muted-foreground shrink-0">Revenu</span>
+                          <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-green-500" style={{ width: `${(revenue / maxCrossValue) * 100}%` }} />
+                          </div>
+                          <span className="font-medium tabular-nums shrink-0 w-16 text-right">{revenue.toFixed(0)} €</span>
+                        </div>
                       </div>
-                      <span className="font-medium tabular-nums shrink-0 w-16 text-right">{adSpend.toFixed(0)} €</span>
-                    </div>
-                    {/* Revenue bar */}
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="w-16 text-[10px] text-muted-foreground shrink-0">Revenu</span>
-                      <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-green-500" style={{ width: `${(revenue / maxCrossValue) * 100}%` }} />
-                      </div>
-                      <span className="font-medium tabular-nums shrink-0 w-16 text-right">{revenue.toFixed(0)} €</span>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-400" /> Dépenses ads</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500" /> Revenu</span>
-              </div>
+                  <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-400" /> Dépenses ads</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500" /> Revenu</span>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
-        )}
+        </div>
 
         {/* Row 1: Quick stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -516,6 +537,69 @@ export default function DashboardPage() {
             </Card>
           </Link>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Stripe-style area chart for MRR projection over 12 months.
+ * Uses pure SVG with a smooth area fill.
+ */
+function MRRProjectionChart({ mrr }: { mrr: number }) {
+  // Generate 12 monthly data points. We assume constant MRR (no growth assumption).
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    label: new Date(new Date().setMonth(new Date().getMonth() + i)).toLocaleDateString('fr-FR', { month: 'short' }),
+    value: mrr,
+  }))
+  const cumulative = months.map((m, i) => ({ ...m, total: m.value * (i + 1) }))
+  const maxTotal = cumulative[cumulative.length - 1].total || 1
+  const W = 280
+  const H = 100
+  const padX = 4
+  const padY = 8
+  const usableW = W - padX * 2
+  const usableH = H - padY * 2
+
+  if (mrr === 0) {
+    return (
+      <div className="flex items-center justify-center h-[100px] text-[10px] text-muted-foreground italic text-center px-2">
+        Définis un revenu mensuel sur au moins un projet pour voir la projection.
+      </div>
+    )
+  }
+
+  // Build path
+  const points = cumulative.map((p, i) => ({
+    x: padX + (i / (cumulative.length - 1)) * usableW,
+    y: padY + (1 - p.total / maxTotal) * usableH,
+  }))
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ')
+  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(2)} ${(padY + usableH).toFixed(2)} L ${points[0].x.toFixed(2)} ${(padY + usableH).toFixed(2)} Z`
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-24" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="mrr-gradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="oklch(0.55 0.17 50)" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="oklch(0.55 0.17 50)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#mrr-gradient)" />
+        <path d={linePath} fill="none" stroke="oklch(0.55 0.17 50)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        {points.map((p, i) => i % 3 === 0 && (
+          <circle key={i} cx={p.x} cy={p.y} r="2" fill="oklch(0.55 0.17 50)" />
+        ))}
+      </svg>
+      <div className="flex justify-between text-[9px] text-muted-foreground mt-1 px-1">
+        <span>{months[0].label}</span>
+        <span>{months[5].label}</span>
+        <span>{months[11].label}</span>
+      </div>
+      <div className="mt-1 text-[10px] text-muted-foreground">
+        Cumul fin d&apos;année : <strong className="text-foreground tabular-nums">{(mrr * 12).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</strong>
       </div>
     </div>
   )

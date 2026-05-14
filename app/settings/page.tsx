@@ -119,6 +119,53 @@ export default function SettingsPage() {
 function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; onUpdate: (i: Integration[]) => void }) {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [keyInput, setKeyInput] = useState('')
+  // OAuth providers store their tokens in Supabase, not in localStorage settings.
+  // Fetch the list of connected social/OAuth platforms on mount.
+  const [oauthConnected, setOauthConnected] = useState<Record<string, { account?: Record<string, unknown> }>>({})
+  useEffect(() => {
+    // Query each OAuth provider in parallel
+    const platforms = ['youtube', 'meta', 'tiktok', 'linkedin', 'google_calendar'] as const
+    const endpoints: Record<typeof platforms[number], string> = {
+      youtube: '/api/youtube',
+      meta: '/api/meta?action=list_pages',
+      tiktok: '/api/tiktok',
+      linkedin: '/api/linkedin',
+      google_calendar: '/api/google-calendar',
+    }
+    ;(async () => {
+      const result: Record<string, { account?: Record<string, unknown> }> = {}
+      await Promise.all(platforms.map(async (p) => {
+        try {
+          const res = await fetch(endpoints[p])
+          if (!res.ok) return
+          const data = await res.json()
+          if (data.connected) {
+            result[p] = { account: data.account || data.pages?.[0] }
+          }
+        } catch {/* ignore */}
+      }))
+      setOauthConnected(result)
+    })()
+    // Re-check when URL changes (after OAuth callback redirects)
+    const refresh = () => {
+      const params = new URLSearchParams(window.location.search)
+      if (params.has('youtube') || params.has('meta') || params.has('tiktok') || params.has('linkedin') || params.has('google_calendar')) {
+        // Trigger another fetch
+        setTimeout(() => window.location.reload(), 200)
+      }
+    }
+    refresh()
+  }, [])
+
+  const handleOAuthDisconnect = async (providerId: string) => {
+    const endpoint = providerId === 'google_calendar' ? '/api/google-calendar' : `/api/${providerId}`
+    await fetch(endpoint, { method: 'DELETE' })
+    setOauthConnected((prev) => {
+      const next = { ...prev }
+      delete next[providerId]
+      return next
+    })
+  }
 
   const getIntegration = (providerId: string) => settings.integrations.find((i) => i.provider === providerId)
 
@@ -193,12 +240,20 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
 
             {providers.map((provider) => {
               const integration = getIntegration(provider.id)
-              const isConnected = integration?.status === 'connected'
+              const isOAuth = provider.category === 'social' || provider.id === 'google_calendar'
+              const isOAuthConnected = isOAuth && !!oauthConnected[provider.id]
+              const oauthAccount = oauthConnected[provider.id]?.account as Record<string, unknown> | undefined
+              const isConnected = isOAuthConnected || integration?.status === 'connected'
               const isError = integration?.status === 'error'
               const isEditing = editingKey === provider.id
 
+              // Friendly display of OAuth account info
+              const accountLabel = oauthAccount
+                ? (oauthAccount.channelTitle || oauthAccount.username || oauthAccount.name || oauthAccount.igUsername || 'Compte connecté') as string
+                : null
+
               return (
-                <Card key={provider.id}>
+                <Card key={provider.id} className={cn(isConnected && 'border-green-300/40 bg-green-50/20 dark:bg-green-950/10')}>
                   <CardContent className="flex items-start gap-4">
                     <div className={cn(
                       'h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden',
@@ -207,13 +262,16 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
                       <ProviderIcon provider={provider.id} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium">{provider.name}</span>
                         {isConnected && (
-                          <span className="flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-950/40 px-1.5 py-0.5 rounded-full">
                             <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
                             Connecté
                           </span>
+                        )}
+                        {accountLabel && (
+                          <span className="text-[10px] text-muted-foreground italic">· {accountLabel}</span>
                         )}
                         {isError && (
                           <span className="flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
@@ -250,7 +308,16 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      {isConnected ? (
+                      {isOAuthConnected ? (
+                        <>
+                          <Button size="xs" variant="ghost" onClick={() => { window.location.href = provider.id === 'google_calendar' ? '/api/auth/google' : `/api/auth/${provider.id}` }}>
+                            Reconnecter
+                          </Button>
+                          <Button size="xs" variant="destructive" onClick={() => handleOAuthDisconnect(provider.id)}>
+                            Déconnecter
+                          </Button>
+                        </>
+                      ) : isConnected ? (
                         <>
                           <Button size="xs" variant="ghost" onClick={() => testConnection(provider.id)}>
                             Tester
