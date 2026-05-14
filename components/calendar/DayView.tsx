@@ -115,8 +115,21 @@ export function DayView() {
   const currentMinutes = now.getHours() * 60 + now.getMinutes()
   const isToday = selectedDate === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
+  // Scroll to current hour (or 9am for past/future days) on mount + when day changes
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    const targetMinutes = isToday
+      ? currentMinutes
+      : 8 * 60 // 8 AM for non-today days
+    const scrollTop = (targetMinutes / 60) * HOUR_HEIGHT - container.clientHeight / 3
+    container.scrollTo({ top: Math.max(0, scrollTop), behavior: 'auto' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate])
+
   return (
-    <div className="flex-1 overflow-auto">
+    <div ref={scrollContainerRef} className="flex-1 overflow-auto">
       <div className="relative" style={{ minHeight: HOURS.length * HOUR_HEIGHT }}>
         {/* Time grid */}
         {HOURS.map((hour, i) => (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useApp } from '@/lib/context'
 import { Task } from '@/lib/types'
 import { getWeekDays, toDateString, formatDateFr, parseISO, isToday, timeToMinutes } from '@/lib/date-utils'
@@ -48,8 +48,21 @@ export function WeekView() {
     setEditorOpen(true)
   }
 
+  // Scroll to current hour on mount / day change
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    const now = new Date()
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const targetMinutes = days.some((d) => isToday(d)) ? currentMinutes : 8 * 60
+    const scrollTop = (targetMinutes / 60) * HOUR_HEIGHT - container.clientHeight / 3
+    container.scrollTo({ top: Math.max(0, scrollTop), behavior: 'auto' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate])
+
   return (
-    <div className="flex-1 overflow-auto">
+    <div ref={scrollContainerRef} className="flex-1 overflow-auto">
       {/* Day headers */}
       <div className="sticky top-0 z-20 flex border-b border-border bg-background">
         <div className="w-14 shrink-0" />

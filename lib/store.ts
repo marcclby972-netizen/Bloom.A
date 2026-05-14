@@ -568,31 +568,83 @@ function getProjectStats(projectId: string) {
   const linkedPostIds = project.linkedPostIds || []
 
   const allTasks = getTasks()
-  const linkedTasks = allTasks.filter((t) => linkedTaskIds.includes(t.id))
+  // Tasks linked either via project.linkedTaskIds OR via task.projectId
+  const linkedTasks = allTasks.filter((t) => linkedTaskIds.includes(t.id) || t.projectId === projectId)
+  const linkedTaskIdsAll = linkedTasks.map((t) => t.id)
+
   const entries = getTimeEntries()
-  const taskEntries = entries.filter((e) => linkedTaskIds.includes(e.taskId))
+  const taskEntries = entries.filter((e) => linkedTaskIdsAll.includes(e.taskId))
   const totalTime = taskEntries.reduce((sum, e) => sum + e.duration, 0)
 
   const allPosts = getPosts()
-  const linkedPosts = allPosts.filter((p) => linkedPostIds.includes(p.id))
+  const linkedPosts = allPosts.filter((p) => linkedPostIds.includes(p.id) || p.projectId === projectId)
   const totalSpend = linkedPosts.reduce((sum, p) => sum + p.metrics.spend, 0)
   const totalImpressions = linkedPosts.reduce((sum, p) => sum + p.metrics.impressions, 0)
   const totalClicks = linkedPosts.reduce((sum, p) => sum + p.metrics.clicks, 0)
   const totalConversions = linkedPosts.reduce((sum, p) => sum + p.metrics.conversions, 0)
+  const totalLikes = linkedPosts.reduce((sum, p) => sum + p.metrics.likes, 0)
+  const totalComments = linkedPosts.reduce((sum, p) => sum + p.metrics.comments, 0)
+  const totalShares = linkedPosts.reduce((sum, p) => sum + p.metrics.shares, 0)
 
   const allContacts = read<Contact>(KEYS.contacts)
-  const linkedContacts = allContacts.filter((c) => linkedContactIds.includes(c.id))
+  const linkedContacts = allContacts.filter((c) => linkedContactIds.includes(c.id) || c.categoryId === projectId)
+
+  // Linked todos via projectId
+  const allTodos = read<TodoItem>(KEYS.todos)
+  const linkedTodos = allTodos.filter((t) => t.projectId === projectId)
+
+  // Time by category (within this project's tasks)
+  const cats = getCategories()
+  const catMap = new Map(cats.map((c) => [c.id, c]))
+  const timeByCategory = new Map<string, number>()
+  for (const entry of taskEntries) {
+    const task = linkedTasks.find((t) => t.id === entry.taskId)
+    if (!task) continue
+    timeByCategory.set(task.categoryId, (timeByCategory.get(task.categoryId) || 0) + entry.duration)
+  }
+
+  // Time by day (last 30 days)
+  const timeByDay = new Map<string, number>()
+  for (const entry of taskEntries) {
+    const day = new Date(entry.startedAt).toISOString().slice(0, 10)
+    timeByDay.set(day, (timeByDay.get(day) || 0) + entry.duration)
+  }
+
+  // Number of distinct days worked on
+  const daysWorked = timeByDay.size
 
   return {
+    // Time
     totalTime,
+    timeByCategory: Array.from(timeByCategory.entries())
+      .map(([catId, seconds]) => ({ category: catMap.get(catId) || { id: catId, name: 'Sans catégorie', color: '#6B7280' }, seconds }))
+      .sort((a, b) => b.seconds - a.seconds),
+    timeByDay: Array.from(timeByDay.entries()).sort(([a], [b]) => a.localeCompare(b)),
+    daysWorked,
+    // Tasks
     tasksCount: linkedTasks.length,
     tasksDone: linkedTasks.filter((t) => t.status === 'done').length,
+    tasksInProgress: linkedTasks.filter((t) => t.status === 'in_progress').length,
+    tasksPlanned: linkedTasks.filter((t) => t.status === 'planned').length,
+    // Todos
+    todosCount: linkedTodos.length,
+    todosDone: linkedTodos.filter((t) => t.done).length,
+    // Contacts
     contactsCount: linkedContacts.length,
+    contactsByStatus: linkedContacts.reduce((acc, c) => {
+      acc[c.status] = (acc[c.status] || 0) + 1
+      return acc
+    }, {} as Record<string, number>),
+    // Posts / marketing
     postsCount: linkedPosts.length,
     totalSpend,
     totalImpressions,
     totalClicks,
     totalConversions,
+    totalLikes,
+    totalComments,
+    totalShares,
+    // Money
     revenue: project.revenue || 0,
     collaborators: project.collaborators || [],
   }

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -178,7 +179,8 @@ function ProjectDetail({ project, onClose }: { project: Project; onClose: () => 
             <TabsTrigger value={0}>Vue d&apos;ensemble</TabsTrigger>
             <TabsTrigger value={1}>Notes</TabsTrigger>
             <TabsTrigger value={2}>Liens</TabsTrigger>
-            <TabsTrigger value={3}>Revenus</TabsTrigger>
+            <TabsTrigger value={3}>Stats</TabsTrigger>
+            <TabsTrigger value={4}>Revenus</TabsTrigger>
           </TabsList>
         </div>
 
@@ -192,6 +194,9 @@ function ProjectDetail({ project, onClose }: { project: Project; onClose: () => 
           <LinksTab project={project} />
         </TabsContent>
         <TabsContent value={3} className="flex-1 overflow-y-auto">
+          <StatsTab project={project} />
+        </TabsContent>
+        <TabsContent value={4} className="flex-1 overflow-y-auto">
           <RevenueTab project={project} />
         </TabsContent>
       </Tabs>
@@ -985,6 +990,240 @@ function ProjectCreator({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ── Stats Tab ──
+
+function StatsTab({ project }: { project: Project }) {
+  const stats = useMemo(() => store.getProjectStats(project.id), [project.id])
+  const app = useApp()
+
+  if (!stats) return <div className="p-5 text-sm text-muted-foreground">Aucune donnée</div>
+
+  const formatT = (s: number) => {
+    if (s < 60) return `${s}s`
+    if (s < 3600) return `${Math.floor(s / 60)}min`
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    return m === 0 ? `${h}h` : `${h}h ${m}m`
+  }
+
+  const completionPct = stats.tasksCount > 0 ? Math.round((stats.tasksDone / stats.tasksCount) * 100) : 0
+  const todoCompletionPct = stats.todosCount > 0 ? Math.round((stats.todosDone / stats.todosCount) * 100) : 0
+  const avgPerDay = stats.daysWorked > 0 ? stats.totalTime / stats.daysWorked : 0
+  const engagement = stats.totalLikes + stats.totalComments + stats.totalShares
+  const ctr = stats.totalImpressions > 0 ? (stats.totalClicks / stats.totalImpressions) * 100 : 0
+  const roi = stats.totalSpend > 0 ? ((stats.revenue - stats.totalSpend) / stats.totalSpend) * 100 : 0
+
+  // Daily chart: last 30 days, fill missing days with 0
+  const last30 = useMemo(() => {
+    const days: { date: string; seconds: number }[] = []
+    const map = new Map(stats.timeByDay)
+    const today = new Date()
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const key = d.toISOString().slice(0, 10)
+      days.push({ date: key, seconds: map.get(key) || 0 })
+    }
+    return days
+  }, [stats.timeByDay])
+
+  const maxDailySec = Math.max(...last30.map((d) => d.seconds), 1)
+  const maxCatSec = Math.max(...stats.timeByCategory.map((c) => c.seconds), 1)
+
+  return (
+    <div className="p-5 space-y-4">
+      {/* Time KPIs */}
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Temps</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <StatKpi label="Total" value={formatT(stats.totalTime)} accent />
+          <StatKpi label="Jours travaillés" value={stats.daysWorked} />
+          <StatKpi label="Moyenne / jour" value={formatT(Math.round(avgPerDay))} />
+          <StatKpi label="Sessions" value={(() => {
+            const entries = app.timeEntries.filter((e) => {
+              const t = app.tasks.find((tk) => tk.id === e.taskId)
+              return t && (t.projectId === project.id || (project.linkedTaskIds || []).includes(t.id))
+            })
+            return entries.length
+          })()} />
+        </div>
+      </div>
+
+      {/* Time by category */}
+      {stats.timeByCategory.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Temps par catégorie</CardTitle></CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {stats.timeByCategory.map(({ category, seconds }) => (
+                <div key={category.id} className="flex items-center gap-2 text-xs">
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
+                  <span className="w-24 truncate shrink-0">{category.name}</span>
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${(seconds / maxCatSec) * 100}%`, backgroundColor: category.color }} />
+                  </div>
+                  <span className="font-medium tabular-nums shrink-0 w-16 text-right">{formatT(seconds)}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Daily evolution */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Évolution sur 30 jours</CardTitle></CardHeader>
+        <CardContent>
+          {stats.totalTime === 0 ? (
+            <p className="text-xs text-muted-foreground italic py-4 text-center">Aucun temps enregistré sur ce projet</p>
+          ) : (
+            <div className="flex items-end gap-0.5 h-28">
+              {last30.map((d, i) => {
+                const isToday = i === 29
+                return (
+                  <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0 group relative">
+                    <div className="w-full relative flex-1 flex items-end">
+                      <div
+                        className={cn(
+                          'w-full rounded-t transition-colors',
+                          isToday ? 'bg-primary' : 'bg-primary/40 hover:bg-primary/60'
+                        )}
+                        style={{ height: `${(d.seconds / maxDailySec) * 100}%`, minHeight: d.seconds > 0 ? 2 : 0 }}
+                      />
+                    </div>
+                    {(i % 5 === 0 || isToday) && (
+                      <span className="text-[8px] text-muted-foreground truncate w-full text-center">{d.date.slice(5)}</span>
+                    )}
+                    {d.seconds > 0 && (
+                      <span className="text-[9px] text-muted-foreground absolute opacity-0 group-hover:opacity-100 transition-opacity -translate-y-28 pointer-events-none bg-foreground text-background px-1.5 py-0.5 rounded whitespace-nowrap z-10">
+                        {d.date.slice(5)} · {formatT(d.seconds)}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tasks & Todos */}
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Activité</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground">Tâches calendrier</span>
+                <span className="text-xs font-medium">{stats.tasksDone} / {stats.tasksCount}</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
+                <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${completionPct}%` }} />
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="text-center">
+                  <div className="text-base font-bold tabular-nums">{stats.tasksPlanned}</div>
+                  <div className="text-[10px] text-muted-foreground">Planifiées</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-base font-bold tabular-nums text-amber-600">{stats.tasksInProgress}</div>
+                  <div className="text-[10px] text-muted-foreground">En cours</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-base font-bold tabular-nums text-green-600">{stats.tasksDone}</div>
+                  <div className="text-[10px] text-muted-foreground">Terminées</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground">To-Dos</span>
+                <span className="text-xs font-medium">{stats.todosDone} / {stats.todosCount}</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${todoCompletionPct}%` }} />
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                {stats.todosCount === 0 ? 'Aucun to-do lié' : `${todoCompletionPct}% de complétion`}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Contacts */}
+      {stats.contactsCount > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Contacts liés ({stats.contactsCount})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(stats.contactsByStatus).map(([status, count]) => {
+                const def = CONTACT_STATUSES.find((s) => s.value === status)
+                return (
+                  <div key={status} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted text-xs">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: def?.color || '#6B7280' }} />
+                    <span>{def?.label || status}</span>
+                    <span className="font-bold tabular-nums">{count}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Marketing */}
+      {stats.postsCount > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Marketing</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <StatKpi label="Posts" value={stats.postsCount} />
+            <StatKpi label="Impressions" value={stats.totalImpressions.toLocaleString()} />
+            <StatKpi label="Engagement" value={engagement.toLocaleString()} hint={`${stats.totalLikes} 👍 · ${stats.totalComments} 💬 · ${stats.totalShares} ↗`} />
+            <StatKpi label="CTR" value={`${ctr.toFixed(2)}%`} hint={`${stats.totalClicks} clics`} />
+          </div>
+        </div>
+      )}
+
+      {/* Money */}
+      {(stats.revenue > 0 || stats.totalSpend > 0) && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Finance</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <StatKpi label="Revenu" value={`${stats.revenue}€`} accent />
+            <StatKpi label="Dépenses ads" value={`${stats.totalSpend.toFixed(0)}€`} />
+            <StatKpi label="Bénéfice" value={`${(stats.revenue - stats.totalSpend).toFixed(0)}€`} />
+            <StatKpi label="ROI" value={stats.totalSpend > 0 ? `${roi.toFixed(0)}%` : '—'} />
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {stats.totalTime === 0 && stats.tasksCount === 0 && stats.todosCount === 0 && stats.postsCount === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          <p className="text-sm">Aucune activité enregistrée pour ce projet.</p>
+          <p className="text-xs mt-1">Lie des tâches, todos ou posts à ce projet pour voir des stats.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StatKpi({ label, value, accent, hint }: { label: string; value: number | string; accent?: boolean; hint?: string }) {
+  return (
+    <div className={cn('rounded-xl border p-3', accent ? 'border-primary/40 bg-primary/5' : 'border-border bg-background')}>
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-xl font-bold tabular-nums mt-0.5">{typeof value === 'number' ? value.toLocaleString() : value}</p>
+      {hint && <p className="text-[10px] text-muted-foreground mt-1">{hint}</p>}
+    </div>
   )
 }
 
