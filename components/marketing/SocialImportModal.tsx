@@ -137,7 +137,7 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[95vw] max-w-6xl h-[92vh] max-h-[92vh] overflow-hidden flex flex-col sm:!max-w-6xl">
         <DialogHeader>
           <DialogTitle>Importer depuis tes réseaux sociaux</DialogTitle>
         </DialogHeader>
@@ -155,7 +155,7 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
         ) : (
           <>
             {/* Platform tabs */}
-            <div className="flex items-center gap-1 border-b border-border pb-2">
+            <div className="flex items-center gap-1 border-b border-border pb-2 flex-wrap">
               {platforms.map((p) => {
                 const isConnected = connectedPlatforms.has(p)
                 return (
@@ -163,16 +163,22 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
                     key={p}
                     onClick={() => isConnected && setActivePlatform(p)}
                     disabled={!isConnected}
+                    title={!isConnected ? `${PLATFORM_INFO[p].label} non connecté — va dans Paramètres` : undefined}
                     className={cn(
                       'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-                      !isConnected && 'opacity-40 cursor-not-allowed',
+                      !isConnected && 'opacity-50 cursor-not-allowed',
                       activePlatform === p && isConnected
                         ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
+                    <span
+                      className={cn(
+                        'h-1.5 w-1.5 rounded-full shrink-0',
+                        isConnected ? 'bg-green-500' : 'bg-muted-foreground/40'
+                      )}
+                    />
                     {PLATFORM_INFO[p].label}
-                    {!isConnected && <span className="text-[9px]">(non connecté)</span>}
                   </button>
                 )
               })}
@@ -198,7 +204,7 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
               </div>
             )}
 
-            {/* Items list */}
+            {/* Items list — grid 2 cols on wide screens */}
             <div className="flex-1 overflow-auto -mx-6 px-6">
               {error && <p className="text-xs text-red-600 py-2">{error}</p>}
               {loading ? (
@@ -208,7 +214,7 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
                   Aucun élément trouvé sur ce compte.
                 </p>
               ) : (
-                <div className="space-y-2 py-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 py-2">
                   {items.map((item) => {
                     const isImported = imported.has(item.id)
                     const title = item.title || item.caption?.slice(0, 80) || item.text?.slice(0, 80) || 'Sans titre'
@@ -219,16 +225,16 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
                       >
                         {item.thumbnail && (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={item.thumbnail} alt="" className="h-16 w-24 rounded-md object-cover shrink-0 bg-muted" />
+                          <img src={item.thumbnail} alt="" className="h-14 w-20 rounded-md object-cover shrink-0 bg-muted" />
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{title}</p>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                          <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground flex-wrap">
                             {(item.views !== undefined && item.views > 0) && <span>{item.views.toLocaleString()} vues</span>}
-                            {(item.impressions !== undefined && item.impressions > 0) && <span>{item.impressions.toLocaleString()} impressions</span>}
+                            {(item.impressions !== undefined && item.impressions > 0) && <span>{item.impressions.toLocaleString()} imp.</span>}
                             {(item.likes !== undefined && item.likes > 0) && <span>{item.likes.toLocaleString()} likes</span>}
                             {(item.comments !== undefined && item.comments > 0) && <span>{item.comments.toLocaleString()} comm.</span>}
-                            {(item.shares !== undefined && item.shares > 0) && <span>{item.shares.toLocaleString()} partages</span>}
+                            {(item.shares !== undefined && item.shares > 0) && <span>{item.shares.toLocaleString()} part.</span>}
                             {item.publishedAt && (
                               <span>
                                 {new Date(typeof item.publishedAt === 'number' ? item.publishedAt : item.publishedAt).toLocaleDateString('fr-FR')}
@@ -242,9 +248,10 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
                               href={item.permalink || item.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs text-muted-foreground hover:text-primary px-2"
+                              className="text-[10px] text-muted-foreground hover:text-primary px-1"
+                              title="Ouvrir l'original"
                             >
-                              Ouvrir
+                              ↗
                             </a>
                           )}
                           <Button
