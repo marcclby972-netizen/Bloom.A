@@ -135,6 +135,61 @@ function writeLocal(key: string, data: unknown) {
   localStorage.setItem(key, JSON.stringify(data))
 }
 
+/**
+ * Heal a corrupted localStorage cache: convert any createdAt/updatedAt that's
+ * a string (ISO) or invalid into a number (ms since epoch). Runs once at boot
+ * to repair caches that were written before the normalizeRow fix landed.
+ */
+const HEAL_FLAG = 'bloom_cache_healed_v1'
+function healLocalStorageDates() {
+  if (typeof window === 'undefined') return
+  if (localStorage.getItem(HEAL_FLAG)) return
+
+  const dateFields = ['createdAt', 'updatedAt', 'publishedAt']
+  let fixedCount = 0
+
+  for (const lsKey of Object.values(KEYS)) {
+    if (lsKey === 'bloom_settings') continue
+    try {
+      const raw = localStorage.getItem(lsKey)
+      if (!raw) continue
+      const arr = JSON.parse(raw)
+      if (!Array.isArray(arr)) continue
+      let mutated = false
+      for (const row of arr) {
+        if (!row || typeof row !== 'object') continue
+        for (const f of dateFields) {
+          const v = (row as Record<string, unknown>)[f]
+          if (v === undefined || v === null) continue
+          if (typeof v === 'number' && Number.isFinite(v)) continue
+          // Try to parse strings (ISO) into numbers
+          if (typeof v === 'string') {
+            const parsed = new Date(v).getTime()
+            if (!Number.isNaN(parsed)) {
+              (row as Record<string, unknown>)[f] = parsed
+              mutated = true
+              fixedCount++
+              continue
+            }
+          }
+          // Anything else → drop
+          (row as Record<string, unknown>)[f] = Date.now()
+          mutated = true
+          fixedCount++
+        }
+      }
+      if (mutated) localStorage.setItem(lsKey, JSON.stringify(arr))
+    } catch {
+      // If JSON is broken, nuke this key — better empty than crashing
+      localStorage.removeItem(lsKey)
+      fixedCount++
+    }
+  }
+
+  localStorage.setItem(HEAL_FLAG, '1')
+  if (fixedCount > 0) console.log(`[cloud-sync] Healed ${fixedCount} corrupted date fields in localStorage`)
+}
+
 // ── Public API ──
 
 /**
@@ -144,6 +199,10 @@ function writeLocal(key: string, data: unknown) {
 export async function initCloudSync(): Promise<{ ok: boolean; userId: string | null }> {
   if (typeof window === 'undefined') return { ok: false, userId: null }
   if (initialized && currentUserId) return { ok: true, userId: currentUserId }
+
+  // Repair any pre-existing localStorage caches that have ISO strings or invalid
+  // values in date fields. Runs once per browser (HEAL_FLAG gate).
+  healLocalStorageDates()
 
   const client = getClient()
   const { data: { user } } = await client.auth.getUser()
@@ -386,6 +445,38 @@ export function isCloudSyncReady(): boolean {
 
 export function getCurrentUserId(): string | null {
   return currentUserId
+}
+
+// ── Sync status (last successful sync, error count) ──
+
+let lastSyncAt: number | null = null
+let lastSyncError: string | null = null
+const syncListeners = new Set<() => void>()
+
+function notifySyncListeners() {
+  for (const cb of syncListeners) try { cb() } catch {/* ignore */}
+}
+
+export function getSyncStatus(): { lastSyncAt: number | null; lastSyncError: string | null; isReady: boolean } {
+  return { lastSyncAt, lastSyncError, isReady: isCloudSyncReady() }
+}
+
+export function subscribeSyncStatus(cb: () => void): () => void {
+  syncListeners.add(cb)
+  return () => { syncListeners.delete(cb) }
+}
+
+/** Wraps refreshFromCloud with status tracking + listener notification. */
+export async function refreshFromCloudWithStatus(): Promise<void> {
+  try {
+    await refreshFromCloud()
+    lastSyncAt = Date.now()
+    lastSyncError = null
+  } catch (err) {
+    lastSyncError = err instanceof Error ? err.message : 'Sync failed'
+  } finally {
+    notifySyncListeners()
+  }
 }
 
 // Avoid unused-import warnings for entity types — they're exported in case consumers want them

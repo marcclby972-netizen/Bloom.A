@@ -46,10 +46,23 @@ function MobileHeader() {
   )
 }
 
+/**
+ * Floating notification bell pinned to the top-right of the viewport.
+ * - Hidden on mobile (the bell is in MobileHeader instead)
+ * - z-[60] keeps it above page content and dialogs
+ * - pointer-events: none on the wrapper so the area around the bell stays
+ *   click-through; only the bell itself catches clicks via pointer-events-auto.
+ *   This prevents the bell from blocking page buttons that happen to live in
+ *   the same top-right corner.
+ * - backdrop-blur + semi-transparent bg so the bell stays readable even
+ *   when text or buttons sit underneath.
+ */
 function DesktopBell() {
   return (
-    <div className="hidden md:block fixed top-3 right-4 z-30">
-      <NotificationBell />
+    <div className="hidden md:block fixed top-3 right-4 z-[60] pointer-events-none">
+      <div className="pointer-events-auto bg-background/85 backdrop-blur-md rounded-full shadow-lg border border-border/60">
+        <NotificationBell />
+      </div>
     </div>
   )
 }

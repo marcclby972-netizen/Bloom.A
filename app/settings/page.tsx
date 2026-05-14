@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { store } from '@/lib/store'
+import { getSyncStatus, subscribeSyncStatus, refreshFromCloudWithStatus, flushPending } from '@/lib/cloud-sync'
+import { formatRelative } from '@/lib/date-utils'
 import { applyTheme } from '@/components/ThemeProvider'
 import { DEFAULT_SETTINGS, AI_MODELS, INTEGRATION_PROVIDERS, AI_NAME } from '@/lib/types'
 import type { AppSettings, Integration, AIModel, IntegrationStatus, Category } from '@/lib/types'
@@ -1040,10 +1042,40 @@ function CustomStatusManager({ label, current, onChange }: {
 function DataSection() {
   const [storageInfo, setStorageInfo] = useState({ used: '0 KB', items: 0 })
   const [showConfirm, setShowConfirm] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
+  const [cacheConfirm, setCacheConfirm] = useState(false)
 
   useEffect(() => {
     setStorageInfo(store.getStorageSize())
+    const unsub = subscribeSyncStatus(() => setSyncStatus(getSyncStatus()))
+    return unsub
   }, [])
+
+  const handleSyncNow = async () => {
+    setSyncing(true)
+    try {
+      await refreshFromCloudWithStatus()
+      // Force a soft reload so all useEffects re-read the freshly synced cache
+      window.location.reload()
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const handleClearCache = async () => {
+    // Push any pending writes to the cloud before nuking the local cache
+    try { await flushPending() } catch {/* ignore */}
+    // Wipe every bloom_* key (including the heal flag and migration flag)
+    const keys: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k?.startsWith('bloom_')) keys.push(k)
+    }
+    keys.forEach((k) => localStorage.removeItem(k))
+    // Reload — initCloudSync will re-pull everything from Supabase
+    window.location.reload()
+  }
 
   const handleExport = () => {
     const data: Record<string, string | null> = {}
@@ -1141,6 +1173,67 @@ function DataSection() {
               Importer
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Synchronisation cloud</CardTitle>
+          <CardDescription>
+            Vos données (tâches, projets, paramètres, personnalisations) sont sauvegardées dans le cloud
+            et synchronisées sur tous vos appareils connectés au même compte.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium">État de la synchronisation</p>
+              <p className="text-[10px] text-muted-foreground">
+                {syncStatus.lastSyncError
+                  ? <span className="text-red-600">Erreur : {syncStatus.lastSyncError}</span>
+                  : syncStatus.lastSyncAt
+                    ? `Dernière sync ${formatRelative(syncStatus.lastSyncAt)}`
+                    : syncStatus.isReady
+                      ? 'Prêt — en attente de la prochaine sync'
+                      : 'Non connecté'}
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={handleSyncNow} disabled={syncing || !syncStatus.isReady}>
+              {syncing ? 'Sync...' : 'Synchroniser'}
+            </Button>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {!cacheConfirm ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium">Vider le cache local</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Supprime le cache local et resynchronise depuis le cloud. Utile en cas d&apos;erreur d&apos;affichage.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setCacheConfirm(true)}>
+                Vider le cache
+              </Button>
+            </div>
+          ) : (
+            <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-amber-800">Confirmer ?</p>
+              <p className="text-[10px] text-amber-700">
+                Le cache local sera supprimé puis resynchronisé depuis le cloud.
+                Vos données restent sauvegardées dans le cloud — aucune perte.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="default" onClick={handleClearCache}>
+                  Vider et resynchroniser
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setCacheConfirm(false)}>
+                  Annuler
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

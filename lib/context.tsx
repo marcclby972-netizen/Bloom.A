@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import { store } from './store'
 import { useTimer } from './use-timer'
 import { requestNotificationPermission, sendNotification } from './notifications'
-import { initCloudSync, refreshFromCloud, isCloudSyncReady, flushPending } from './cloud-sync'
+import { initCloudSync, refreshFromCloud, isCloudSyncReady, flushPending, refreshFromCloudWithStatus } from './cloud-sync'
 import type {
   Task, Category, TimeEntry, Goal,
   Contact, Interaction, Post, Project, ProjectNote, VocalProject, VocalNote, PromptNote,
@@ -127,15 +127,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Re-pull on window focus (cross-device sync)
     const handleFocus = async () => {
       if (!isCloudSyncReady()) return
-      await refreshFromCloud()
+      await refreshFromCloudWithStatus()
       refresh()
     }
     window.addEventListener('focus', handleFocus)
 
+    // Periodic poll every 60s to catch changes made on other devices
+    const pollInterval = setInterval(async () => {
+      if (!isCloudSyncReady()) return
+      if (document.visibilityState !== 'visible') return // skip when tab is hidden
+      await refreshFromCloudWithStatus()
+      refresh()
+    }, 60_000)
+
     // Flush pending cloud writes before the tab is closed/refreshed
     const handleUnload = () => {
       if (!isCloudSyncReady()) return
-      // keepalive: true on fetch is the closest to sendBeacon for Supabase
       flushPending()
     }
     window.addEventListener('beforeunload', handleUnload)
@@ -150,6 +157,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true
+      clearInterval(pollInterval)
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('beforeunload', handleUnload)
       window.removeEventListener('pagehide', handleUnload)
