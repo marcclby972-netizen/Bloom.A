@@ -50,13 +50,16 @@ export function ChatPanel() {
           messages: [...messages.filter((m) => !m.isError), { role: 'user', content: userMsg }],
           context: {
             selectedDate: app.selectedDate,
-            tasks: app.tasks.filter((t) => t.date === app.selectedDate),
-            allTasks: app.tasks.slice(0, 50),
+            tasks: app.tasks.filter((t) => t.date === app.selectedDate).map((t) => ({ id: t.id, title: t.title, status: t.status, projectId: t.projectId })),
+            allTasks: app.tasks.slice(0, 50).map((t) => ({ id: t.id, title: t.title, status: t.status, date: t.date, projectId: t.projectId })),
             categories: app.categories,
-            todos: app.todos.slice(0, 30),
+            todos: app.todos.slice(0, 30).map((t) => ({ id: t.id, title: t.title, done: t.done, date: t.date, priority: t.priority, projectId: t.projectId })),
             contacts: app.contacts.slice(0, 30).map((c) => ({ id: c.id, firstName: c.firstName, lastName: c.lastName, status: c.status, tags: c.tags })),
             projects: app.projects.slice(0, 20).map((p) => ({ id: p.id, name: p.name, status: p.status })),
-            posts: app.posts.slice(0, 20).map((p) => ({ id: p.id, title: p.title, platform: p.platform, type: p.type })),
+            posts: app.posts.slice(0, 20).map((p) => ({ id: p.id, title: p.title, platform: p.platform, type: p.type, projectId: p.projectId })),
+            projectNotes: app.projects.slice(0, 20).flatMap((p) =>
+              app.getProjectNotes(p.id).slice(0, 10).map((n) => ({ id: n.id, projectId: n.projectId, title: n.title, contentPreview: n.content.slice(0, 200) }))
+            ),
           },
           settings: {
             model: currentSettings.ai.model,
@@ -164,7 +167,48 @@ export function ChatPanel() {
             publishedAt: p.publishedAt || app.selectedDate,
             metrics: { impressions: 0, reach: 0, likes: 0, comments: 0, shares: 0, clicks: 0, spend: 0, conversions: 0, ...p.metrics },
             tags: p.tags || [],
+            projectId: p.projectId,
           })
+        }
+      }
+
+      // Handle project note create/update
+      if (data.projectNotes) {
+        for (const note of data.projectNotes) {
+          if (note.action === 'update' && note.id) {
+            app.updateProjectNote(note.id, {
+              ...(note.title !== undefined && { title: note.title }),
+              ...(note.content !== undefined && { content: note.content }),
+            })
+          } else if (note.action === 'create' && note.projectId) {
+            const existing = app.getProjectNotes(note.projectId)
+            app.createProjectNote({
+              projectId: note.projectId,
+              parentId: null,
+              title: note.title || 'Note IA',
+              content: note.content || '',
+              order: existing.length,
+            })
+          }
+        }
+      }
+
+      // Handle task status updates
+      if (data.taskUpdates) {
+        for (const u of data.taskUpdates) {
+          if (u.id && u.status) app.updateTask(u.id, { status: u.status })
+        }
+      }
+
+      // Handle todo updates
+      if (data.todoUpdates) {
+        for (const u of data.todoUpdates) {
+          if (!u.id) continue
+          const updates: Partial<{ done: boolean; priority: 'low' | 'medium' | 'high'; date: string | null }> = {}
+          if (u.done !== undefined) updates.done = u.done
+          if (u.priority) updates.priority = u.priority
+          if (u.date !== undefined) updates.date = u.date
+          if (Object.keys(updates).length > 0) app.updateTodo(u.id, updates)
         }
       }
 

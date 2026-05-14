@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { useApp } from '@/lib/context'
-import { CONTACT_STATUSES, CHANNELS, type Contact, type ContactStatus } from '@/lib/types'
+import { CHANNELS, type Contact, type ContactStatus } from '@/lib/types'
+import { store } from '@/lib/store'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { TagInput } from '@/components/shared/TagInput'
 
 type Props = {
   open: boolean
@@ -26,7 +28,6 @@ export function ContactEditor({ open, onClose, contact, defaultStatus = 'prospec
   const [status, setStatus] = useState<ContactStatus>(contact?.status || defaultStatus)
   const [source, setSource] = useState(contact?.source || '')
   const [notes, setNotes] = useState(contact?.notes || '')
-  const [tagInput, setTagInput] = useState('')
   const [tags, setTags] = useState<string[]>(contact?.tags || [])
 
   const handleSave = () => {
@@ -44,14 +45,6 @@ export function ContactEditor({ open, onClose, contact, defaultStatus = 'prospec
     if (contact) {
       deleteContact(contact.id)
       onClose()
-    }
-  }
-
-  const addTag = () => {
-    const t = tagInput.trim()
-    if (t && !tags.includes(t)) {
-      setTags([...tags, t])
-      setTagInput('')
     }
   }
 
@@ -75,13 +68,13 @@ export function ContactEditor({ open, onClose, contact, defaultStatus = 'prospec
           <div>
             <label className="text-xs font-medium text-muted-foreground">Statut</label>
             <div className="flex flex-wrap gap-1 mt-1">
-              {CONTACT_STATUSES.map((s) => (
+              {store.getEffectiveContactStatuses().map((s) => (
                 <Button
                   key={s.value}
                   variant={status === s.value ? 'default' : 'outline'}
                   size="sm"
                   className="text-xs h-7"
-                  onClick={() => setStatus(s.value)}
+                  onClick={() => setStatus(s.value as ContactStatus)}
                 >
                   <span className="h-2 w-2 rounded-full mr-1.5 shrink-0" style={{ backgroundColor: s.color }} />
                   {s.label}
@@ -94,29 +87,9 @@ export function ContactEditor({ open, onClose, contact, defaultStatus = 'prospec
 
           <div>
             <label className="text-xs font-medium text-muted-foreground">Tags</label>
-            <div className="flex gap-2 mt-1">
-              <Input
-                placeholder="Ajouter un tag"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                className="flex-1"
-              />
-              <Button variant="outline" size="sm" onClick={addTag}>+</Button>
+            <div className="mt-1">
+              <TagInput value={tags} onChange={setTags} />
             </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs cursor-pointer hover:bg-muted/80"
-                    onClick={() => setTags(tags.filter((t) => t !== tag))}
-                  >
-                    {tag} ×
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 

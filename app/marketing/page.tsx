@@ -232,7 +232,7 @@ function StatsView({ posts }: { posts: Post[] }) {
   return (
     <div className="space-y-6">
       {/* KPI cards — row 1 */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label="Total posts" value={String(posts.length)} />
         <KpiCard label="Impressions" value={totalImpressions.toLocaleString()} />
         <KpiCard label="Portée" value={totalReach.toLocaleString()} />
@@ -240,7 +240,7 @@ function StatsView({ posts }: { posts: Post[] }) {
       </div>
 
       {/* KPI cards — row 2 */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label="Taux d'engagement" value={`${engagementRate}%`} accent />
         <KpiCard label="Clics" value={totalClicks.toLocaleString()} />
         <KpiCard label="Conversions" value={String(totalConversions)} />
@@ -248,7 +248,7 @@ function StatsView({ posts }: { posts: Post[] }) {
       </div>
 
       {/* KPI cards — row 3 */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <KpiCard label="CPC moyen" value={cpc !== '—' ? `${cpc}€` : '—'} />
         <KpiCard label="Coût / conversion" value={costPerConversion !== '—' ? `${costPerConversion}€` : '—'} />
         <KpiCard
@@ -258,7 +258,7 @@ function StatsView({ posts }: { posts: Post[] }) {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         <Card>
           <CardHeader><CardTitle className="text-sm">Par plateforme (impressions)</CardTitle></CardHeader>
           <CardContent>

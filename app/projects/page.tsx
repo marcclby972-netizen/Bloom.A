@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useApp } from '@/lib/context'
 import { store } from '@/lib/store'
-import { PROJECT_STATUSES, CONTACT_STATUSES, PLATFORMS } from '@/lib/types'
+import { PROJECT_STATUSES, CONTACT_STATUSES, PLATFORMS, TODO_PRIORITIES } from '@/lib/types'
 import type { Project, ProjectStatus, ProjectNote } from '@/lib/types'
 import { formatRelative } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
@@ -28,6 +28,11 @@ export default function ProjectsPage() {
   const app = useApp()
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [creatorOpen, setCreatorOpen] = useState(false)
+  const [effectiveStatuses, setEffectiveStatuses] = useState(PROJECT_STATUSES as { value: string; label: string; color: string }[])
+
+  useEffect(() => {
+    setEffectiveStatuses(store.getEffectiveProjectStatuses())
+  }, [app.projects])
 
   const selectedProject = app.projects.find((p) => p.id === selectedProjectId) ?? null
 
@@ -42,27 +47,27 @@ export default function ProjectsPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border shrink-0">
         <h1 className="text-lg font-semibold">Projets</h1>
         <Button size="sm" onClick={() => setCreatorOpen(true)}>+ Projet</Button>
       </div>
 
       {/* Body: Kanban + Detail */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 flex-col md:flex-row">
         {/* Left: Kanban columns */}
         <div className={cn(
-          "shrink-0 overflow-x-auto border-r border-border transition-all",
-          selectedProject ? "w-[340px]" : "flex-1"
+          "shrink-0 overflow-x-auto border-b md:border-b-0 md:border-r border-border transition-all",
+          selectedProject ? "md:w-[340px]" : "flex-1"
         )}>
-          <div className="flex h-full min-w-max">
-            {PROJECT_STATUSES.map((status) => {
+          <div className="flex md:h-full min-w-max">
+            {effectiveStatuses.map((status) => {
               const projects = app.projects.filter((p) => p.status === status.value)
               return (
                 <div
                   key={status.value}
                   className={cn(
                     "border-r border-border last:border-r-0",
-                    selectedProject ? "w-[170px]" : "flex-1 min-w-[260px]"
+                    selectedProject ? "w-[170px]" : "w-[240px] md:flex-1 md:min-w-[260px]"
                   )}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
@@ -82,11 +87,15 @@ export default function ProjectsPage() {
                         draggable
                         onDragStart={(e) => e.dataTransfer.setData('projectId', project.id)}
                         className={cn(
-                          "rounded-lg border bg-background p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all group",
+                          "rounded-lg border bg-background p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all group relative",
                           selectedProjectId === project.id
                             ? "border-primary ring-1 ring-primary/30"
                             : "border-border"
                         )}
+                        style={project.color ? {
+                          borderLeftColor: project.color,
+                          borderLeftWidth: '3px',
+                        } : undefined}
                         onClick={() => handleSelectProject(project)}
                       >
                         <div className="flex items-start justify-between gap-1">
@@ -169,6 +178,7 @@ function ProjectDetail({ project, onClose }: { project: Project; onClose: () => 
             <TabsTrigger value={0}>Vue d&apos;ensemble</TabsTrigger>
             <TabsTrigger value={1}>Notes</TabsTrigger>
             <TabsTrigger value={2}>Liens</TabsTrigger>
+            <TabsTrigger value={3}>Revenus</TabsTrigger>
           </TabsList>
         </div>
 
@@ -181,6 +191,9 @@ function ProjectDetail({ project, onClose }: { project: Project; onClose: () => 
         <TabsContent value={2} className="flex-1 overflow-y-auto">
           <LinksTab project={project} />
         </TabsContent>
+        <TabsContent value={3} className="flex-1 overflow-y-auto">
+          <RevenueTab project={project} />
+        </TabsContent>
       </Tabs>
     </div>
   )
@@ -191,6 +204,7 @@ function ProjectDetail({ project, onClose }: { project: Project; onClose: () => 
 function OverviewTab({ project }: { project: Project }) {
   const app = useApp()
   const stats = store.getProjectStats(project.id)
+  const effectiveStatuses = store.getEffectiveProjectStatuses()
 
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(project.name)
@@ -292,12 +306,12 @@ function OverviewTab({ project }: { project: Project }) {
       {/* Status */}
       <div>
         <label className="text-xs font-medium text-muted-foreground">Statut</label>
-        <div className="flex gap-1 mt-1">
-          {PROJECT_STATUSES.map((s) => (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {effectiveStatuses.map((s) => (
             <button
               key={s.value}
               className={cn(
-                "flex-1 rounded-md px-2 py-1.5 text-xs transition-colors",
+                "rounded-md px-2.5 py-1.5 text-xs transition-colors",
                 project.status === s.value ? 'text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'
               )}
               style={project.status === s.value ? { backgroundColor: s.color } : undefined}
@@ -306,6 +320,41 @@ function OverviewTab({ project }: { project: Project }) {
               {s.label}
             </button>
           ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1.5">Pour ajouter un statut custom, va dans Paramètres → Général</p>
+      </div>
+
+      {/* Project color */}
+      <div>
+        <label className="text-xs font-medium text-muted-foreground">Couleur du projet</label>
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {[
+            '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16', '#22C55E',
+            '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1',
+            '#8B5CF6', '#A855F7', '#D946EF', '#EC4899', '#F43F5E', '#6B7280',
+          ].map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => app.updateProject(project.id, { color })}
+              className={cn(
+                'h-6 w-6 rounded-full border-2 transition-all',
+                project.color === color ? 'border-foreground scale-110' : 'border-transparent hover:border-border'
+              )}
+              style={{ backgroundColor: color }}
+              title={color}
+            />
+          ))}
+          {project.color && (
+            <button
+              type="button"
+              onClick={() => app.updateProject(project.id, { color: undefined })}
+              className="text-[10px] text-muted-foreground hover:text-destructive ml-1"
+              title="Retirer la couleur"
+            >
+              Retirer
+            </button>
+          )}
         </div>
       </div>
 
@@ -677,6 +726,54 @@ function LinksTab({ project }: { project: Project }) {
           )
         }}
       />
+
+      {/* Linked Todos (auto-derived via TodoItem.projectId) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Todos liés</h3>
+          <span className="text-[10px] text-muted-foreground">
+            Ajouter via la page To-Do en sélectionnant ce projet
+          </span>
+        </div>
+        {(() => {
+          const linkedTodos = app.todos.filter((t) => t.projectId === project.id)
+          if (linkedTodos.length === 0) {
+            return <p className="text-xs text-muted-foreground italic">Aucun todo lié à ce projet.</p>
+          }
+          return (
+            <div className="space-y-1">
+              {linkedTodos.map((todo) => {
+                const prio = TODO_PRIORITIES.find((p) => p.value === todo.priority)
+                return (
+                  <div key={todo.id} className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5">
+                    <button
+                      onClick={() => app.updateTodo(todo.id, { done: !todo.done })}
+                      className={cn(
+                        'h-4 w-4 rounded border shrink-0 flex items-center justify-center',
+                        todo.done ? 'bg-primary border-primary' : 'border-muted-foreground/40 hover:border-primary'
+                      )}
+                    >
+                      {todo.done && (
+                        <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1.5 4.5l2 2 4-4.5" />
+                        </svg>
+                      )}
+                    </button>
+                    <span className={cn('text-xs truncate flex-1', todo.done && 'line-through text-muted-foreground')}>{todo.title}</span>
+                    <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: prio?.color }} />
+                    {todo.date && <span className="text-[10px] text-muted-foreground shrink-0">{todo.date.slice(5)}</span>}
+                    <button
+                      onClick={() => app.updateTodo(todo.id, { projectId: undefined })}
+                      className="text-muted-foreground hover:text-destructive text-xs shrink-0"
+                      title="Retirer du projet"
+                    >×</button>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+      </div>
     </div>
   )
 }
@@ -840,12 +937,12 @@ function ProjectCreator({ open, onClose }: { open: boolean; onClose: () => void 
           <Textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
           <div>
             <label className="text-xs font-medium text-muted-foreground">Statut</label>
-            <div className="flex gap-1 mt-1">
-              {PROJECT_STATUSES.map((s) => (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {store.getEffectiveProjectStatuses().map((s) => (
                 <button
                   key={s.value}
                   className={cn(
-                    "flex-1 rounded-md px-2 py-1.5 text-xs transition-colors",
+                    "rounded-md px-2.5 py-1.5 text-xs transition-colors",
                     status === s.value ? 'text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   )}
                   style={status === s.value ? { backgroundColor: s.color } : undefined}
@@ -888,5 +985,202 @@ function ProjectCreator({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// ── Revenue Tab ──
+
+type StripeCharge = {
+  id: string
+  amount: number
+  amountRefunded: number
+  currency: string
+  status: string
+  description: string | null
+  email: string | null
+  createdAt: number
+  metadata: Record<string, string>
+  paid: boolean
+  refunded: boolean
+}
+
+const STRIPE_LINK_KEY = 'bloom_stripe_charge_links'
+
+function getChargeLinks(): Record<string, string> {
+  if (typeof window === 'undefined') return {}
+  try { return JSON.parse(localStorage.getItem(STRIPE_LINK_KEY) || '{}') } catch { return {} }
+}
+
+function setChargeLink(chargeId: string, projectId: string | null) {
+  const links = getChargeLinks()
+  if (projectId) links[chargeId] = projectId
+  else delete links[chargeId]
+  localStorage.setItem(STRIPE_LINK_KEY, JSON.stringify(links))
+}
+
+function RevenueTab({ project }: { project: Project }) {
+  const app = useApp()
+  const [charges, setCharges] = useState<StripeCharge[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [links, setLinks] = useState<Record<string, string>>({})
+  const [days, setDays] = useState(90)
+
+  useEffect(() => {
+    setLinks(getChargeLinks())
+  }, [])
+
+  const fetchStripe = useCallback(async () => {
+    const stripeIntegration = store.getSettings().integrations.find((i) => i.provider === 'stripe')
+    if (!stripeIntegration?.apiKey) {
+      setError('Connecte Stripe dans Paramètres → Intégrations')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/stripe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: stripeIntegration.apiKey, action: 'list_charges', daysBack: days }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur')
+      setCharges(data.charges || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setLoading(false)
+    }
+  }, [days])
+
+  const linkedCharges = useMemo(() => charges.filter((c) => links[c.id] === project.id), [charges, links, project.id])
+  const unlinkedCharges = useMemo(() => charges.filter((c) => !links[c.id]), [charges, links])
+
+  const totalRevenue = useMemo(() => {
+    return linkedCharges
+      .filter((c) => c.paid && !c.refunded)
+      .reduce((sum, c) => sum + (c.amount - c.amountRefunded), 0)
+  }, [linkedCharges])
+
+  const formatAmount = (cents: number, currency: string) => {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: currency.toUpperCase() }).format(cents / 100)
+  }
+
+  const handleLink = (chargeId: string) => {
+    setChargeLink(chargeId, project.id)
+    setLinks(getChargeLinks())
+  }
+
+  const handleUnlink = (chargeId: string) => {
+    setChargeLink(chargeId, null)
+    setLinks(getChargeLinks())
+  }
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="text-sm font-semibold">Revenus Stripe</h3>
+          <p className="text-xs text-muted-foreground">Lie des paiements à ce projet pour suivre les revenus</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={days}
+            onChange={(e) => setDays(parseInt(e.target.value, 10))}
+            className="h-7 rounded-md border border-input bg-transparent px-2 text-xs"
+          >
+            <option value={30}>30 jours</option>
+            <option value={90}>90 jours</option>
+            <option value={365}>1 an</option>
+          </select>
+          <Button size="sm" onClick={fetchStripe} disabled={loading}>
+            {loading ? 'Chargement...' : 'Rafraîchir'}
+          </Button>
+        </div>
+      </div>
+
+      {error && <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
+
+      {/* Total */}
+      {linkedCharges.length > 0 && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Total revenus liés à ce projet</div>
+          <div className="text-2xl font-bold tabular-nums mt-1">
+            {linkedCharges.length > 0 ? formatAmount(totalRevenue, linkedCharges[0].currency) : '0 €'}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {linkedCharges.length} paiement{linkedCharges.length > 1 ? 's' : ''}
+          </div>
+          {totalRevenue > 0 && totalRevenue !== (project.revenue || 0) * 100 && (
+            <button
+              onClick={() => app.updateProject(project.id, { revenue: Math.round(totalRevenue / 100) })}
+              className="text-[10px] text-primary hover:underline mt-2"
+            >
+              Synchroniser avec le revenu manuel ({formatAmount(totalRevenue, linkedCharges[0].currency)})
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Linked charges */}
+      {linkedCharges.length > 0 && (
+        <div className="space-y-1">
+          <h4 className="text-xs font-medium text-muted-foreground">Paiements liés</h4>
+          {linkedCharges.map((c) => (
+            <ChargeRow key={c.id} charge={c} formatAmount={formatAmount} action={
+              <button onClick={() => handleUnlink(c.id)} className="text-xs text-muted-foreground hover:text-destructive">Délier</button>
+            } />
+          ))}
+        </div>
+      )}
+
+      {/* Unlinked charges */}
+      {unlinkedCharges.length > 0 && (
+        <div className="space-y-1">
+          <h4 className="text-xs font-medium text-muted-foreground">Paiements non liés ({unlinkedCharges.length})</h4>
+          {unlinkedCharges.slice(0, 30).map((c) => (
+            <ChargeRow key={c.id} charge={c} formatAmount={formatAmount} action={
+              <button onClick={() => handleLink(c.id)} className="text-xs text-primary hover:underline">Lier à ce projet</button>
+            } />
+          ))}
+          {unlinkedCharges.length > 30 && (
+            <p className="text-[10px] text-muted-foreground italic">+{unlinkedCharges.length - 30} autres paiements</p>
+          )}
+        </div>
+      )}
+
+      {!loading && charges.length === 0 && !error && (
+        <p className="text-xs text-muted-foreground italic">Clique sur Rafraîchir pour charger les paiements depuis Stripe.</p>
+      )}
+    </div>
+  )
+}
+
+function ChargeRow({ charge, formatAmount, action }: {
+  charge: StripeCharge
+  formatAmount: (cents: number, currency: string) => string
+  action: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-xs">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            'h-1.5 w-1.5 rounded-full',
+            charge.refunded ? 'bg-orange-500' : charge.paid ? 'bg-green-500' : 'bg-red-500'
+          )} />
+          <span className="font-medium">{formatAmount(charge.amount, charge.currency)}</span>
+          {charge.amountRefunded > 0 && (
+            <span className="text-orange-600 text-[10px]">-{formatAmount(charge.amountRefunded, charge.currency)}</span>
+          )}
+        </div>
+        <div className="text-muted-foreground truncate text-[10px] mt-0.5">
+          {charge.description || charge.email || charge.id}
+          <span className="ml-1">· {new Date(charge.createdAt).toLocaleDateString('fr-FR')}</span>
+        </div>
+      </div>
+      <div className="shrink-0">{action}</div>
+    </div>
   )
 }

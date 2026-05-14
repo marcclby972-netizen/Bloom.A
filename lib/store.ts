@@ -65,6 +65,15 @@ function updateTask(id: string, updates: Partial<Omit<Task, 'id'>>): Task | null
   if (idx === -1) return null
   tasks[idx] = { ...tasks[idx], ...updates }
   write(KEYS.tasks, tasks)
+  // Sync linked todo if status changed to done
+  if (updates.status === 'done' && tasks[idx].linkedTodoId) {
+    const todos = getTodos()
+    const todoIdx = todos.findIndex((t) => t.id === tasks[idx].linkedTodoId)
+    if (todoIdx !== -1 && !todos[todoIdx].done) {
+      todos[todoIdx] = { ...todos[todoIdx], done: true }
+      write(KEYS.todos, todos)
+    }
+  }
   return tasks[idx]
 }
 
@@ -570,7 +579,38 @@ function updateTodo(id: string, updates: Partial<Omit<TodoItem, 'id' | 'createdA
   if (idx === -1) return null
   todos[idx] = { ...todos[idx], ...updates }
   write(KEYS.todos, todos)
+  // Sync linked task if todo was just done
+  if (updates.done === true && todos[idx].linkedTaskId) {
+    const tasks = getTasks()
+    const taskIdx = tasks.findIndex((t) => t.id === todos[idx].linkedTaskId)
+    if (taskIdx !== -1 && tasks[taskIdx].status !== 'done') {
+      tasks[taskIdx] = { ...tasks[taskIdx], status: 'done' }
+      write(KEYS.tasks, tasks)
+    }
+  }
   return todos[idx]
+}
+
+/**
+ * Create a calendar task and OPTIONALLY a linked todo automatically.
+ * Per user requirement: agenda → todo automatique (mais pas obligatoire).
+ */
+function createTaskWithTodo(task: Omit<Task, 'id'>, autoCreateTodo: boolean): Task {
+  const newTask = createTask(task)
+  if (autoCreateTodo) {
+    const todo = createTodo({
+      title: task.title,
+      done: task.status === 'done',
+      date: task.date,
+      priority: 'medium',
+      projectId: task.projectId,
+      linkedTaskId: newTask.id,
+    })
+    // Update task with linkedTodoId
+    updateTask(newTask.id, { linkedTodoId: todo.id })
+    return { ...newTask, linkedTodoId: todo.id }
+  }
+  return newTask
 }
 
 function deleteTodo(id: string) {
@@ -635,8 +675,45 @@ function getStorageSize(): { used: string; items: number } {
   return { used: kb < 1024 ? `${kb.toFixed(1)} KB` : `${(kb / 1024).toFixed(2)} MB`, items }
 }
 
+// ── Custom statuses (defaults + user-added) ──
+function getEffectiveProjectStatuses() {
+  const settings = getSettings()
+  const custom = settings.customProjectStatuses || []
+  // Project statuses: 'idea' | 'in_progress' | 'done' | 'archived' (the type union remains, custom statuses widen it via cast)
+  return [
+    { value: 'idea', label: 'Idée', color: '#6B7280' },
+    { value: 'in_progress', label: 'En cours', color: '#3B82F6' },
+    { value: 'done', label: 'Terminé', color: '#10B981' },
+    { value: 'archived', label: 'Archivé', color: '#9CA3AF' },
+    ...custom,
+  ]
+}
+
+function getEffectiveContactStatuses() {
+  const settings = getSettings()
+  const custom = settings.customContactStatuses || []
+  return [
+    { value: 'prospect', label: 'Prospect', color: '#6B7280' },
+    { value: 'contacted', label: 'Contacté', color: '#3B82F6' },
+    { value: 'interested', label: 'Intéressé', color: '#F59E0B' },
+    { value: 'client', label: 'Client', color: '#10B981' },
+    { value: 'inactive', label: 'Inactif', color: '#EF4444' },
+    ...custom,
+  ]
+}
+
+// ── Tag aggregation across all entities ──
+function getAllTags(): string[] {
+  const set = new Set<string>()
+  for (const t of read<{ tags?: string[] }>(KEYS.tasks)) t.tags?.forEach((tag) => set.add(tag))
+  for (const c of read<{ tags?: string[] }>(KEYS.contacts)) c.tags?.forEach((tag) => set.add(tag))
+  for (const p of read<{ tags?: string[] }>(KEYS.posts)) p.tags?.forEach((tag) => set.add(tag))
+  for (const p of read<{ tags?: string[] }>(KEYS.projects)) p.tags?.forEach((tag) => set.add(tag))
+  return Array.from(set).sort()
+}
+
 export const store = {
-  getTasks, getTasksByDate, getTask, createTask, updateTask, deleteTask,
+  getTasks, getTasksByDate, getTask, createTask, createTaskWithTodo, updateTask, deleteTask,
   getCategories, createCategory, updateCategory, deleteCategory,
   getTimeEntries, getTimeEntriesByTask, getTimeEntriesByDate, createTimeEntry, updateTimeEntry,
   getGoals, setGoal,
@@ -653,5 +730,6 @@ export const store = {
   getPipelineStats,
   getTodos, getTodosByDate, createTodo, updateTodo, deleteTodo,
   getSettings, saveSettings, updateSettings,
+  getAllTags, getEffectiveProjectStatuses, getEffectiveContactStatuses,
   clearAllData, getStorageSize,
 }

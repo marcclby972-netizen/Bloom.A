@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -113,31 +113,71 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/vault',
+    label: 'Coffre-fort',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="8" width="14" height="10" rx="2" />
+        <path d="M6 8V6a4 4 0 0 1 8 0v2" />
+        <circle cx="10" cy="13" r="1" fill="currentColor" stroke="none" />
+      </svg>
+    ),
+  },
+  {
+    href: '/analytics',
+    label: 'Analytics',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="10" cy="10" r="7" />
+        <circle cx="10" cy="10" r="3" />
+        <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2" />
+      </svg>
+    ),
+  },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { chatOpen, setChatOpen } = useApp()
+  const { chatOpen, setChatOpen, mobileMenuOpen, setMobileMenuOpen } = useApp()
   const { user, signOut } = useAuth()
   const [expanded, setExpanded] = useState(false)
 
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname, setMobileMenuOpen])
+
   return (
-    <aside
-      className={cn(
-        'flex h-full flex-col border-r border-border bg-background py-4 transition-all duration-200 ease-in-out shrink-0 gradient-sidebar',
-        expanded ? 'w-48' : 'w-14'
+    <>
+      {/* Mobile backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
       )}
-    >
+      <aside
+        className={cn(
+          'flex h-full flex-col border-r border-border bg-background py-4 transition-all duration-200 ease-in-out shrink-0 gradient-sidebar',
+          // Desktop: collapsible width
+          'md:relative md:translate-x-0',
+          expanded ? 'md:w-48' : 'md:w-14',
+          // Mobile: full-height drawer
+          'fixed inset-y-0 left-0 z-50 w-56',
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        )}
+      >
       {/* Header: logo + collapse toggle */}
-      <div className={cn('flex items-center mb-4 px-3', expanded ? 'justify-between' : 'justify-center')}>
+      <div className={cn('flex items-center mb-4 px-3', expanded ? 'justify-between' : 'md:justify-center justify-between')}>
         <div className="flex items-center gap-2.5 min-w-0">
           <Image src="/bloom-logo.png" alt="Bloom" width={28} height={28} className="rounded-md shrink-0" />
-          {expanded && <span className="text-sm font-semibold truncate">Bloom</span>}
+          <span className={cn('text-sm font-semibold truncate', !expanded && 'md:hidden')}>Bloom</span>
         </div>
         <button
           onClick={() => setExpanded(!expanded)}
           className={cn(
-            'h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0',
+            'h-7 w-7 hidden md:flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0',
             !expanded && 'mt-3'
           )}
           title={expanded ? 'Réduire' : 'Agrandir'}
@@ -150,37 +190,37 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav className={cn('flex flex-1 flex-col gap-0.5', expanded ? 'px-2' : 'items-center px-0')}>
+      <nav className={cn('flex flex-1 flex-col gap-0.5 px-2', !expanded && 'md:items-center md:px-0')}>
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
           return (
             <Link
               key={item.href}
               href={item.href}
-              title={expanded ? undefined : item.label}
+              title={!expanded ? item.label : undefined}
               className={cn(
-                'flex items-center rounded-lg transition-all',
-                expanded ? 'h-9 gap-2.5 px-2.5' : 'h-9 w-9 justify-center',
+                'flex items-center rounded-lg transition-all h-9 gap-2.5 px-2.5',
+                !expanded && 'md:w-9 md:px-0 md:justify-center',
                 isActive
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
             >
               <span className="shrink-0">{item.icon}</span>
-              {expanded && <span className="text-xs font-medium truncate">{item.label}</span>}
+              <span className={cn('text-xs font-medium truncate', !expanded && 'md:hidden')}>{item.label}</span>
             </Link>
           )
         })}
       </nav>
 
-      <div className={cn('flex flex-col gap-0.5', expanded ? 'px-2' : 'items-center px-0')}>
+      <div className={cn('flex flex-col gap-0.5 px-2', !expanded && 'md:items-center md:px-0')}>
         {/* Settings */}
         <Link
           href="/settings"
-          title={expanded ? undefined : 'Paramètres'}
+          title={!expanded ? 'Paramètres' : undefined}
           className={cn(
-            'flex items-center rounded-lg transition-all',
-            expanded ? 'h-9 gap-2.5 px-2.5' : 'h-9 w-9 justify-center',
+            'flex items-center rounded-lg transition-all h-9 gap-2.5 px-2.5',
+            !expanded && 'md:w-9 md:px-0 md:justify-center',
             pathname.startsWith('/settings')
               ? 'bg-primary text-primary-foreground shadow-sm'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -192,16 +232,16 @@ export function Sidebar() {
               <path d="M10 1.5v2.5M10 16v2.5M1.5 10H4M16 10h2.5M4.2 4.2l1.8 1.8M14 14l1.8 1.8M15.8 4.2 14 6M6 14l-1.8 1.8" />
             </svg>
           </span>
-          {expanded && <span className="text-xs font-medium truncate">Paramètres</span>}
+          <span className={cn('text-xs font-medium truncate', !expanded && 'md:hidden')}>Paramètres</span>
         </Link>
 
         {/* AI Chat toggle */}
         <button
-          title={expanded ? undefined : AI_NAME}
+          title={!expanded ? AI_NAME : undefined}
           onClick={() => setChatOpen(!chatOpen)}
           className={cn(
-            'flex items-center rounded-lg transition-all',
-            expanded ? 'h-9 gap-2.5 px-2.5' : 'h-9 w-9 justify-center',
+            'flex items-center rounded-lg transition-all h-9 gap-2.5 px-2.5',
+            !expanded && 'md:w-9 md:px-0 md:justify-center',
             chatOpen
               ? 'bg-primary text-primary-foreground shadow-sm'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -215,7 +255,7 @@ export function Sidebar() {
               <circle cx="10" cy="16" r="2" />
             </svg>
           </span>
-          {expanded && <span className="text-xs font-medium truncate">{AI_NAME}</span>}
+          <span className={cn('text-xs font-medium truncate', !expanded && 'md:hidden')}>{AI_NAME}</span>
         </button>
 
         {/* User / Logout */}
@@ -223,11 +263,11 @@ export function Sidebar() {
           <>
             <div className="h-px bg-border my-1" />
             <button
-              title={expanded ? undefined : 'Déconnexion'}
+              title={!expanded ? 'Déconnexion' : undefined}
               onClick={signOut}
               className={cn(
-                'flex items-center rounded-lg transition-all text-muted-foreground hover:bg-muted hover:text-foreground',
-                expanded ? 'h-9 gap-2.5 px-2.5' : 'h-9 w-9 justify-center',
+                'flex items-center rounded-lg transition-all text-muted-foreground hover:bg-muted hover:text-foreground h-9 gap-2.5 px-2.5',
+                !expanded && 'md:w-9 md:px-0 md:justify-center',
               )}
             >
               <span className="shrink-0">
@@ -237,11 +277,12 @@ export function Sidebar() {
                   <path d="M17 10H8" />
                 </svg>
               </span>
-              {expanded && <span className="text-xs font-medium truncate">Déconnexion</span>}
+              <span className={cn('text-xs font-medium truncate', !expanded && 'md:hidden')}>Déconnexion</span>
             </button>
           </>
         )}
       </div>
     </aside>
+    </>
   )
 }

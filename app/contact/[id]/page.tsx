@@ -69,8 +69,8 @@ export default function ContactDetailPage() {
         <Button variant="outline" size="sm" onClick={() => setEditorOpen(true)}>Modifier</Button>
       </div>
 
-      <div className="flex-1 overflow-auto p-6 space-y-6">
-        <div className="grid grid-cols-3 gap-4">
+      <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-muted-foreground">Coordonnées</CardTitle>

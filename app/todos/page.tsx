@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { useApp } from '@/lib/context'
 import { TODO_PRIORITIES } from '@/lib/types'
 import type { TodoPriority } from '@/lib/types'
-import { toDateString, formatDateFr } from '@/lib/date-utils'
+import { toDateString, formatDateFr, addMonths, subMonths, startOfMonth, endOfMonth, getMonthDays, isToday } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,11 +12,13 @@ import { Input } from '@/components/ui/input'
 type FilterTab = 'today' | 'upcoming' | 'later' | 'done'
 
 export default function TodosPage() {
-  const { todos, createTodo, updateTodo, deleteTodo } = useApp()
+  const { todos, projects, createTodo, updateTodo, deleteTodo } = useApp()
   const [activeTab, setActiveTab] = useState<FilterTab>('today')
   const [newTitle, setNewTitle] = useState('')
   const [newPriority, setNewPriority] = useState<TodoPriority>('medium')
   const [newDate, setNewDate] = useState<string | null>(null)
+  const [newProjectId, setNewProjectId] = useState<string | null>(null)
+  const [showProjectPicker, setShowProjectPicker] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
@@ -67,10 +69,19 @@ export default function TodosPage() {
     },
   ]
 
+  const overdueTodos = useMemo(
+    () => todos.filter((t) => !t.done && t.date !== null && t.date < today),
+    [todos, today]
+  )
+
   const filteredTodos = useMemo(() => {
     switch (activeTab) {
       case 'today':
-        return todos.filter((t) => !t.done && t.date === today)
+        // Show overdue at the top, then today's todos
+        return [
+          ...overdueTodos,
+          ...todos.filter((t) => !t.done && t.date === today),
+        ]
       case 'upcoming':
         return todos.filter((t) => !t.done && t.date !== null && t.date > today)
       case 'later':
@@ -80,14 +91,17 @@ export default function TodosPage() {
       default:
         return []
     }
-  }, [todos, activeTab, today])
+  }, [todos, activeTab, today, overdueTodos])
 
   const counts = useMemo(() => ({
-    today: todos.filter((t) => !t.done && t.date === today).length,
+    today: todos.filter((t) => !t.done && t.date === today).length + overdueTodos.length,
     upcoming: todos.filter((t) => !t.done && t.date !== null && t.date > today).length,
     later: todos.filter((t) => !t.done && t.date === null).length,
     done: todos.filter((t) => t.done).length,
-  }), [todos, today])
+  }), [todos, today, overdueTodos])
+
+  const isOverdue = (todo: { date: string | null; done: boolean }) =>
+    !todo.done && todo.date !== null && todo.date < today
 
   const handleAdd = () => {
     if (!newTitle.trim()) return
@@ -97,11 +111,14 @@ export default function TodosPage() {
       done: false,
       date,
       priority: newPriority,
+      projectId: newProjectId ?? undefined,
     })
     setNewTitle('')
     setNewPriority('medium')
     setNewDate(null)
+    setNewProjectId(null)
     setShowDatePicker(false)
+    setShowProjectPicker(false)
   }
 
   const handleToggle = (id: string, done: boolean) => {
@@ -160,7 +177,7 @@ export default function TodosPage() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors relative',
               activeTab === tab.id
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -176,13 +193,55 @@ export default function TodosPage() {
                 {counts[tab.id]}
               </span>
             )}
+            {tab.id === 'today' && overdueTodos.length > 0 && (
+              <span
+                className="ml-0.5 inline-flex items-center gap-0.5 text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full bg-red-500 text-white animate-pulse"
+                title={`${overdueTodos.length} todo${overdueTodos.length > 1 ? 's' : ''} en retard`}
+              >
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="4" cy="4" r="3" />
+                  <path d="M4 2.5v2M4 5.5v.01" />
+                </svg>
+                {overdueTodos.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-xl mx-auto space-y-4">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+          <div className="space-y-4 min-w-0">
+          {/* Overdue banner — only on today tab */}
+          {activeTab === 'today' && overdueTodos.length > 0 && (
+            <div className="flex items-center gap-3 rounded-xl border border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-900/50 px-4 py-3">
+              <div className="h-9 w-9 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-red-600 dark:text-red-400">
+                  <circle cx="9" cy="9" r="7" />
+                  <path d="M9 5.5v4M9 12.5h.01" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                  {overdueTodos.length} todo{overdueTodos.length > 1 ? 's' : ''} en retard
+                </p>
+                <p className="text-xs text-red-600/80 dark:text-red-400/80">
+                  À traiter en priorité — replanifie ou marque comme fait
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  // Reschedule all overdue to today
+                  overdueTodos.forEach((t) => updateTodo(t.id, { date: today }))
+                }}
+                className="text-xs font-medium px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors shrink-0"
+              >
+                Tout déplacer
+              </button>
+            </div>
+          )}
+
           {/* Quick add */}
           {activeTab !== 'done' && (
             <form
@@ -219,6 +278,69 @@ export default function TodosPage() {
                 ))}
               </div>
 
+              {/* Project picker */}
+              {projects.length > 0 && (
+                <>
+                  <div className="h-5 w-px bg-border shrink-0" />
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowProjectPicker((v) => !v)}
+                      className={cn(
+                        'flex items-center gap-1 text-xs px-1.5 py-1 rounded-md transition-colors',
+                        newProjectId ? 'text-foreground bg-muted' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      )}
+                      title="Lier à un projet"
+                    >
+                      {newProjectId ? (
+                        <>
+                          {projects.find((p) => p.id === newProjectId)?.color && (
+                            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: projects.find((p) => p.id === newProjectId)?.color }} />
+                          )}
+                          <span className="truncate max-w-[80px]">{projects.find((p) => p.id === newProjectId)?.name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M1.5 3a1.5 1.5 0 0 1 1.5-1.5h2l1 1h3a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 .5 9V3Z" />
+                          </svg>
+                          Projet
+                        </>
+                      )}
+                    </button>
+                    {showProjectPicker && (
+                      <div className="absolute top-full mt-1 right-0 z-30 bg-background border border-border rounded-lg shadow-lg p-1 min-w-[180px]">
+                        <button
+                          type="button"
+                          onClick={() => { setNewProjectId(null); setShowProjectPicker(false) }}
+                          className={cn(
+                            'flex w-full items-center gap-2 px-2 py-1.5 rounded text-xs text-left hover:bg-muted',
+                            newProjectId === null && 'bg-muted'
+                          )}
+                        >
+                          Aucun projet
+                        </button>
+                        <div className="h-px bg-border my-1" />
+                        {projects.filter((p) => p.status !== 'archived').map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => { setNewProjectId(p.id); setShowProjectPicker(false) }}
+                            className={cn(
+                              'flex w-full items-center gap-2 px-2 py-1.5 rounded text-xs text-left hover:bg-muted',
+                              newProjectId === p.id && 'bg-muted'
+                            )}
+                          >
+                            {p.color && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />}
+                            <span className="truncate">{p.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
               {/* Date picker for upcoming tab */}
               {activeTab === 'upcoming' && (
                 <>
@@ -237,14 +359,19 @@ export default function TodosPage() {
                       {newDate || 'Date'}
                     </button>
                     {showDatePicker && (
-                      <div className="absolute top-full mt-1 right-0 z-20 bg-background border border-border rounded-lg shadow-lg p-2">
+                      <div className="absolute top-full mt-1 right-0 z-20 bg-background border border-border rounded-lg shadow-lg p-2 space-y-2">
                         <input
                           type="date"
                           value={newDate || ''}
                           min={today}
-                          onChange={(e) => { setNewDate(e.target.value || null); setShowDatePicker(false) }}
+                          onChange={(e) => setNewDate(e.target.value || null)}
                           className="text-xs border border-input rounded px-2 py-1"
+                          autoFocus
                         />
+                        <div className="flex gap-1 justify-end">
+                          <button type="button" onClick={() => { setNewDate(null); setShowDatePicker(false) }} className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground">Effacer</button>
+                          <button type="button" onClick={() => setShowDatePicker(false)} className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded">OK</button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -264,11 +391,19 @@ export default function TodosPage() {
             <EmptyState tab={activeTab} />
           ) : (
             <div className="space-y-1.5">
-              {filteredTodos.map((todo) => (
+              {filteredTodos.map((todo) => {
+                const overdue = isOverdue(todo)
+                const daysLate = overdue && todo.date
+                  ? Math.floor((new Date(today + 'T00:00:00').getTime() - new Date(todo.date + 'T00:00:00').getTime()) / 86400000)
+                  : 0
+                return (
                 <div
                   key={todo.id}
                   className={cn(
-                    'group flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 transition-all hover:shadow-sm',
+                    'group flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-all hover:shadow-sm',
+                    overdue
+                      ? 'border-red-300 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/50'
+                      : 'border-border bg-background',
                     todo.done && 'opacity-60'
                   )}
                 >
@@ -279,7 +414,9 @@ export default function TodosPage() {
                       'h-5 w-5 rounded-md border-2 shrink-0 flex items-center justify-center transition-colors',
                       todo.done
                         ? 'bg-primary border-primary'
-                        : 'border-muted-foreground/30 hover:border-primary/60'
+                        : overdue
+                          ? 'border-red-500 hover:border-red-600 hover:bg-red-50'
+                          : 'border-muted-foreground/30 hover:border-primary/60'
                     )}
                   >
                     {todo.done && (
@@ -302,7 +439,11 @@ export default function TodosPage() {
                       />
                     ) : (
                       <span
-                        className={cn('text-sm cursor-pointer', todo.done && 'line-through text-muted-foreground')}
+                        className={cn(
+                          'text-sm cursor-pointer',
+                          todo.done && 'line-through text-muted-foreground',
+                          overdue && !todo.done && 'text-red-700 dark:text-red-400 font-medium'
+                        )}
                         onDoubleClick={() => startEdit(todo.id, todo.title)}
                       >
                         {todo.title}
@@ -310,16 +451,30 @@ export default function TodosPage() {
                     )}
                     {todo.date && !todo.done && (
                       <div className="flex items-center gap-1 mt-0.5">
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-muted-foreground">
-                          <rect x="1" y="1.5" width="8" height="7.5" rx="1" />
-                          <path d="M1 3.5h8" />
-                        </svg>
-                        <span className={cn(
-                          'text-[10px]',
-                          todo.date === today ? 'text-primary font-medium' : 'text-muted-foreground'
-                        )}>
-                          {todo.date === today ? "Aujourd'hui" : formatDateFr(new Date(todo.date + 'T12:00:00'), 'EEE d MMM')}
-                        </span>
+                        {overdue ? (
+                          <>
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-red-600">
+                              <circle cx="5" cy="5" r="4" />
+                              <path d="M5 3v2.5M5 7h.01" strokeLinecap="round" />
+                            </svg>
+                            <span className="text-[10px] font-semibold text-red-600 dark:text-red-400">
+                              En retard de {daysLate} jour{daysLate > 1 ? 's' : ''} · {formatDateFr(new Date(todo.date + 'T12:00:00'), 'EEE d MMM')}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-muted-foreground">
+                              <rect x="1" y="1.5" width="8" height="7.5" rx="1" />
+                              <path d="M1 3.5h8" />
+                            </svg>
+                            <span className={cn(
+                              'text-[10px]',
+                              todo.date === today ? 'text-primary font-medium' : 'text-muted-foreground'
+                            )}>
+                              {todo.date === today ? "Aujourd'hui" : formatDateFr(new Date(todo.date + 'T12:00:00'), 'EEE d MMM')}
+                            </span>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -366,9 +521,130 @@ export default function TodosPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
+          </div>
+
+          {/* Mini calendar sidebar (desktop) */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-0">
+              <MiniCalendar
+                today={today}
+                todos={todos}
+                onPickDate={(d) => {
+                  setNewDate(d)
+                  setActiveTab('upcoming')
+                }}
+              />
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MiniCalendar({ today, todos, onPickDate }: {
+  today: string
+  todos: { date: string | null; done: boolean }[]
+  onPickDate: (date: string) => void
+}) {
+  const [viewDate, setViewDate] = useState(new Date())
+  const monthDays = useMemo(() => getMonthDays(viewDate, 1), [viewDate])
+  const monthStart = startOfMonth(viewDate)
+  const monthEnd = endOfMonth(viewDate)
+
+  const todoCountByDate = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const t of todos) {
+      if (!t.date || t.done) continue
+      map.set(t.date, (map.get(t.date) || 0) + 1)
+    }
+    return map
+  }, [todos])
+
+  return (
+    <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-3">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setViewDate(subMonths(viewDate, 1))}
+          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Mois précédent"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M8.5 3 5 7l3.5 4" />
+          </svg>
+        </button>
+        <span className="text-sm font-semibold capitalize">{formatDateFr(viewDate, 'MMMM yyyy')}</span>
+        <button
+          onClick={() => setViewDate(addMonths(viewDate, 1))}
+          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Mois suivant"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M5.5 3 9 7l-3.5 4" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-0.5 text-[10px] text-muted-foreground text-center font-medium">
+        {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <div key={i} className="py-1">{d}</div>)}
+      </div>
+
+      <div className="grid grid-cols-7 gap-0.5">
+        {monthDays.map((day) => {
+          const dStr = toDateString(day)
+          const isCurrentMonth = day >= monthStart && day <= monthEnd
+          const isTodayDate = isToday(day)
+          const isTodayStr = dStr === today
+          const isPast = dStr < today
+          const count = todoCountByDate.get(dStr) || 0
+          const hasOverdue = isPast && count > 0
+          return (
+            <button
+              key={dStr}
+              onClick={() => onPickDate(dStr)}
+              className={cn(
+                'aspect-square rounded-md text-xs flex items-center justify-center transition-colors relative',
+                !isCurrentMonth && 'text-muted-foreground/40',
+                isCurrentMonth && !isTodayDate && !hasOverdue && 'hover:bg-muted',
+                isTodayDate && 'bg-primary text-primary-foreground font-semibold',
+                !isTodayDate && isTodayStr && 'ring-1 ring-primary/40',
+                hasOverdue && !isTodayDate && 'text-red-600 dark:text-red-400 font-semibold hover:bg-red-50 dark:hover:bg-red-950/30'
+              )}
+            >
+              {day.getDate()}
+              {count > 0 && (
+                <span className={cn(
+                  'absolute bottom-0.5 right-0.5 text-[8px] font-bold px-1 rounded-full leading-none py-0.5',
+                  isTodayDate ? 'bg-white text-primary'
+                    : hasOverdue ? 'bg-red-500 text-white'
+                    : 'bg-primary/15 text-primary'
+                )}>
+                  {count}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="pt-2 border-t border-border">
+        <div className="text-[10px] text-muted-foreground space-y-1">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-primary" />
+            <span>Aujourd&apos;hui</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-red-500" />
+            <span>En retard</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-primary/30" />
+            <span>Avec todos</span>
+          </div>
         </div>
       </div>
     </div>
@@ -444,11 +720,12 @@ function ScheduleButton({ todoId, currentDate, today, onSchedule }: {
             Semaine prochaine
           </button>
           <div className="h-px bg-border my-1" />
-          <div className="px-2 py-1">
+          <div className="px-2 py-1 space-y-1.5">
             <input
               type="date"
-              value={currentDate || ''}
-              onChange={(e) => { onSchedule(todoId, e.target.value || null); setOpen(false) }}
+              defaultValue={currentDate || ''}
+              onBlur={(e) => { if (e.target.value !== (currentDate || '')) onSchedule(todoId, e.target.value || null) }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { onSchedule(todoId, (e.target as HTMLInputElement).value || null); setOpen(false) } }}
               className="text-xs border border-input rounded px-2 py-1 w-full"
             />
           </div>

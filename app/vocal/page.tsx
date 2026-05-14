@@ -38,19 +38,30 @@ export default function VocalPage() {
 
   const latestPrompt = promptNotes[0]
 
-  // Auto-transcribe: save automatically when speech stops
+  // Auto-transcribe: save automatically when speech stops (only watch isListening transitions)
   const prevListeningRef = useRef(false)
+  const lastTranscriptRef = useRef('')
+  useEffect(() => {
+    lastTranscriptRef.current = speech.transcript
+  }, [speech.transcript])
   useEffect(() => {
     const wasListening = prevListeningRef.current
     prevListeningRef.current = speech.isListening
-    if (wasListening && !speech.isListening && speech.transcript.trim()) {
-      const settings = store.getSettings()
-      if (settings.voice.autoTranscribe && selectedProject) {
-        app.createVocalNote({ projectId: selectedProject, transcript: speech.transcript.trim() })
-        speech.reset()
-      }
+    if (wasListening && !speech.isListening) {
+      // Wait a tick to let onend finalize the transcript
+      const timer = setTimeout(() => {
+        const finalTranscript = lastTranscriptRef.current.trim()
+        if (!finalTranscript || !selectedProject) return
+        const settings = store.getSettings()
+        if (settings.voice.autoTranscribe) {
+          app.createVocalNote({ projectId: selectedProject, transcript: finalTranscript })
+          speech.reset()
+        }
+      }, 300)
+      return () => clearTimeout(timer)
     }
-  }, [speech.isListening, speech.transcript, selectedProject, app, speech])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speech.isListening])
 
   const handleSaveVocal = async () => {
     if (!selectedProject || !speech.transcript.trim()) return

@@ -18,7 +18,7 @@ export function useSpeech() {
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const fullTranscriptRef = useRef('')
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     // Stop any existing session first
     if (recognitionRef.current) {
       try { recognitionRef.current.stop() } catch { /* ignore */ }
@@ -35,6 +35,30 @@ export function useSpeech() {
       setState((s) => ({
         ...s,
         error: 'La reconnaissance vocale n\'est pas supportée. Utilise Chrome ou Edge.',
+      }))
+      return
+    }
+
+    // Check secure context (HTTPS or localhost)
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      setState((s) => ({
+        ...s,
+        error: 'L\'enregistrement vocal nécessite HTTPS. Utilisez localhost ou un site sécurisé.',
+      }))
+      return
+    }
+
+    // Pre-flight: request microphone permission explicitly
+    try {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        // Stop tracks immediately — we just needed the permission
+        stream.getTracks().forEach((t) => t.stop())
+      }
+    } catch {
+      setState((s) => ({
+        ...s,
+        error: 'Accès au micro refusé. Autorise le micro dans les paramètres du navigateur.',
       }))
       return
     }
@@ -59,8 +83,9 @@ export function useSpeech() {
           interim += event.results[i][0].transcript
         }
       }
-      fullTranscriptRef.current = final
-      setState((s) => ({ ...s, transcript: (final + interim).trim() }))
+      // Keep final + latest interim so a mid-phrase stop preserves text
+      fullTranscriptRef.current = (final + interim).trim()
+      setState((s) => ({ ...s, transcript: fullTranscriptRef.current }))
     }
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -106,8 +131,8 @@ export function useSpeech() {
   }, [])
 
   const stop = useCallback(() => {
+    // Don't set isListening synchronously — let onend do it so transcript is finalized
     try { recognitionRef.current?.stop() } catch { /* ignore */ }
-    setState((s) => ({ ...s, isListening: false }))
   }, [])
 
   const reset = useCallback(() => {

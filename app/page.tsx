@@ -8,6 +8,8 @@ import { store } from '@/lib/store'
 import { CONTACT_STATUSES, PLATFORMS, PROJECT_STATUSES } from '@/lib/types'
 import { toDateString, formatDateFr, subDays, formatTime } from '@/lib/date-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
+import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget'
 
 export default function DashboardPage() {
   const { tasks, contacts, posts, projects, categories, timeEntries, selectedDate, vocalProjects, todos } = useApp()
@@ -39,6 +41,10 @@ export default function DashboardPage() {
   const todayTodos = todos.filter((t) => !t.done && t.date === todayStr).length
   const totalActiveTodos = todos.filter((t) => !t.done).length
   const doneTodos = todos.filter((t) => t.done).length
+  const overdueTodos = useMemo(
+    () => todos.filter((t) => !t.done && t.date !== null && t.date < todayStr),
+    [todos, todayStr]
+  )
 
   const topCategories = useMemo(() => {
     const catMap = new Map(categories.map((c) => [c.id, c]))
@@ -54,19 +60,19 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-full overflow-auto">
       <div className="shrink-0">
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <Image src="/bloom-logo.png" alt="Bloom" width={24} height={24} className="rounded" />
             <h1 className="text-lg font-semibold">Dashboard</h1>
           </div>
-          <span className="text-sm text-muted-foreground">{formatDateFr(today, 'EEEE d MMMM yyyy')}</span>
+          <span className="text-xs sm:text-sm text-muted-foreground">{formatDateFr(today, 'EEEE d MMMM yyyy')}</span>
         </div>
         <div className="h-px gradient-line" />
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Row 1: Quick stats */}
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Tâches aujourd&apos;hui</CardTitle></CardHeader>
             <CardContent>
@@ -107,7 +113,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Row 2: Details */}
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Pipeline mini */}
           <Link href="/pipeline" className="block">
             <Card className="hover:border-primary/50 transition-colors h-full">
@@ -180,8 +186,11 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        {/* Optional: Google Calendar widget (only shown when connected) */}
+        <GoogleCalendarWidget />
+
         {/* Row 3: More details */}
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Recent posts */}
           <Link href="/marketing" className="block">
             <Card className="hover:border-primary/50 transition-colors h-full">
@@ -235,22 +244,47 @@ export default function DashboardPage() {
 
           {/* To-Do */}
           <Link href="/todos" className="block">
-            <Card className="hover:border-primary/50 transition-colors h-full">
-              <CardHeader><CardTitle className="text-sm">To-Do</CardTitle></CardHeader>
+            <Card className={cn(
+              "transition-colors h-full",
+              overdueTodos.length > 0
+                ? "border-red-300 hover:border-red-400 bg-red-50/30 dark:bg-red-950/10"
+                : "hover:border-primary/50"
+            )}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm">To-Do</CardTitle>
+                {overdueTodos.length > 0 && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white animate-pulse">
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="4" cy="4" r="3" />
+                      <path d="M4 2.5v2M4 5.5v.01" />
+                    </svg>
+                    {overdueTodos.length} en retard
+                  </span>
+                )}
+              </CardHeader>
               <CardContent>
                 {totalActiveTodos > 0 ? (
                   <div className="space-y-2">
-                    {todos.filter((t) => !t.done).slice(0, 4).map((todo) => (
-                      <div key={todo.id} className="flex items-center gap-2 text-xs">
-                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{
-                          backgroundColor: todo.priority === 'high' ? '#EF4444' : todo.priority === 'medium' ? '#F59E0B' : '#6B7280'
-                        }} />
-                        <span className="truncate flex-1">{todo.title}</span>
-                        <span className="text-muted-foreground shrink-0 text-[10px]">
-                          {todo.date === todayStr ? "Auj." : todo.date ? todo.date.slice(5) : 'Plus tard'}
-                        </span>
-                      </div>
-                    ))}
+                    {[...overdueTodos, ...todos.filter((t) => !t.done && !(t.date !== null && t.date < todayStr))].slice(0, 4).map((todo) => {
+                      const isLate = !todo.done && todo.date !== null && todo.date < todayStr
+                      return (
+                        <div key={todo.id} className="flex items-center gap-2 text-xs">
+                          <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{
+                            backgroundColor: todo.priority === 'high' ? '#EF4444' : todo.priority === 'medium' ? '#F59E0B' : '#6B7280'
+                          }} />
+                          <span className={cn(
+                            "truncate flex-1",
+                            isLate && "text-red-600 dark:text-red-400 font-medium"
+                          )}>{todo.title}</span>
+                          <span className={cn(
+                            "shrink-0 text-[10px]",
+                            isLate ? "text-red-600 dark:text-red-400 font-semibold" : "text-muted-foreground"
+                          )}>
+                            {isLate ? "Retard" : todo.date === todayStr ? "Auj." : todo.date ? todo.date.slice(5) : 'Plus tard'}
+                          </span>
+                        </div>
+                      )
+                    })}
                     {totalActiveTodos > 4 && <div className="text-xs text-muted-foreground">+{totalActiveTodos - 4} autres</div>}
                   </div>
                 ) : doneTodos > 0 ? (

@@ -170,6 +170,7 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
     { id: 'ai', label: 'Intelligence Artificielle', description: 'Fournisseurs de modèles IA pour le chat et l\'analyse' },
     { id: 'health', label: 'Santé & Bien-être', description: 'Données de recovery, sommeil et activité physique' },
     { id: 'productivity', label: 'Productivité', description: 'Calendrier, notes et outils de travail' },
+    { id: 'finance', label: 'Finance', description: 'Stripe et paiements' },
     { id: 'analytics', label: 'Analytics', description: 'Suivi et métriques avancées' },
   ]
 
@@ -259,9 +260,15 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
                           </Button>
                         </>
                       ) : (
-                        <Button size="sm" variant="outline" onClick={() => { setEditingKey(provider.id); setKeyInput(integration?.apiKey || '') }}>
-                          {provider.id === 'whoop' ? 'Connecter OAuth' : 'Ajouter clé API'}
-                        </Button>
+                        provider.id === 'google_calendar' ? (
+                          <Button size="sm" variant="outline" onClick={() => { window.location.href = '/api/auth/google' }}>
+                            Connecter Google
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => { setEditingKey(provider.id); setKeyInput(integration?.apiKey || '') }}>
+                            {provider.id === 'whoop' ? 'Connecter OAuth' : 'Ajouter clé API'}
+                          </Button>
+                        )
                       )}
                     </div>
                   </CardContent>
@@ -874,7 +881,82 @@ function GeneralSection({ settings, onSave }: { settings: AppSettings; onSave: (
           </div>
         </CardContent>
       </Card>
+
+      {/* Custom statuses */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Statuts personnalisés</CardTitle>
+          <CardDescription>Ajoutez des statuts custom pour vos projets et contacts</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <CustomStatusManager
+            label="Statuts de projet"
+            current={settings.customProjectStatuses || []}
+            onChange={(list) => onSave({ ...settings, customProjectStatuses: list })}
+          />
+          <CustomStatusManager
+            label="Statuts de contact"
+            current={settings.customContactStatuses || []}
+            onChange={(list) => onSave({ ...settings, customContactStatuses: list })}
+          />
+        </CardContent>
+      </Card>
     </>
+  )
+}
+
+function CustomStatusManager({ label, current, onChange }: {
+  label: string
+  current: { value: string; label: string; color: string }[]
+  onChange: (list: { value: string; label: string; color: string }[]) => void
+}) {
+  const [name, setName] = useState('')
+  const [color, setColor] = useState('#6366F1')
+
+  const handleAdd = () => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    const value = trimmed.toLowerCase().replace(/\s+/g, '_')
+    if (current.some((s) => s.value === value)) return
+    onChange([...current, { value, label: trimmed, color }])
+    setName('')
+  }
+
+  const handleRemove = (value: string) => {
+    onChange(current.filter((s) => s.value !== value))
+  }
+
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-medium">{label}</label>
+      {current.length > 0 && (
+        <div className="space-y-1">
+          {current.map((s) => (
+            <div key={s.value} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50">
+              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+              <span className="flex-1">{s.label}</span>
+              <button onClick={() => handleRemove(s.value)} className="text-muted-foreground hover:text-destructive">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          className="h-7 w-7 shrink-0 rounded border border-border cursor-pointer"
+        />
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Nouveau statut..."
+          className="text-xs h-7 flex-1"
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
+        />
+        <Button size="sm" onClick={handleAdd} disabled={!name.trim()}>Ajouter</Button>
+      </div>
+    </div>
   )
 }
 
@@ -1078,6 +1160,14 @@ function ProviderIcon({ provider }: { provider: string }) {
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <path d="M3 17 8 10l3 4 6-10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           <circle cx="17" cy="4" r="1.5" fill="currentColor" opacity="0.3" />
+        </svg>
+      )
+    case 'stripe':
+      return (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M2 8h16" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M5 12h3M11 12h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
       )
     default:

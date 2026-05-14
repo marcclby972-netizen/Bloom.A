@@ -35,6 +35,8 @@ export async function updateSession(request: NextRequest) {
   const isPublicAsset = request.nextUrl.pathname.startsWith('/_next') ||
     request.nextUrl.pathname.startsWith('/assets') ||
     request.nextUrl.pathname.startsWith('/api/auth') ||
+    request.nextUrl.pathname.startsWith('/api/track') ||
+    request.nextUrl.pathname === '/track.js' ||
     request.nextUrl.pathname === '/favicon.ico' ||
     request.nextUrl.pathname === '/bloom-logo.png'
 

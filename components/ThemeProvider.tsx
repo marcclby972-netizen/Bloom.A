@@ -31,9 +31,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 const FONT_CSS_MAP: Record<string, string> = {
-  geist: 'var(--font-geist-sans)',
+  montserrat: 'var(--font-montserrat)',
+  playfair: 'var(--font-playfair)',
   inter: 'var(--font-inter)',
-  'dm-sans': 'var(--font-dm-sans)',
 }
 
 export function applyTheme() {
@@ -56,6 +56,6 @@ export function applyTheme() {
   }
 
   // Font
-  const fontFamily = FONT_CSS_MAP[settings.font || 'geist'] || FONT_CSS_MAP.geist
+  const fontFamily = FONT_CSS_MAP[settings.font || 'montserrat'] || FONT_CSS_MAP.montserrat
   html.style.setProperty('--font-sans', fontFamily)
 }

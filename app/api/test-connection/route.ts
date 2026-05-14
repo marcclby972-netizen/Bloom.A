@@ -41,6 +41,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: res.ok })
     }
 
+    if (provider === 'stripe') {
+      const res = await fetch('https://api.stripe.com/v1/balance', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      })
+      return NextResponse.json({ ok: res.ok })
+    }
+
     // Unknown provider — just check key exists
     return NextResponse.json({ ok: !!apiKey })
   } catch {

@@ -20,8 +20,11 @@ type AppContextType = {
   setSelectedDate: (date: string) => void
   chatOpen: boolean
   setChatOpen: (open: boolean) => void
+  mobileMenuOpen: boolean
+  setMobileMenuOpen: (open: boolean) => void
   timer: ReturnType<typeof useTimer>
   createTask: (task: Omit<Task, 'id'>) => Task
+  createTaskWithTodo: (task: Omit<Task, 'id'>, autoCreateTodo?: boolean) => Task
   updateTask: (id: string, updates: Partial<Omit<Task, 'id'>>) => void
   deleteTask: (id: string) => void
   createCategory: (name: string, color: string) => Category
@@ -83,6 +86,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
   const [chatOpen, setChatOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const timer = useTimer()
 
   // Todos
@@ -169,8 +173,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(digestSentKey, todayStr)
     }
 
+    // Overdue todos — notify once per day on app open
+    const checkOverdueTodos = () => {
+      const now = new Date()
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      const overdueNotifKey = 'bloom_overdue_notified'
+      const lastNotif = localStorage.getItem(overdueNotifKey)
+      if (lastNotif === todayStr) return // Already notified today
+
+      const allTodos = store.getTodos()
+      const overdue = allTodos.filter((t) => !t.done && t.date !== null && t.date < todayStr)
+      if (overdue.length === 0) return
+
+      sendNotification(
+        `${overdue.length} todo${overdue.length > 1 ? 's' : ''} en retard`,
+        overdue.length === 1 ? overdue[0].title : `Le plus ancien : ${overdue[0].title}`
+      )
+      localStorage.setItem(overdueNotifKey, todayStr)
+    }
+
     checkReminders()
     checkDailyDigest()
+    checkOverdueTodos()
     const reminderInterval = setInterval(checkReminders, 60000)
     return () => clearInterval(reminderInterval)
   }, [refresh])
@@ -179,8 +203,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     tasks, categories, timeEntries, goals,
     selectedDate, setSelectedDate,
     chatOpen, setChatOpen,
+    mobileMenuOpen, setMobileMenuOpen,
     timer,
     createTask: (task) => { const t = store.createTask(task); refresh(); return t },
+    createTaskWithTodo: (task, autoCreateTodo = true) => { const t = store.createTaskWithTodo(task, autoCreateTodo); refresh(); return t },
     updateTask: (id, updates) => { store.updateTask(id, updates); refresh() },
     deleteTask: (id) => { store.deleteTask(id); refresh() },
     createCategory: (name, color) => { const c = store.createCategory(name, color); refresh(); return c },

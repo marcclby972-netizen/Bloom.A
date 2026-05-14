@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useApp } from '@/lib/context'
 import { Task } from '@/lib/types'
-import { getHoursArray, timeToMinutes } from '@/lib/date-utils'
+import { getHoursArray, timeToMinutes, minutesToTime } from '@/lib/date-utils'
 import { TaskEditor } from '@/components/tasks/TaskEditor'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +15,58 @@ export function DayView() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [clickedHour, setClickedHour] = useState<string | null>(null)
+  const [resizingTaskId, setResizingTaskId] = useState<string | null>(null)
+  const [resizePreview, setResizePreview] = useState<{ startMin: number; endMin: number } | null>(null)
+  const resizeRef = useRef<{ taskId: string; mode: 'top' | 'bottom'; startY: number; startMin: number; endMin: number } | null>(null)
+
+  // Snap to 15-minute increments
+  const snapMinutes = (mins: number) => Math.round(mins / 15) * 15
+
+  useEffect(() => {
+    if (!resizingTaskId) return
+    const handleMove = (e: MouseEvent) => {
+      const ctx = resizeRef.current
+      if (!ctx) return
+      const deltaY = e.clientY - ctx.startY
+      const deltaMin = (deltaY / HOUR_HEIGHT) * 60
+      if (ctx.mode === 'top') {
+        const newStart = snapMinutes(Math.max(0, Math.min(ctx.endMin - 15, ctx.startMin + deltaMin)))
+        setResizePreview({ startMin: newStart, endMin: ctx.endMin })
+      } else {
+        const newEnd = snapMinutes(Math.min(24 * 60, Math.max(ctx.startMin + 15, ctx.endMin + deltaMin)))
+        setResizePreview({ startMin: ctx.startMin, endMin: newEnd })
+      }
+    }
+    const handleUp = () => {
+      const ctx = resizeRef.current
+      const preview = resizePreview
+      if (ctx && preview) {
+        updateTask(ctx.taskId, {
+          startTime: minutesToTime(preview.startMin),
+          endTime: minutesToTime(preview.endMin),
+        })
+      }
+      resizeRef.current = null
+      setResizingTaskId(null)
+      setResizePreview(null)
+    }
+    document.addEventListener('mousemove', handleMove)
+    document.addEventListener('mouseup', handleUp)
+    return () => {
+      document.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseup', handleUp)
+    }
+  }, [resizingTaskId, resizePreview, updateTask])
+
+  const startResize = (e: React.MouseEvent, task: Task, mode: 'top' | 'bottom') => {
+    e.stopPropagation()
+    e.preventDefault()
+    const startMin = timeToMinutes(task.startTime)
+    const endMin = timeToMinutes(task.endTime)
+    resizeRef.current = { taskId: task.id, mode, startY: e.clientY, startMin, endMin }
+    setResizingTaskId(task.id)
+    setResizePreview({ startMin, endMin })
+  }
 
   const dayTasks = useMemo(
     () => tasks.filter((t) => t.date === selectedDate),
@@ -94,18 +146,20 @@ export function DayView() {
 
         {/* Task blocks */}
         {dayTasks.map((task) => {
-          const startMin = timeToMinutes(task.startTime)
-          const endMin = timeToMinutes(task.endTime)
-          const top = (startMin / 60) * HOUR_HEIGHT
-          const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, 24)
+          const isResizing = resizingTaskId === task.id
+          const effStartMin = isResizing && resizePreview ? resizePreview.startMin : timeToMinutes(task.startTime)
+          const effEndMin = isResizing && resizePreview ? resizePreview.endMin : timeToMinutes(task.endTime)
+          const top = (effStartMin / 60) * HOUR_HEIGHT
+          const height = Math.max(((effEndMin - effStartMin) / 60) * HOUR_HEIGHT, 24)
           const color = catMap.get(task.categoryId) || '#6B7280'
 
           return (
             <div
               key={task.id}
               className={cn(
-                'absolute left-[4.5rem] right-3 z-10 cursor-pointer rounded-md border px-2.5 py-1.5 text-xs transition-shadow hover:shadow-md',
-                task.status === 'done' && 'opacity-60'
+                'group/task absolute left-[4.5rem] right-3 z-10 cursor-pointer rounded-md border px-2.5 py-1.5 text-xs transition-shadow hover:shadow-md',
+                task.status === 'done' && 'opacity-60',
+                isResizing && 'shadow-lg ring-2 ring-primary/40 z-30'
               )}
               style={{
                 top,
@@ -116,10 +170,29 @@ export function DayView() {
                 borderLeftColor: color,
               }}
               onClick={(e) => {
+                if (isResizing) return
                 e.stopPropagation()
                 handleTaskClick(task)
               }}
             >
+              {/* Top resize handle */}
+              <div
+                className="absolute top-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover/task:opacity-100 transition-opacity"
+                onMouseDown={(e) => startResize(e, task, 'top')}
+                style={{ backgroundColor: color }}
+              />
+              {/* Bottom resize handle */}
+              <div
+                className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 group-hover/task:opacity-100 transition-opacity"
+                onMouseDown={(e) => startResize(e, task, 'bottom')}
+                style={{ backgroundColor: color }}
+              />
+              {/* Live time preview during resize */}
+              {isResizing && resizePreview && (
+                <div className="absolute -top-6 left-0 px-2 py-0.5 rounded bg-foreground text-background text-[10px] font-mono shadow z-40">
+                  {minutesToTime(resizePreview.startMin)} – {minutesToTime(resizePreview.endMin)}
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className={cn('font-medium truncate', task.status === 'done' && 'line-through')}>

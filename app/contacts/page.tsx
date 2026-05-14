@@ -33,9 +33,9 @@ export default function ContactsPage() {
         <Button size="sm" onClick={() => setEditorOpen(true)}>+ Contact</Button>
       </div>
 
-      <div className="px-6 py-3 border-b border-border">
+      <div className="px-4 sm:px-6 py-3 border-b border-border">
         <Input
-          placeholder="Rechercher par nom, Instagram, téléphone, tag..."
+          placeholder="Rechercher..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-md"
@@ -43,7 +43,38 @@ export default function ContactsPage() {
       </div>
 
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm">
+        {/* Mobile card view */}
+        <div className="md:hidden divide-y divide-border">
+          {filtered.map((c) => {
+            const status = CONTACT_STATUSES.find((s) => s.value === c.status)
+            return (
+              <Link
+                key={c.id}
+                href={`/contact/${c.id}`}
+                className="flex items-start justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-sm">{c.firstName} {c.lastName}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {c.instagram ? `@${c.instagram} · ` : ''}{c.phone || c.source || '—'}
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 text-[10px] shrink-0 ml-2">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: status?.color }} />
+                  {status?.label}
+                </span>
+              </Link>
+            )
+          })}
+          {filtered.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              {search ? 'Aucun résultat' : 'Aucun contact'}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop table view */}
+        <table className="w-full text-sm hidden md:table">
           <thead className="sticky top-0 bg-background border-b border-border">
             <tr className="text-left text-xs text-muted-foreground">
               <th className="px-6 py-2 font-medium">Nom</th>

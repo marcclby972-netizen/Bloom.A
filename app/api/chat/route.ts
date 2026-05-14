@@ -117,14 +117,20 @@ Posts marketing: ${JSON.stringify(context.posts || [])}
 
 === CE QUE TU PEUX CREER ===
 Tu peux creer les elements suivants pour l'utilisateur :
-- Des taches calendrier (avec titre, horaire debut/fin, categorie parmi celles existantes, date, description, tags)
-- Des todos (avec titre, priorite haute/moyenne/basse, date d'echeance optionnelle)
+- Des taches calendrier (avec titre, horaire debut/fin, categorie parmi celles existantes, date, description, tags, projectId optionnel)
+- Des todos (avec titre, priorite haute/moyenne/basse, date d'echeance optionnelle, projectId optionnel)
 - Des contacts CRM (avec prenom, nom, email, telephone, statut dans le pipeline, notes)
 - Des projets (avec nom, description, statut kanban, tags)
-- Des posts marketing (avec titre, plateforme, type organique/payant, contenu)
+- Des posts marketing (avec titre, plateforme, type organique/payant, contenu, projectId optionnel)
+- Des notes de projet (avec projectId, titre, contenu)
+
+=== CE QUE TU PEUX MODIFIER ===
+- Les notes de projet existantes (par leur id, modifier titre ou contenu)
+- Les taches existantes (changer leur statut planned/in_progress/done)
+- Les todos existants (changer leur date, priorite, ou marquer comme done)
 
 === CE QUE TU NE PEUX PAS FAIRE ===
-- Tu ne peux PAS modifier ou supprimer des elements existants (taches, todos, contacts, projets, posts)
+- Tu ne peux PAS supprimer des elements existants (taches, todos, contacts, projets, posts, notes)
 - Tu ne peux PAS modifier les parametres de l'application (theme, police, categories, notifications, integrations)
 - Tu ne peux PAS acceder aux cles API, mots de passe ou informations sensibles de configuration
 - Tu ne peux PAS acceder au contenu des pages de parametres
@@ -136,11 +142,14 @@ Reponds TOUJOURS en JSON valide.
 Pour creer des elements, utilise ce format :
 {
   "message": "ta reponse texte a l'utilisateur",
-  "tasks": [{ "title": "...", "categoryId": "...", "startTime": "HH:mm", "endTime": "HH:mm", "description": "...", "tags": [], "date": "YYYY-MM-DD" }],
-  "todos": [{ "title": "...", "priority": "low|medium|high", "date": "YYYY-MM-DD ou null" }],
+  "tasks": [{ "title": "...", "categoryId": "...", "startTime": "HH:mm", "endTime": "HH:mm", "description": "...", "tags": [], "date": "YYYY-MM-DD", "projectId": "optionnel" }],
+  "todos": [{ "title": "...", "priority": "low|medium|high", "date": "YYYY-MM-DD ou null", "projectId": "optionnel" }],
   "contacts": [{ "firstName": "...", "lastName": "...", "email": "...", "phone": "...", "status": "prospect|contacted|interested|client|inactive", "notes": "..." }],
   "projects": [{ "name": "...", "description": "...", "status": "idea|in_progress|done|archived", "tags": [] }],
-  "posts": [{ "title": "...", "platform": "instagram|tiktok|facebook|youtube|linkedin|other", "type": "organic|paid", "content": "..." }]
+  "posts": [{ "title": "...", "platform": "instagram|tiktok|facebook|youtube|linkedin|other", "type": "organic|paid", "content": "...", "projectId": "optionnel" }],
+  "projectNotes": [{ "action": "create|update", "id": "obligatoire si update", "projectId": "obligatoire si create", "title": "...", "content": "..." }],
+  "taskUpdates": [{ "id": "...", "status": "planned|in_progress|done" }],
+  "todoUpdates": [{ "id": "...", "done": true|false, "priority": "low|medium|high", "date": "YYYY-MM-DD ou null" }]
 }
 
 N'inclus que les types que tu crees. Si tu ne crees rien :

@@ -20,6 +20,8 @@ export type Task = {
   startTime: string
   endTime: string
   status: 'planned' | 'in_progress' | 'done'
+  projectId?: string
+  linkedTodoId?: string
 }
 
 export type TimeEntry = {
@@ -65,6 +67,8 @@ export type TodoItem = {
   date: string | null   // null = "plus tard" / non programmé
   priority: TodoPriority
   createdAt: number
+  projectId?: string
+  linkedTaskId?: string
 }
 
 export const TODO_PRIORITIES: { value: TodoPriority; label: string; color: string }[] = [
@@ -75,7 +79,7 @@ export const TODO_PRIORITIES: { value: TodoPriority; label: string; color: strin
 
 // ── CRM types ──
 
-export type ContactStatus = 'prospect' | 'contacted' | 'interested' | 'client' | 'inactive'
+export type ContactStatus = 'prospect' | 'contacted' | 'interested' | 'client' | 'inactive' | (string & {})
 
 export type Channel = 'instagram_dm' | 'whatsapp' | 'email' | 'phone' | 'sms' | 'other'
 
@@ -90,6 +94,7 @@ export type Contact = {
   source: string
   notes: string
   tags: string[]
+  categoryId?: string
   createdAt: number
   updatedAt: number
 }
@@ -114,6 +119,8 @@ export type Post = {
   publishedAt: string
   metrics: PostMetrics
   tags: string[]
+  categoryId?: string
+  projectId?: string
 }
 
 export type PostMetrics = {
@@ -171,7 +178,7 @@ export const CHANNELS: { value: Channel; label: string }[] = [
   { value: 'other', label: 'Autre' },
 ]
 
-export type ProjectStatus = 'idea' | 'in_progress' | 'done' | 'archived'
+export type ProjectStatus = 'idea' | 'in_progress' | 'done' | 'archived' | (string & {})
 
 export type Project = {
   id: string
@@ -184,6 +191,8 @@ export type Project = {
   linkedPostIds: string[]
   revenue: number
   collaborators: string[]
+  categoryId?: string
+  color?: string
   createdAt: number
   updatedAt: number
 }
@@ -255,7 +264,9 @@ export type NotificationSettings = {
   digestTime: string
 }
 
-export type FontChoice = 'geist' | 'inter' | 'dm-sans'
+export type FontChoice = 'montserrat' | 'playfair' | 'inter'
+
+export type CustomStatus = { value: string; label: string; color: string }
 
 export type AppSettings = {
   integrations: Integration[]
@@ -266,12 +277,14 @@ export type AppSettings = {
   font: FontChoice
   weekStartsOn: 0 | 1
   defaultView: 'jour' | 'semaine' | 'mois'
+  customProjectStatuses?: CustomStatus[]
+  customContactStatuses?: CustomStatus[]
 }
 
 export const FONT_OPTIONS: { value: FontChoice; label: string; description: string; cssVar: string }[] = [
-  { value: 'geist', label: 'Geist', description: 'Moderne et épuré', cssVar: 'var(--font-geist-sans)' },
-  { value: 'inter', label: 'Inter', description: 'Classique et lisible', cssVar: 'var(--font-inter)' },
-  { value: 'dm-sans', label: 'DM Sans', description: 'Doux et arrondi', cssVar: 'var(--font-dm-sans)' },
+  { value: 'montserrat', label: 'Montserrat', description: 'Géométrique et moderne', cssVar: 'var(--font-montserrat)' },
+  { value: 'playfair', label: 'Playfair Display', description: 'Serif élégant', cssVar: 'var(--font-playfair)' },
+  { value: 'inter', label: 'Inter', description: 'Sans-serif lisible', cssVar: 'var(--font-inter)' },
 ]
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -298,7 +311,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     digestTime: '08:00',
   },
   theme: 'light',
-  font: 'geist',
+  font: 'montserrat',
   weekStartsOn: 1,
   defaultView: 'jour',
 }
@@ -320,5 +333,6 @@ export const INTEGRATION_PROVIDERS = [
   { id: 'whoop', name: 'Whoop', icon: 'heart', category: 'health', description: 'Recovery, sommeil et strain quotidien' },
   { id: 'google_calendar', name: 'Google Calendar', icon: 'calendar', category: 'productivity', description: 'Synchroniser vos evenements' },
   { id: 'notion', name: 'Notion', icon: 'doc', category: 'productivity', description: 'Importer/exporter des notes' },
+  { id: 'stripe', name: 'Stripe', icon: 'card', category: 'finance', description: 'Synchroniser les revenus de tes projets' },
   { id: 'mixpanel', name: 'Mixpanel', icon: 'chart', category: 'analytics', description: 'Suivi analytique avance' },
 ] as const

@@ -9,11 +9,13 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 export function TimerWidget() {
-  const { timer, tasks, selectedDate, createTimeEntry, categories } = useApp()
+  const { timer, tasks, selectedDate, createTimeEntry, categories, createTask } = useApp()
   const [mounted, setMounted] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [countdownHours, setCountdownHours] = useState('0')
   const [countdownMinutes, setCountdownMinutes] = useState('30')
+  const [quickTaskTitle, setQuickTaskTitle] = useState('')
+  const [quickTaskCatId, setQuickTaskCatId] = useState('')
 
   useEffect(() => setMounted(true), [])
 
@@ -53,6 +55,30 @@ export function TimerWidget() {
     if (total > 0) {
       timer.setCountdownDuration(total)
     }
+  }
+
+  const handleQuickCreateTask = () => {
+    const title = quickTaskTitle.trim()
+    if (!title) return
+    const catId = quickTaskCatId || categories[0]?.id || ''
+    const now = new Date()
+    const startMinutes = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15
+    const endMinutes = startMinutes + 30
+    const fmt = (mins: number) => `${String(Math.floor(mins / 60) % 24).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`
+    const newTask = createTask({
+      title,
+      description: '',
+      categoryId: catId,
+      tags: [],
+      date: selectedDate,
+      startTime: fmt(startMinutes),
+      endTime: fmt(endMinutes),
+      status: 'in_progress',
+    })
+    timer.setTaskId(newTask.id)
+    timer.start()
+    setQuickTaskTitle('')
+    setQuickTaskCatId('')
   }
 
   const isFlashing = timerMode === 'countdown' && displayTime === 0 && elapsed > 0
@@ -158,28 +184,76 @@ export function TimerWidget() {
               <path d="M2.5 4 5 6.5 7.5 4" />
             </svg>
           </PopoverTrigger>
-          <PopoverContent className="w-64 p-1" align="start" side="top">
-            {dayTasks.length === 0 ? (
-              <div className="p-2 text-xs text-muted-foreground">Aucune tâche aujourd&apos;hui</div>
-            ) : (
-              dayTasks.map((task) => {
-                const cat = categories.find((c) => c.id === task.categoryId)
-                return (
-                  <button
-                    key={task.id}
-                    className={cn(
-                      'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted transition-colors',
-                      taskId === task.id && 'bg-muted'
-                    )}
-                    onClick={() => timer.setTaskId(task.id)}
-                  >
-                    {cat && <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />}
-                    <span className="truncate">{task.title}</span>
-                    <span className="ml-auto text-muted-foreground">{task.startTime}</span>
-                  </button>
-                )
-              })
-            )}
+          <PopoverContent className="w-72 p-2 space-y-2" align="start" side="top">
+            {/* Quick create task on the fly */}
+            <div className="space-y-1.5 pb-2 border-b border-border">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1">Nouvelle activité</p>
+              <form
+                onSubmit={(e) => { e.preventDefault(); handleQuickCreateTask() }}
+                className="flex gap-1"
+              >
+                <Input
+                  value={quickTaskTitle}
+                  onChange={(e) => setQuickTaskTitle(e.target.value)}
+                  placeholder="Que fais-tu ?"
+                  className="text-xs h-7 flex-1"
+                />
+                <button
+                  type="submit"
+                  disabled={!quickTaskTitle.trim()}
+                  className="h-7 px-2 rounded-md bg-primary text-primary-foreground text-xs font-medium disabled:opacity-40 hover:bg-primary/90 transition-colors flex items-center gap-1"
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M3 1.5l4 3-4 3" />
+                  </svg>
+                  Go
+                </button>
+              </form>
+              {categories.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {categories.slice(0, 6).map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setQuickTaskCatId(cat.id === quickTaskCatId ? '' : cat.id)}
+                      className={cn(
+                        'flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] transition-colors',
+                        quickTaskCatId === cat.id ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60'
+                      )}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Existing day tasks */}
+            <div className="space-y-0.5">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1">Tâches du jour</p>
+              {dayTasks.length === 0 ? (
+                <div className="p-2 text-xs text-muted-foreground">Aucune tâche planifiée</div>
+              ) : (
+                dayTasks.map((task) => {
+                  const cat = categories.find((c) => c.id === task.categoryId)
+                  return (
+                    <button
+                      key={task.id}
+                      className={cn(
+                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted transition-colors',
+                        taskId === task.id && 'bg-muted'
+                      )}
+                      onClick={() => timer.setTaskId(task.id)}
+                    >
+                      {cat && <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />}
+                      <span className="truncate">{task.title}</span>
+                      <span className="ml-auto text-muted-foreground">{task.startTime}</span>
+                    </button>
+                  )
+                })
+              )}
+            </div>
           </PopoverContent>
         </Popover>
 
