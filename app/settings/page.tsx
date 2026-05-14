@@ -168,10 +168,10 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
 
   const categories = [
     { id: 'ai', label: 'Intelligence Artificielle', description: 'Fournisseurs de modèles IA pour le chat et l\'analyse' },
-    { id: 'health', label: 'Santé & Bien-être', description: 'Données de recovery, sommeil et activité physique' },
-    { id: 'productivity', label: 'Productivité', description: 'Calendrier, notes et outils de travail' },
+    { id: 'social', label: 'Réseaux sociaux', description: 'YouTube, Meta, TikTok, LinkedIn — sync auto des stats et ad spend' },
     { id: 'finance', label: 'Finance', description: 'Stripe et paiements' },
-    { id: 'analytics', label: 'Analytics', description: 'Suivi et métriques avancées' },
+    { id: 'productivity', label: 'Productivité', description: 'Calendrier, notes et outils de travail' },
+    { id: 'health', label: 'Santé & Bien-être', description: 'Données de recovery, sommeil et activité physique' },
   ]
 
   return (
@@ -263,6 +263,10 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
                         provider.id === 'google_calendar' ? (
                           <Button size="sm" variant="outline" onClick={() => { window.location.href = '/api/auth/google' }}>
                             Connecter Google
+                          </Button>
+                        ) : provider.category === 'social' ? (
+                          <Button size="sm" variant="outline" onClick={() => { window.location.href = `/api/auth/${provider.id}` }}>
+                            Connecter {provider.name.split(' ')[0]}
                           </Button>
                         ) : (
                           <Button size="sm" variant="outline" onClick={() => { setEditingKey(provider.id); setKeyInput(integration?.apiKey || '') }}>
@@ -1139,6 +1143,36 @@ function ProviderIcon({ provider }: { provider: string }) {
           <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
           <path d="M2 8h16" stroke="currentColor" strokeWidth="1.4" />
           <path d="M5 12h3M11 12h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      )
+    case 'youtube':
+      return (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="1.5" y="4" width="17" height="12" rx="3" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M8.5 7.5v5l4-2.5-4-2.5Z" fill="currentColor" />
+        </svg>
+      )
+    case 'meta':
+      return (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M2 14c0-5 2-9 5-9 2 0 3.5 1.5 5 4.5C13.5 12.5 15 14 17 14c1.5 0 1.5-2 0-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M18 6c0 5-2 9-5 9-2 0-3.5-1.5-5-4.5C6.5 7.5 5 6 3 6c-1.5 0-1.5 2 0 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.5" />
+        </svg>
+      )
+    case 'tiktok':
+      return (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M13.5 2v9.5a3 3 0 1 1-3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M13.5 2c.5 2 2 3.5 4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
+    case 'linkedin':
+      return (
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="2" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.4" />
+          <circle cx="6" cy="7" r="1" fill="currentColor" />
+          <path d="M5 9.5h2v6h-2v-6Z" fill="currentColor" />
+          <path d="M9 9.5h2v1c.5-.7 1.3-1 2-1 1.5 0 2.5 1 2.5 2.5v3.5h-2v-3c0-.7-.5-1.2-1.2-1.2s-1.3.5-1.3 1.2v3H9v-6Z" fill="currentColor" />
         </svg>
       )
     default:

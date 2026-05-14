@@ -335,8 +335,11 @@ export const INTEGRATION_PROVIDERS = [
   { id: 'openai', name: 'OpenAI (GPT)', icon: 'sparkle', category: 'ai', description: 'Modeles GPT alternatifs' },
   { id: 'google', name: 'Google (Gemini)', icon: 'gemini', category: 'ai', description: 'Modeles Gemini de Google' },
   { id: 'whoop', name: 'Whoop', icon: 'heart', category: 'health', description: 'Recovery, sommeil et strain quotidien' },
-  { id: 'google_calendar', name: 'Google Calendar', icon: 'calendar', category: 'productivity', description: 'Synchroniser vos evenements' },
+  { id: 'google_calendar', name: 'Google Calendar', icon: 'calendar', category: 'productivity', description: 'Synchroniser tes événements de calendrier' },
   { id: 'notion', name: 'Notion', icon: 'doc', category: 'productivity', description: 'Importer/exporter des notes' },
   { id: 'stripe', name: 'Stripe', icon: 'card', category: 'finance', description: 'Synchroniser les revenus de tes projets' },
-  { id: 'mixpanel', name: 'Mixpanel', icon: 'chart', category: 'analytics', description: 'Suivi analytique avance' },
+  { id: 'youtube', name: 'YouTube', icon: 'youtube', category: 'social', description: 'Synchroniser vues, likes, commentaires de tes vidéos' },
+  { id: 'meta', name: 'Meta (Instagram + Facebook)', icon: 'meta', category: 'social', description: 'Synchroniser posts IG/FB et ad spend' },
+  { id: 'tiktok', name: 'TikTok', icon: 'tiktok', category: 'social', description: 'Synchroniser vues, likes, partages de tes vidéos' },
+  { id: 'linkedin', name: 'LinkedIn', icon: 'linkedin', category: 'social', description: 'Synchroniser posts et campagnes publicitaires' },
 ] as const
