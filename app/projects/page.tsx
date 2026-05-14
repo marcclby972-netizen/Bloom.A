@@ -225,7 +225,6 @@ function OverviewTab({ project }: { project: Project }) {
   const [descValue, setDescValue] = useState(project.description)
   const [revenueValue, setRevenueValue] = useState(String(project.revenue || 0))
   const [tagInput, setTagInput] = useState('')
-  const [collabInput, setCollabInput] = useState('')
 
   // Sync local state when project changes
   useEffect(() => {
@@ -265,20 +264,6 @@ function OverviewTab({ project }: { project: Project }) {
 
   const removeTag = (tag: string) => {
     app.updateProject(project.id, { tags: project.tags.filter((t) => t !== tag) })
-  }
-
-  const addCollaborator = () => {
-    const c = collabInput.trim()
-    const collaborators = project.collaborators || []
-    if (c && !collaborators.includes(c)) {
-      app.updateProject(project.id, { collaborators: [...collaborators, c] })
-      setCollabInput('')
-    }
-  }
-
-  const removeCollaborator = (name: string) => {
-    const collaborators = project.collaborators || []
-    app.updateProject(project.id, { collaborators: collaborators.filter((c) => c !== name) })
   }
 
   return (
@@ -443,32 +428,7 @@ function OverviewTab({ project }: { project: Project }) {
       </div>
 
       {/* Collaborators */}
-      <div>
-        <label className="text-xs font-medium text-muted-foreground">Collaborateurs</label>
-        <div className="flex gap-2 mt-1">
-          <Input
-            placeholder="Nom du collaborateur"
-            value={collabInput}
-            onChange={(e) => setCollabInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCollaborator())}
-            className="text-sm"
-          />
-          <Button variant="outline" size="sm" onClick={addCollaborator}>+</Button>
-        </div>
-        {(project.collaborators || []).length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {(project.collaborators || []).map((c) => (
-              <span
-                key={c}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs cursor-pointer hover:bg-primary/20"
-                onClick={() => removeCollaborator(c)}
-              >
-                {c} ×
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      <CollaboratorsSection projectId={project.id} />
     </div>
   )
 }
@@ -478,6 +438,122 @@ function StatCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-border bg-muted/20 p-3">
       <div className="text-[10px] text-muted-foreground">{label}</div>
       <div className="text-sm font-semibold mt-1">{value}</div>
+    </div>
+  )
+}
+
+type ProjectCollaborator = {
+  id: string
+  collaborator_user_id: string
+  collaborator_email: string | null
+  status: 'pending' | 'accepted' | 'rejected'
+  invited_at: string
+  responded_at: string | null
+}
+
+function CollaboratorsSection({ projectId }: { projectId: string }) {
+  const [collaborators, setCollaborators] = useState<ProjectCollaborator[]>([])
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/collaborators?projectId=${projectId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCollaborators(data.collaborators || [])
+      }
+    } catch {/* ignore */}
+  }, [projectId])
+
+  useEffect(() => { load() }, [load])
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) return
+    setBusy(true)
+    setError(''); setInfo('')
+    try {
+      const res = await fetch('/api/projects/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, email: email.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Erreur')
+      } else {
+        setInfo('Invitation envoyée — la personne recevra une notification dans Bloom')
+        setEmail('')
+        load()
+      }
+    } catch {
+      setError('Erreur réseau')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleRemove = async (id: string) => {
+    if (!confirm('Retirer cette personne du projet ?')) return
+    await fetch(`/api/projects/collaborators?id=${id}`, { method: 'DELETE' })
+    load()
+  }
+
+  const statusLabel = (s: ProjectCollaborator['status']) => {
+    if (s === 'pending') return { text: 'En attente', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' }
+    if (s === 'accepted') return { text: 'Membre', cls: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' }
+    return { text: 'Refusé', cls: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' }
+  }
+
+  return (
+    <div>
+      <label className="text-xs font-medium text-muted-foreground">Collaborateurs</label>
+      <p className="text-[10px] text-muted-foreground mb-2">
+        Invite par email — la personne doit déjà avoir un compte Bloom.
+      </p>
+      <form onSubmit={handleInvite} className="flex gap-2">
+        <Input
+          type="email"
+          placeholder="email@exemple.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="text-sm"
+        />
+        <Button type="submit" variant="outline" size="sm" disabled={busy || !email.trim()}>
+          {busy ? '...' : 'Inviter'}
+        </Button>
+      </form>
+      {error && <p className="text-xs text-red-600 mt-1.5">{error}</p>}
+      {info && <p className="text-xs text-green-600 mt-1.5">{info}</p>}
+
+      {collaborators.length > 0 && (
+        <div className="space-y-1 mt-3">
+          {collaborators.map((c) => {
+            const status = statusLabel(c.status)
+            return (
+              <div key={c.id} className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5">
+                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold shrink-0">
+                  {(c.collaborator_email || '?')[0].toUpperCase()}
+                </div>
+                <span className="text-xs truncate flex-1">{c.collaborator_email || 'Sans email'}</span>
+                <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0', status.cls)}>
+                  {status.text}
+                </span>
+                <button
+                  onClick={() => handleRemove(c.id)}
+                  className="text-[10px] text-muted-foreground hover:text-destructive shrink-0"
+                  title="Retirer"
+                >
+                  ×
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -1346,10 +1422,15 @@ function RevenueTab({ project }: { project: Project }) {
 
   return (
     <div className="p-5 space-y-4">
+      {/* Auto-tracking via Stripe filters */}
+      <StripeAutoTrack project={project} days={days} />
+
+      <div className="h-px bg-border" />
+
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="text-sm font-semibold">Revenus Stripe</h3>
-          <p className="text-xs text-muted-foreground">Lie des paiements à ce projet pour suivre les revenus</p>
+          <h3 className="text-sm font-semibold">Liaison manuelle des paiements</h3>
+          <p className="text-xs text-muted-foreground">Pour les paiements qui ne matchent pas tes filtres automatiques</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -1449,5 +1530,309 @@ function ChargeRow({ charge, formatAmount, action }: {
       </div>
       <div className="shrink-0">{action}</div>
     </div>
+  )
+}
+
+// ── Stripe auto-tracking section ──
+
+type StripeProduct = { id: string; name: string; description: string | null; active: boolean }
+type StripeCustomer = { id: string; email: string | null; name: string | null; createdAt: number }
+type StripeSubscriptionLine = { priceId?: string; amount: number; currency: string; interval: string; intervalCount: number }
+type StripeSubscription = { id: string; status: string; lines: StripeSubscriptionLine[] }
+
+function StripeAutoTrack({ project, days }: { project: Project; days: number }) {
+  const app = useApp()
+  const productIds = project.stripeProductIds || []
+  const customerIds = project.stripeCustomerIds || []
+  const hasFilters = productIds.length > 0 || customerIds.length > 0
+
+  const [autoCharges, setAutoCharges] = useState<StripeCharge[]>([])
+  const [autoSubs, setAutoSubs] = useState<StripeSubscription[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // For the picker modals
+  const [pickerMode, setPickerMode] = useState<'product' | 'customer' | null>(null)
+
+  const fetchAuto = useCallback(async () => {
+    if (!hasFilters) return
+    const integ = store.getSettings().integrations.find((i) => i.provider === 'stripe')
+    if (!integ?.apiKey) { setError('Connecte Stripe dans Paramètres → Intégrations'); return }
+    setLoading(true); setError('')
+    try {
+      const res = await fetch('/api/stripe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: integ.apiKey,
+          action: 'list_charges_for_project',
+          productIds, customerIds, daysBack: days,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur')
+      setAutoCharges(data.charges || [])
+      setAutoSubs(data.subscriptions || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setLoading(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasFilters, productIds.join(','), customerIds.join(','), days])
+
+  useEffect(() => { fetchAuto() }, [fetchAuto])
+
+  const totalRevenue = useMemo(() => autoCharges
+    .filter((c) => c.paid && !c.refunded)
+    .reduce((s, c) => s + (c.amount - c.amountRefunded), 0), [autoCharges])
+
+  const mrr = useMemo(() => {
+    let total = 0
+    for (const sub of autoSubs) {
+      if (sub.status !== 'active') continue
+      for (const line of sub.lines) {
+        const monthly = line.interval === 'year'
+          ? line.amount / 12 / line.intervalCount
+          : line.interval === 'week'
+            ? line.amount * 4.33 / line.intervalCount
+            : line.interval === 'day'
+              ? line.amount * 30 / line.intervalCount
+              : line.amount / line.intervalCount
+        total += monthly
+      }
+    }
+    return total
+  }, [autoSubs])
+
+  const currency = autoCharges[0]?.currency || autoSubs[0]?.lines[0]?.currency || 'eur'
+  const formatAmount = (cents: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: currency.toUpperCase() }).format(cents / 100)
+
+  const removeProduct = (id: string) => {
+    app.updateProject(project.id, { stripeProductIds: productIds.filter((p) => p !== id) })
+  }
+  const removeCustomer = (id: string) => {
+    app.updateProject(project.id, { stripeCustomerIds: customerIds.filter((c) => c !== id) })
+  }
+  const addProduct = (id: string) => {
+    if (productIds.includes(id)) return
+    app.updateProject(project.id, { stripeProductIds: [...productIds, id] })
+  }
+  const addCustomer = (id: string) => {
+    if (customerIds.includes(id)) return
+    app.updateProject(project.id, { stripeCustomerIds: [...customerIds, id] })
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold">Tracking automatique Stripe</h3>
+        <p className="text-xs text-muted-foreground">
+          Lie ce projet à des produits ou clients Stripe — leurs paiements seront comptés automatiquement.
+        </p>
+      </div>
+
+      {/* Filter pills */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-20 shrink-0">Produits</span>
+          {productIds.map((id) => (
+            <span key={id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs">
+              <code className="font-mono text-[10px]">{id}</code>
+              <button onClick={() => removeProduct(id)} className="hover:text-destructive">×</button>
+            </span>
+          ))}
+          <button
+            onClick={() => setPickerMode('product')}
+            className="text-xs px-2 py-0.5 rounded-md border border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            + Produit
+          </button>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-20 shrink-0">Clients</span>
+          {customerIds.map((id) => (
+            <span key={id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs">
+              <code className="font-mono text-[10px]">{id}</code>
+              <button onClick={() => removeCustomer(id)} className="hover:text-destructive">×</button>
+            </span>
+          ))}
+          <button
+            onClick={() => setPickerMode('customer')}
+            className="text-xs px-2 py-0.5 rounded-md border border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            + Client
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
+
+      {/* Aggregated revenue */}
+      {hasFilters && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Revenu automatique</div>
+            <div className="text-2xl font-bold tabular-nums mt-1">{formatAmount(totalRevenue)}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {loading ? 'Chargement...' : `${autoCharges.length} paiement${autoCharges.length > 1 ? 's' : ''} · ${days} jours`}
+            </div>
+          </div>
+          <div className="rounded-xl border border-border bg-background p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">MRR estimé</div>
+            <div className="text-2xl font-bold tabular-nums mt-1">{formatAmount(mrr)}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {autoSubs.filter((s) => s.status === 'active').length} abonnement{autoSubs.length > 1 ? 's' : ''} actif{autoSubs.length > 1 ? 's' : ''}
+            </div>
+            {mrr > 0 && (
+              <button
+                onClick={() => app.updateProject(project.id, { revenue: Math.round(mrr / 100), revenueType: 'monthly' })}
+                className="text-[10px] text-primary hover:underline mt-2"
+              >
+                Définir comme MRR du projet
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!hasFilters && (
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-xs text-muted-foreground">
+          Ajoute au moins un produit ou un client Stripe ci-dessus pour activer le tracking automatique.
+        </div>
+      )}
+
+      {/* Picker modals */}
+      {pickerMode === 'product' && (
+        <StripePicker
+          mode="product"
+          existingIds={productIds}
+          onClose={() => setPickerMode(null)}
+          onPick={(id) => { addProduct(id); setPickerMode(null) }}
+        />
+      )}
+      {pickerMode === 'customer' && (
+        <StripePicker
+          mode="customer"
+          existingIds={customerIds}
+          onClose={() => setPickerMode(null)}
+          onPick={(id) => { addCustomer(id); setPickerMode(null) }}
+        />
+      )}
+    </div>
+  )
+}
+
+function StripePicker({ mode, existingIds, onClose, onPick }: {
+  mode: 'product' | 'customer'
+  existingIds: string[]
+  onClose: () => void
+  onPick: (id: string) => void
+}) {
+  const [items, setItems] = useState<(StripeProduct | StripeCustomer)[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [manualId, setManualId] = useState('')
+
+  const load = useCallback(async () => {
+    const integ = store.getSettings().integrations.find((i) => i.provider === 'stripe')
+    if (!integ?.apiKey) { setError('Connecte Stripe d\'abord'); return }
+    setLoading(true); setError('')
+    try {
+      const res = await fetch('/api/stripe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: integ.apiKey,
+          action: mode === 'product' ? 'list_products' : 'list_customers',
+          search: mode === 'customer' ? search : undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur')
+      setItems(mode === 'product' ? data.products : data.customers)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setLoading(false)
+    }
+  }, [mode, search])
+
+  useEffect(() => { load() }, [load])
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>{mode === 'product' ? 'Ajouter un produit Stripe' : 'Ajouter un client Stripe'}</DialogTitle>
+        </DialogHeader>
+
+        {mode === 'customer' && (
+          <Input
+            placeholder="Rechercher par email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && load()}
+            className="text-sm"
+          />
+        )}
+
+        {/* Manual ID entry */}
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder={mode === 'product' ? 'Ou colle un ID produit (prod_XXX)' : 'Ou colle un ID client (cus_XXX)'}
+            value={manualId}
+            onChange={(e) => setManualId(e.target.value)}
+            className="text-xs h-8"
+          />
+          <Button
+            size="sm"
+            onClick={() => { if (manualId.trim()) { onPick(manualId.trim()); setManualId('') } }}
+            disabled={!manualId.trim()}
+          >
+            Ajouter
+          </Button>
+        </div>
+
+        {error && <div className="text-xs text-red-600">{error}</div>}
+
+        <div className="flex-1 overflow-auto -mx-6 px-6 space-y-1">
+          {loading && <p className="text-xs text-muted-foreground py-4 text-center">Chargement depuis Stripe...</p>}
+          {!loading && items.length === 0 && (
+            <p className="text-xs text-muted-foreground py-4 text-center italic">
+              Aucun {mode === 'product' ? 'produit' : 'client'} trouvé. Utilise le champ ID manuel ci-dessus.
+            </p>
+          )}
+          {items.map((item) => {
+            const isProduct = mode === 'product'
+            const label = isProduct ? (item as StripeProduct).name : ((item as StripeCustomer).name || (item as StripeCustomer).email || item.id)
+            const sub = isProduct ? (item as StripeProduct).description : (item as StripeCustomer).email
+            const already = existingIds.includes(item.id)
+            return (
+              <div key={item.id} className="flex items-center gap-3 rounded-md border border-border bg-background p-2.5">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{label}</div>
+                  <div className="text-[10px] text-muted-foreground truncate font-mono">{item.id}</div>
+                  {sub && <div className="text-[10px] text-muted-foreground truncate">{sub}</div>}
+                </div>
+                <Button
+                  size="xs"
+                  variant={already ? 'ghost' : 'default'}
+                  disabled={already}
+                  onClick={() => onPick(item.id)}
+                >
+                  {already ? 'Déjà lié' : 'Lier'}
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-border">
+          <Button size="sm" variant="ghost" onClick={onClose}>Fermer</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

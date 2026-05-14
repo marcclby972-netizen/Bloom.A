@@ -6,6 +6,7 @@ import { AppProvider, useApp } from '@/lib/context'
 import { Sidebar } from './Sidebar'
 import { TimerWidget } from '@/components/timer/TimerWidget'
 import { ChatPanel } from '@/components/ai/ChatPanel'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 const PUBLIC_ROUTES = ['/login']
 
@@ -26,19 +27,30 @@ function MobileHeader() {
         <Image src="/bloom-logo.png" alt="Bloom" width={22} height={22} className="rounded-md" />
         <span className="text-sm font-semibold">Bloom</span>
       </div>
-      <button
-        onClick={() => setChatOpen(!chatOpen)}
-        aria-label="Iris"
-        className="h-8 w-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted"
-      >
-        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10 2l2 4.5h-4L10 2Z" />
-          <path d="M6 8l-2 4.5h4L6 8Z" />
-          <path d="M14 8l2 4.5h-4L14 8Z" />
-          <circle cx="10" cy="16" r="2" />
-        </svg>
-      </button>
+      <div className="flex items-center gap-1">
+        <NotificationBell />
+        <button
+          onClick={() => setChatOpen(!chatOpen)}
+          aria-label="Iris"
+          className="h-8 w-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted"
+        >
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 2l2 4.5h-4L10 2Z" />
+            <path d="M6 8l-2 4.5h4L6 8Z" />
+            <path d="M14 8l2 4.5h-4L14 8Z" />
+            <circle cx="10" cy="16" r="2" />
+          </svg>
+        </button>
+      </div>
     </header>
+  )
+}
+
+function DesktopBell() {
+  return (
+    <div className="hidden md:block fixed top-3 right-4 z-30">
+      <NotificationBell />
+    </div>
   )
 }
 
@@ -62,6 +74,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         <TimerWidget />
       </div>
       {chatOpen && <ChatPanel />}
+      <DesktopBell />
     </div>
   )
 }

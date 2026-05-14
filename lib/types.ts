@@ -194,6 +194,10 @@ export type Project = {
   revenue: number
   /** When revenueType is recurring (monthly/quarterly/annual), `revenue` represents the recurring amount */
   revenueType?: ProjectRevenueType
+  /** Stripe product IDs whose charges should be counted as this project's revenue */
+  stripeProductIds?: string[]
+  /** Stripe customer IDs whose charges should be counted as this project's revenue */
+  stripeCustomerIds?: string[]
   collaborators: string[]
   categoryId?: string
   color?: string
