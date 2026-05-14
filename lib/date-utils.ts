@@ -24,22 +24,44 @@ export {
   eachDayOfInterval, isSameDay, isToday, parseISO,
 }
 
-export function formatDateFr(date: Date | number | null | undefined, fmt: string = 'dd MMM yyyy'): string {
-  if (date === null || date === undefined) return ''
-  const d = typeof date === 'number' ? new Date(date) : date
-  if (Number.isNaN(d.getTime())) return ''
-  return format(d, fmt, { locale: fr })
+/**
+ * Coerce any value into a valid Date, or null if impossible.
+ * Handles: Date, number (ms), ISO string, null, undefined, garbage.
+ * Never throws.
+ */
+function toValidDate(input: unknown): Date | null {
+  if (input === null || input === undefined) return null
+  if (input instanceof Date) {
+    return Number.isNaN(input.getTime()) ? null : input
+  }
+  if (typeof input === 'number') {
+    if (!Number.isFinite(input)) return null
+    const d = new Date(input)
+    return Number.isNaN(d.getTime()) ? null : d
+  }
+  if (typeof input === 'string') {
+    const d = new Date(input)
+    return Number.isNaN(d.getTime()) ? null : d
+  }
+  return null
 }
 
-export function formatRelative(date: Date | number | null | undefined): string {
-  if (date === null || date === undefined) return ''
-  const d = typeof date === 'number' ? new Date(date) : date
-  if (Number.isNaN(d.getTime())) return ''
-  return formatDistanceToNow(d, { addSuffix: true, locale: fr })
+export function formatDateFr(date: Date | number | string | null | undefined, fmt: string = 'dd MMM yyyy'): string {
+  const d = toValidDate(date)
+  if (!d) return ''
+  try { return format(d, fmt, { locale: fr }) } catch { return '' }
 }
 
-export function toDateString(date: Date): string {
-  return format(date, 'yyyy-MM-dd')
+export function formatRelative(date: Date | number | string | null | undefined): string {
+  const d = toValidDate(date)
+  if (!d) return ''
+  try { return formatDistanceToNow(d, { addSuffix: true, locale: fr }) } catch { return '' }
+}
+
+export function toDateString(date: Date | number | string | null | undefined): string {
+  const d = toValidDate(date)
+  if (!d) return ''
+  try { return format(d, 'yyyy-MM-dd') } catch { return '' }
 }
 
 export function today(): string {
