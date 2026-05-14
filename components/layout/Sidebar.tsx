@@ -124,6 +124,17 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/integrations-guide',
+    label: 'Guide',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 3a1.5 1.5 0 0 1 1.5-1.5h8L17 5v11.5a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 4 16.5v-13.5Z" />
+        <path d="M13.5 1.5V5H17" />
+        <path d="M7 9h6M7 12h6M7 15h4" />
+      </svg>
+    ),
+  },
 ]
 
 export function Sidebar() {

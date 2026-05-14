@@ -223,9 +223,22 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
 
   return (
     <>
-      <div>
-        <h3 className="text-base font-semibold">Intégrations</h3>
-        <p className="text-sm text-muted-foreground mt-1">Connectez vos services pour enrichir Bloom</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="text-base font-semibold">Intégrations</h3>
+          <p className="text-sm text-muted-foreground mt-1">Connectez vos services pour enrichir Bloom</p>
+        </div>
+        <a
+          href="/integrations-guide"
+          className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline shrink-0"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 2.5a1 1 0 0 1 1-1h5L11.5 4v7.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2.5Z" />
+            <path d="M9 1.5V4h2.5" />
+            <path d="M5 6h4M5 8h4M5 10h3" />
+          </svg>
+          Guide d&apos;intégration pas à pas
+        </a>
       </div>
 
       {categories.map((cat) => {
