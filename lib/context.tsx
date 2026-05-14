@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import { store } from './store'
 import { useTimer } from './use-timer'
 import { requestNotificationPermission, sendNotification } from './notifications'
+import { initCloudSync, refreshFromCloud, isCloudSyncReady } from './cloud-sync'
 import type {
   Task, Category, TimeEntry, Goal,
   Contact, Interaction, Post, Project, ProjectNote, VocalProject, VocalNote, PromptNote,
@@ -109,6 +110,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setProjects(store.getProjects())
     setVocalProjects(store.getVocalProjects())
   }, [])
+
+  // Cloud sync — pull from Supabase on mount, then refresh local state
+  useEffect(() => {
+    let cancelled = false
+    const initSync = async () => {
+      const { ok } = await initCloudSync()
+      if (cancelled) return
+      if (ok) {
+        // Refresh React state from the now-up-to-date localStorage cache
+        refresh()
+      }
+    }
+    initSync()
+
+    // Re-pull on window focus (cross-device sync)
+    const handleFocus = async () => {
+      if (!isCloudSyncReady()) return
+      await refreshFromCloud()
+      refresh()
+    }
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [refresh])
 
   // Task reminders — check every minute for upcoming tasks
   useEffect(() => {

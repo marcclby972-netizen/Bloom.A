@@ -159,12 +159,12 @@ export function Sidebar() {
       )}
       <aside
         className={cn(
-          'flex h-full flex-col border-r border-border bg-background py-4 transition-all duration-200 ease-in-out shrink-0 gradient-sidebar',
+          'flex h-full flex-col border-r border-border bg-background py-4 transition-transform duration-200 ease-in-out shrink-0 gradient-sidebar',
           // Desktop: collapsible width
           'md:relative md:translate-x-0',
           expanded ? 'md:w-48' : 'md:w-14',
-          // Mobile: full-height drawer
-          'fixed inset-y-0 left-0 z-50 w-56',
+          // Mobile: full-height drawer with shadow and solid bg
+          'fixed inset-y-0 left-0 z-50 w-56 shadow-2xl md:shadow-none',
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
       >

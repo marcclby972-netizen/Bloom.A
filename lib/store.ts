@@ -24,6 +24,23 @@ const KEYS = {
   todos: 'bloom_todos',
 } as const
 
+// Reverse map: localStorage key → cloud-sync entity key
+const KEY_TO_ENTITY: Record<string, string> = {
+  bloom_tasks: 'tasks',
+  bloom_categories: 'categories',
+  bloom_time_entries: 'timeEntries',
+  bloom_goals: 'goals',
+  bloom_contacts: 'contacts',
+  bloom_interactions: 'interactions',
+  bloom_posts: 'posts',
+  bloom_vocal_projects: 'vocalProjects',
+  bloom_vocal_notes: 'vocalNotes',
+  bloom_prompt_notes: 'promptNotes',
+  bloom_projects: 'projects',
+  bloom_project_notes: 'projectNotes',
+  bloom_todos: 'todos',
+}
+
 function read<T>(key: string): T[] {
   if (typeof window === 'undefined') return []
   try {
@@ -34,7 +51,39 @@ function read<T>(key: string): T[] {
 }
 
 function write<T>(key: string, data: T[]) {
+  if (typeof window === 'undefined') return
+  // Compute diff with existing for cloud sync
+  const entityKey = KEY_TO_ENTITY[key]
+  let oldIds: Set<string> = new Set()
+  if (entityKey) {
+    try {
+      const prev = JSON.parse(localStorage.getItem(key) || '[]') as { id?: string }[]
+      oldIds = new Set(prev.map((p) => p.id).filter((id): id is string => Boolean(id)))
+    } catch {/* ignore */}
+  }
+
   localStorage.setItem(key, JSON.stringify(data))
+
+  // Fire-and-forget cloud sync
+  if (entityKey) {
+    // Lazy import to avoid circular dependency at module load
+    import('./cloud-sync').then((sync) => {
+      if (!sync.isCloudSyncReady()) return
+      // Upsert all current records
+      const newIds = new Set<string>()
+      for (const item of data as { id?: string }[]) {
+        if (!item.id) continue
+        newIds.add(item.id)
+        sync.queueUpsert(entityKey as Parameters<typeof sync.queueUpsert>[0], item as Record<string, unknown>)
+      }
+      // Delete records that disappeared
+      for (const oldId of oldIds) {
+        if (!newIds.has(oldId)) {
+          sync.queueDelete(entityKey as Parameters<typeof sync.queueDelete>[0], oldId)
+        }
+      }
+    }).catch(() => {/* ignore */})
+  }
 }
 
 // ── Tasks ──
@@ -642,6 +691,13 @@ function getSettings(): AppSettings {
 
 function saveSettings(settings: AppSettings) {
   localStorage.setItem('bloom_settings', JSON.stringify(settings))
+  // Fire-and-forget cloud sync
+  if (typeof window !== 'undefined') {
+    import('./cloud-sync').then((sync) => {
+      if (!sync.isCloudSyncReady()) return
+      sync.queueSettingsSync(settings)
+    }).catch(() => {/* ignore */})
+  }
 }
 
 function updateSettings(updates: Partial<AppSettings>): AppSettings {
