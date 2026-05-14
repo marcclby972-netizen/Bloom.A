@@ -80,6 +80,15 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: '/studio',
+    label: 'Studio',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 2L11.8 6.4L16.5 7L13 10.4L13.8 15L10 12.8L6.2 15L7 10.4L3.5 7L8.2 6.4Z" />
+      </svg>
+    ),
+  },
+  {
     href: '/marketing',
     label: 'Marketing',
     icon: (
