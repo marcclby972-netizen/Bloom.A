@@ -57,6 +57,19 @@ export default function DashboardPage() {
 
   const recentPosts = posts.slice(0, 3)
 
+  // ── Revenue stats ──
+  const revenueStats = useMemo(() => {
+    const totalRevenue = projects.reduce((sum, p) => sum + (p.revenue || 0), 0)
+    const totalAdSpend = posts.reduce((sum, p) => sum + (p.metrics.spend || 0), 0)
+    const netProfit = totalRevenue - totalAdSpend
+    const byProject = projects
+      .map((p) => ({ project: p, revenue: p.revenue || 0 }))
+      .filter((r) => r.revenue > 0)
+      .sort((a, b) => b.revenue - a.revenue)
+    return { totalRevenue, totalAdSpend, netProfit, byProject }
+  }, [projects, posts])
+  const maxProjectRevenue = revenueStats.byProject[0]?.revenue || 1
+
   return (
     <div className="flex flex-col h-full overflow-auto">
       <div className="shrink-0">
@@ -71,6 +84,51 @@ export default function DashboardPage() {
       </div>
 
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        {/* Row 0: Revenue highlight (shown only if there's revenue activity) */}
+        {(revenueStats.totalRevenue > 0 || revenueStats.totalAdSpend > 0) && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <Card className="border-primary/40 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                    <path d="M2 9.5l3-3 2 2 4-5" />
+                    <path d="M7 3.5h4v4" />
+                  </svg>
+                  Revenu total
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold tabular-nums">{revenueStats.totalRevenue.toLocaleString('fr-FR')} €</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {revenueStats.byProject.length} projet{revenueStats.byProject.length > 1 ? 's' : ''} générant des revenus
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-muted-foreground">Dépenses ads</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold tabular-nums">{revenueStats.totalAdSpend.toFixed(0)} €</div>
+                <div className="text-xs text-muted-foreground mt-1">Cumul des posts payants</div>
+              </CardContent>
+            </Card>
+            <Card className={cn(revenueStats.netProfit >= 0 ? 'border-green-300 bg-green-50/40 dark:bg-green-950/10' : 'border-red-300 bg-red-50/40 dark:bg-red-950/10')}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-muted-foreground">Bénéfice net</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={cn('text-2xl font-bold tabular-nums', revenueStats.netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400')}>
+                  {revenueStats.netProfit >= 0 ? '+' : ''}{revenueStats.netProfit.toLocaleString('fr-FR')} €
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Revenu - dépenses {revenueStats.totalAdSpend > 0 && `· ROI ${(((revenueStats.totalRevenue - revenueStats.totalAdSpend) / revenueStats.totalAdSpend) * 100).toFixed(0)}%`}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Row 1: Quick stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <Card>
@@ -188,6 +246,45 @@ export default function DashboardPage() {
 
         {/* Optional: Google Calendar widget (only shown when connected) */}
         <GoogleCalendarWidget />
+
+        {/* Revenue per project — only shown if any project has revenue */}
+        {revenueStats.byProject.length > 0 && (
+          <Link href="/projects" className="block">
+            <Card className="hover:border-primary/50 transition-colors">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm">Revenus par projet</CardTitle>
+                <span className="text-[10px] text-muted-foreground">{revenueStats.byProject.length} actif{revenueStats.byProject.length > 1 ? 's' : ''}</span>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {revenueStats.byProject.slice(0, 6).map(({ project, revenue }) => {
+                    const pct = (revenue / maxProjectRevenue) * 100
+                    const projectShare = revenueStats.totalRevenue > 0 ? (revenue / revenueStats.totalRevenue) * 100 : 0
+                    return (
+                      <div key={project.id} className="space-y-1">
+                        <div className="flex items-center gap-2 text-xs">
+                          {project.color && <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />}
+                          <span className="truncate flex-1">{project.name}</span>
+                          <span className="font-medium tabular-nums shrink-0">{revenue.toLocaleString('fr-FR')} €</span>
+                          <span className="text-[10px] text-muted-foreground shrink-0 w-10 text-right">{projectShare.toFixed(0)}%</span>
+                        </div>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${pct}%`, backgroundColor: project.color || 'oklch(0.55 0.17 50)' }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {revenueStats.byProject.length > 6 && (
+                    <div className="text-[10px] text-muted-foreground pt-1">+{revenueStats.byProject.length - 6} autres projets</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
         {/* Row 3: More details */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
