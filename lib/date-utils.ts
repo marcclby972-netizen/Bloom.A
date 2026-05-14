@@ -24,12 +24,18 @@ export {
   eachDayOfInterval, isSameDay, isToday, parseISO,
 }
 
-export function formatDateFr(date: Date | number, fmt: string = 'dd MMM yyyy'): string {
-  return format(date, fmt, { locale: fr })
+export function formatDateFr(date: Date | number | null | undefined, fmt: string = 'dd MMM yyyy'): string {
+  if (date === null || date === undefined) return ''
+  const d = typeof date === 'number' ? new Date(date) : date
+  if (Number.isNaN(d.getTime())) return ''
+  return format(d, fmt, { locale: fr })
 }
 
-export function formatRelative(date: Date | number): string {
-  return formatDistanceToNow(date, { addSuffix: true, locale: fr })
+export function formatRelative(date: Date | number | null | undefined): string {
+  if (date === null || date === undefined) return ''
+  const d = typeof date === 'number' ? new Date(date) : date
+  if (Number.isNaN(d.getTime())) return ''
+  return formatDistanceToNow(d, { addSuffix: true, locale: fr })
 }
 
 export function toDateString(date: Date): string {

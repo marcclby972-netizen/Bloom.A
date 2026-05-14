@@ -59,6 +59,31 @@ function camelToSnake(row: AnyRecord): AnyRecord {
   return out
 }
 
+/**
+ * Normalize a row coming from Supabase to the local cache shape:
+ * - Drop user_id (auth-scoped, not needed locally)
+ * - Convert created_at / updated_at (ISO strings) into createdAt / updatedAt (number ms)
+ *   because our local types use numeric timestamps everywhere
+ * - Convert all other snake_case fields to camelCase
+ */
+function normalizeRow(row: AnyRecord): AnyRecord {
+  const { user_id, created_at, updated_at, ...rest } = row as Record<string, unknown>
+  void user_id
+  const out: AnyRecord = snakeToCamel(rest)
+  if (created_at !== undefined && created_at !== null) {
+    const parsed = new Date(created_at as string).getTime()
+    if (!Number.isNaN(parsed)) out.createdAt = parsed
+  }
+  if (updated_at !== undefined && updated_at !== null) {
+    const parsed = new Date(updated_at as string).getTime()
+    if (!Number.isNaN(parsed)) out.updatedAt = parsed
+  }
+  // Fallback: if neither cloud nor local provided it, use now()
+  if (out.createdAt === undefined) out.createdAt = Date.now()
+  if (out.updatedAt === undefined) out.updatedAt = Date.now()
+  return out
+}
+
 // ── Entity definitions ──
 
 type EntityKey = keyof typeof KEYS
@@ -211,11 +236,7 @@ export async function initCloudSync(): Promise<{ ok: boolean; userId: string | n
   // Replace local cache with merged cloud data
   for (const [entityKey, rows] of Object.entries(cloudData) as [Exclude<EntityKey, 'settings'>, AnyRecord[]][]) {
     if (!rows) continue
-    const camelRows = rows.map((r) => {
-      const { user_id, created_at, updated_at, ...rest } = r as Record<string, unknown>
-      void user_id; void created_at; void updated_at
-      return snakeToCamel(rest)
-    })
+    const camelRows = rows.map((r) => normalizeRow(r as Record<string, unknown>))
     writeLocal(KEYS[entityKey], camelRows)
   }
 
@@ -351,11 +372,7 @@ export async function refreshFromCloud(): Promise<void> {
     }
 
     const allRows = [...cloudRows, ...localOnly.map((r) => camelToSnake(r as AnyRecord))]
-    const camelRows = allRows.map((r) => {
-      const { user_id, created_at, updated_at, ...rest } = r as Record<string, unknown>
-      void user_id; void created_at; void updated_at
-      return snakeToCamel(rest)
-    })
+    const camelRows = allRows.map((r) => normalizeRow(r as Record<string, unknown>))
     writeLocal(KEYS[entityKey], camelRows)
   }
   const { data: settingsRow } = await client
