@@ -15,6 +15,7 @@ import {
   generatePassword,
   type VaultEntry,
 } from '@/lib/vault'
+import { useApp } from '@/lib/context'
 
 type Mode = 'locked' | 'init' | 'unlocked'
 
@@ -131,24 +132,36 @@ export default function VaultPage() {
     return (
       <div className="flex flex-col h-full">
         <Header />
-        <div className="flex-1 overflow-auto p-4 sm:p-6 flex items-center justify-center">
-          <Card className="w-full max-w-md">
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
+          <div className="max-w-3xl mx-auto space-y-4">
+            {/* Vault explanation */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">À quoi sert le coffre-fort ?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <p className="text-muted-foreground">
+                  Le coffre-fort stocke tes mots de passe et identifiants de manière <strong>chiffrée localement</strong> sur ton appareil.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <VaultFeature title="Chiffrement AES-256" desc="Tes mots de passe sont chiffrés avec ton mot de passe maître. Personne (même nous) ne peut les lire." />
+                  <VaultFeature title="Lié à tes projets" desc="Associe chaque mot de passe à un projet pour le retrouver facilement." />
+                  <VaultFeature title="Générateur intégré" desc="Crée des mots de passe forts en un clic, longueur et caractères configurables." />
+                  <VaultFeature title="Copie rapide" desc="Un clic pour copier l'identifiant ou le mot de passe dans le presse-papiers." />
+                </div>
+                <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50 p-3 text-xs text-amber-800 dark:text-amber-300">
+                  <strong>Important :</strong> ton mot de passe maître ne peut PAS être récupéré si tu l&apos;oublies. Le chiffrement est local et personne d&apos;autre ne peut le déchiffrer.
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="w-full">
             <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <LockIcon size={20} />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Créer le coffre-fort</CardTitle>
-                  <CardDescription>Définis un mot de passe maître</CardDescription>
-                </div>
-              </div>
+              <CardTitle className="text-base">Créer ton coffre-fort</CardTitle>
+              <CardDescription>Définis un mot de passe maître fort</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleInit} className="space-y-3">
-                <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50 p-3 text-xs text-amber-800 dark:text-amber-300">
-                  ⚠️ Ce mot de passe ne peut PAS être récupéré. Si tu l&apos;oublies, tu perds tout le coffre-fort. Le chiffrement est local (AES-256-GCM).
-                </div>
                 <Input
                   type="password"
                   placeholder="Mot de passe maître (min. 8 caractères)"
@@ -169,6 +182,7 @@ export default function VaultPage() {
               </form>
             </CardContent>
           </Card>
+          </div>
         </div>
       </div>
     )
@@ -257,72 +271,79 @@ export default function VaultPage() {
             <p className="text-sm mt-4">{search ? 'Aucun résultat' : 'Coffre-fort vide. Ajoute ta première entrée.'}</p>
           </div>
         ) : (
-          <div className="space-y-2 max-w-3xl mx-auto">
+          <div className="space-y-2 w-full">
             {filtered.map((entry) => (
-              <Card key={entry.id} className="hover:shadow-sm transition-shadow">
-                <CardContent className="flex items-center gap-3 p-3">
-                  <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0 text-xs font-semibold uppercase">
-                    {entry.title.slice(0, 2)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium truncate">{entry.title}</span>
-                      {entry.category && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{entry.category}</span>}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {entry.username && <span className="text-xs text-muted-foreground truncate">{entry.username}</span>}
-                      {entry.url && <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate">{entry.url}</a>}
-                    </div>
-                    {revealedIds.has(entry.id) && (
-                      <div className="mt-1 font-mono text-xs text-foreground bg-muted/40 px-2 py-1 rounded select-all">
-                        {entry.password}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => copyToClipboard(entry.username)}
-                      title="Copier identifiant"
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <CopyIcon />
-                    </button>
-                    <button
-                      onClick={() => copyToClipboard(entry.password)}
-                      title="Copier mot de passe"
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <KeyIcon />
-                    </button>
-                    <button
-                      onClick={() => toggleReveal(entry.id)}
-                      title={revealedIds.has(entry.id) ? 'Masquer' : 'Afficher'}
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <EyeIcon open={revealedIds.has(entry.id)} />
-                    </button>
-                    <button
-                      onClick={() => setEditingEntry(entry)}
-                      title="Modifier"
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <EditIcon />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteEntry(entry.id)}
-                      title="Supprimer"
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500"
-                    >
-                      <TrashIcon />
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
+              <VaultEntryCard
+                key={entry.id}
+                entry={entry}
+                revealed={revealedIds.has(entry.id)}
+                onCopyUsername={() => copyToClipboard(entry.username)}
+                onCopyPassword={() => copyToClipboard(entry.password)}
+                onToggleReveal={() => toggleReveal(entry.id)}
+                onEdit={() => setEditingEntry(entry)}
+                onDelete={() => handleDeleteEntry(entry.id)}
+              />
             ))}
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+function VaultEntryCard({ entry, revealed, onCopyUsername, onCopyPassword, onToggleReveal, onEdit, onDelete }: {
+  entry: VaultEntry
+  revealed: boolean
+  onCopyUsername: () => void
+  onCopyPassword: () => void
+  onToggleReveal: () => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <Card className="hover:shadow-sm transition-shadow">
+      <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0 text-sm font-semibold uppercase">
+          {entry.title.slice(0, 2)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium truncate">{entry.title}</span>
+            {entry.category && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{entry.category}</span>}
+          </div>
+          <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground flex-wrap">
+            {entry.username && <span className="truncate">{entry.username}</span>}
+            {entry.url && (
+              <a href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                {entry.url}
+              </a>
+            )}
+          </div>
+          {revealed && (
+            <div className="mt-2 font-mono text-xs text-foreground bg-muted/50 px-2.5 py-1.5 rounded select-all break-all">
+              {entry.password}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button onClick={onCopyUsername} title="Copier identifiant" className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground">
+            <CopyIcon />
+          </button>
+          <button onClick={onCopyPassword} title="Copier mot de passe" className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground">
+            <KeyIcon />
+          </button>
+          <button onClick={onToggleReveal} title={revealed ? 'Masquer' : 'Afficher'} className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground">
+            <EyeIcon open={revealed} />
+          </button>
+          <button onClick={onEdit} title="Modifier" className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground">
+            <EditIcon />
+          </button>
+          <button onClick={onDelete} title="Supprimer" className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500">
+            <TrashIcon />
+          </button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -333,12 +354,14 @@ function EntryEditor({ entry, onSave, onCancel }: {
   onSave: (entry: VaultEntry) => void
   onCancel: () => void
 }) {
+  const app = useApp()
   const [title, setTitle] = useState(entry?.title || '')
   const [username, setUsername] = useState(entry?.username || '')
   const [password, setPassword] = useState(entry?.password || '')
   const [url, setUrl] = useState(entry?.url || '')
   const [notes, setNotes] = useState(entry?.notes || '')
   const [category, setCategory] = useState(entry?.category || '')
+  const [projectId, setProjectId] = useState<string | null>(entry?.projectId || null)
   const [pwLength, setPwLength] = useState(20)
 
   const handleGenerate = () => {
@@ -348,7 +371,7 @@ function EntryEditor({ entry, onSave, onCancel }: {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
-    onSave({
+    const newEntry: VaultEntry = {
       id: entry?.id || crypto.randomUUID(),
       title: title.trim(),
       username,
@@ -358,11 +381,13 @@ function EntryEditor({ entry, onSave, onCancel }: {
       category,
       createdAt: entry?.createdAt || Date.now(),
       updatedAt: Date.now(),
-    })
+    }
+    if (projectId) newEntry.projectId = projectId
+    onSave(newEntry)
   }
 
   return (
-    <Card className="mb-4 max-w-3xl mx-auto border-primary/40">
+    <Card className="mb-4 w-full border-primary/40">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm">{entry ? 'Modifier' : 'Nouvelle entrée'}</CardTitle>
       </CardHeader>
@@ -391,11 +416,23 @@ function EntryEditor({ entry, onSave, onCancel }: {
               />
               <Button type="button" variant="outline" size="sm" onClick={handleGenerate}>Générer</Button>
             </div>
-            {password && (
-              <PasswordStrengthBar password={password} />
+            {password && <PasswordStrengthBar password={password} />}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input placeholder="Catégorie (optionnel)" value={category} onChange={(e) => setCategory(e.target.value)} />
+            {app.projects.length > 0 && (
+              <select
+                value={projectId || ''}
+                onChange={(e) => setProjectId(e.target.value || null)}
+                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <option value="">Aucun projet lié</option>
+                {app.projects.filter((p) => p.status !== 'archived').map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             )}
           </div>
-          <Input placeholder="Catégorie (optionnel)" value={category} onChange={(e) => setCategory(e.target.value)} />
           <textarea
             placeholder="Notes (optionnel)"
             value={notes}
@@ -410,6 +447,21 @@ function EntryEditor({ entry, onSave, onCancel }: {
         </form>
       </CardContent>
     </Card>
+  )
+}
+
+function VaultFeature({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="flex gap-2 items-start">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary mt-0.5 shrink-0">
+        <circle cx="7" cy="7" r="6" />
+        <path d="M4 7l2 2 4-4" />
+      </svg>
+      <div>
+        <p className="font-medium text-foreground">{title}</p>
+        <p className="text-[10px] text-muted-foreground">{desc}</p>
+      </div>
+    </div>
   )
 }
 

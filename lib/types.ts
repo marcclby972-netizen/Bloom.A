@@ -180,6 +180,8 @@ export const CHANNELS: { value: Channel; label: string }[] = [
 
 export type ProjectStatus = 'idea' | 'in_progress' | 'done' | 'archived' | (string & {})
 
+export type ProjectRevenueType = 'one-time' | 'monthly' | 'quarterly' | 'annual'
+
 export type Project = {
   id: string
   name: string
@@ -190,6 +192,8 @@ export type Project = {
   linkedContactIds: string[]
   linkedPostIds: string[]
   revenue: number
+  /** When revenueType is recurring (monthly/quarterly/annual), `revenue` represents the recurring amount */
+  revenueType?: ProjectRevenueType
   collaborators: string[]
   categoryId?: string
   color?: string

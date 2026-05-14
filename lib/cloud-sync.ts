@@ -319,15 +319,39 @@ export function queueSettingsSync(settings: AppSettings) {
 }
 
 /**
- * Re-pull all data from cloud (no migration). Called on window focus.
+ * Re-pull all data from cloud, merging with local. Called on window focus.
+ * SAFETY: flushes pending writes first, then preserves local-only items.
  */
 export async function refreshFromCloud(): Promise<void> {
   if (!currentUserId) return
+  // Flush any pending writes so the cloud reflects the latest local changes
+  await flushPending()
+
   const client = getClient()
   for (const [entityKey, table] of Object.entries(ENTITY_TABLE_MAP) as [Exclude<EntityKey, 'settings'>, TableName][]) {
     const { data, error } = await client.from(table).select('*').eq('user_id', currentUserId)
     if (error) continue
-    const camelRows = (data || []).map((r: AnyRecord) => {
+    const cloudRows = (data || []) as AnyRecord[]
+    const cloudIds = new Set(cloudRows.map((r) => r.id as string).filter(Boolean))
+
+    // Preserve any local rows whose id isn't in the cloud yet (in flight writes)
+    const localRows = readLocal(KEYS[entityKey])
+    const localOnly = localRows.filter((r) => {
+      const id = (r as { id?: string }).id
+      return id && !cloudIds.has(id)
+    })
+
+    // If we have local-only items, push them up
+    if (localOnly.length > 0) {
+      const toUpsert = localOnly.map((r) => ({
+        ...camelToSnake(r as AnyRecord),
+        user_id: currentUserId,
+      }))
+      await client.from(table).upsert(toUpsert, { onConflict: 'id' })
+    }
+
+    const allRows = [...cloudRows, ...localOnly.map((r) => camelToSnake(r as AnyRecord))]
+    const camelRows = allRows.map((r) => {
       const { user_id, created_at, updated_at, ...rest } = r as Record<string, unknown>
       void user_id; void created_at; void updated_at
       return snakeToCamel(rest)

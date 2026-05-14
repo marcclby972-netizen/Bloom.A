@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { store } from '@/lib/store'
 import { applyTheme } from '@/components/ThemeProvider'
-import { DEFAULT_SETTINGS, AI_MODELS, INTEGRATION_PROVIDERS, FONT_OPTIONS, AI_NAME } from '@/lib/types'
+import { DEFAULT_SETTINGS, AI_MODELS, INTEGRATION_PROVIDERS, AI_NAME } from '@/lib/types'
 import type { AppSettings, Integration, AIModel, IntegrationStatus, Category } from '@/lib/types'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
@@ -692,56 +692,27 @@ function AppearanceSection({ settings, onSave }: { settings: AppSettings; onSave
         </CardHeader>
         <CardContent>
           <div>
-            <label className="text-xs font-medium">Mode d'affichage</label>
+            <label className="text-xs font-medium">Mode d&apos;affichage</label>
             <div className="flex gap-2 mt-1.5">
               {[
-                { value: 'light' as const, label: 'Clair', icon: '☀' },
-                { value: 'dark' as const, label: 'Sombre', icon: '🌙' },
-                { value: 'system' as const, label: 'Système', icon: '💻' },
+                { value: 'light' as const, label: 'Clair' },
+                { value: 'dark' as const, label: 'Sombre' },
+                { value: 'system' as const, label: 'Système' },
               ].map((t) => (
                 <button
                   key={t.value}
                   onClick={() => onSave({ ...settings, theme: t.value })}
                   className={cn(
-                    'flex-1 px-3 py-2 rounded-lg border text-center transition-colors',
+                    'flex-1 px-3 py-2 rounded-lg border text-xs font-medium transition-colors',
                     settings.theme === t.value
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:bg-muted'
+                      ? 'border-primary bg-primary/5 text-foreground'
+                      : 'border-border text-muted-foreground hover:bg-muted'
                   )}
                 >
-                  <div className="text-sm">{t.icon}</div>
-                  <div className="text-xs font-medium mt-0.5">{t.label}</div>
+                  {t.label}
                 </button>
               ))}
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Font */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Police</CardTitle>
-          <CardDescription>Choisissez la police de l'interface</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-2">
-            {FONT_OPTIONS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => onSave({ ...settings, font: f.value })}
-                className={cn(
-                  'rounded-lg border px-3 py-3 text-center transition-colors',
-                  settings.font === f.value
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:bg-muted'
-                )}
-              >
-                <div className="text-sm font-medium" style={{ fontFamily: f.cssVar }}>Aa Bb Cc</div>
-                <div className="text-xs font-medium mt-1">{f.label}</div>
-                <div className="text-[10px] text-muted-foreground">{f.description}</div>
-              </button>
-            ))}
           </div>
         </CardContent>
       </Card>

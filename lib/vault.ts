@@ -21,6 +21,7 @@ export type VaultEntry = {
   url: string
   notes: string
   category: string
+  projectId?: string
   createdAt: number
   updatedAt: number
 }

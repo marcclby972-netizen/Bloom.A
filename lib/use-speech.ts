@@ -95,16 +95,25 @@ export function useSpeech() {
           errorMsg = 'Accès au micro refusé. Autorise le micro dans les paramètres du navigateur.'
           break
         case 'no-speech':
-          errorMsg = 'Aucune voix détectée. Réessaie en parlant plus fort.'
+          errorMsg = 'Aucune voix détectée. Parle plus fort ou rapproche-toi du micro.'
           break
         case 'network':
-          errorMsg = 'Erreur réseau. Vérifie ta connexion internet.'
+          errorMsg = 'Erreur de connexion à Google Speech. La reconnaissance vocale nécessite Internet. Vérifie ta connexion ou utilise un autre navigateur (Chrome / Edge / Safari).'
+          break
+        case 'service-not-allowed':
+          errorMsg = 'Le service de reconnaissance vocale est bloqué. Utilise Chrome ou Edge.'
+          break
+        case 'audio-capture':
+          errorMsg = 'Aucun micro détecté. Vérifie que ton micro fonctionne.'
+          break
+        case 'language-not-supported':
+          errorMsg = 'Langue non supportée par le navigateur. Change la langue dans Paramètres → Voix.'
           break
         case 'aborted':
           // User stopped — not a real error
           return
         default:
-          errorMsg = `Erreur micro: ${event.error}`
+          errorMsg = `Erreur micro (${event.error}). Essaie de recharger la page.`
       }
       setState((s) => ({ ...s, error: errorMsg, isListening: false }))
     }

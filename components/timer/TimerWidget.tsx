@@ -89,12 +89,12 @@ export function TimerWidget() {
   return (
     <div className="border-t border-border bg-background shrink-0 relative">
       <div className="absolute top-0 left-0 right-0 h-px gradient-line" />
-      <div className="flex items-center gap-3 px-4 py-2">
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 overflow-x-auto">
         {/* Timer display */}
         <button
           onClick={() => setExpanded(!expanded)}
           className={cn(
-            'font-mono text-lg font-semibold tabular-nums tracking-wider transition-colors select-none',
+            'font-mono text-lg font-semibold tabular-nums tracking-wider transition-colors select-none shrink-0',
             isFlashing && 'animate-pulse text-red-500',
             isRunning && 'text-primary'
           )}
@@ -124,14 +124,8 @@ export function TimerWidget() {
           {!isRunning ? (
             <button
               onClick={timer.start}
-              disabled={!taskId}
-              className={cn(
-                'h-8 w-8 rounded-full flex items-center justify-center transition-all',
-                taskId
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95'
-                  : 'bg-muted text-muted-foreground cursor-not-allowed'
-              )}
-              title="Démarrer"
+              className="h-9 w-9 sm:h-8 sm:w-8 rounded-full flex items-center justify-center transition-all bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
+              title={taskId ? 'Démarrer' : 'Démarrer (timer libre)'}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
                 <path d="M3.5 1.8a.8.8 0 0 1 1.2-.7l8 5.2a.8.8 0 0 1 0 1.4l-8 5.2a.8.8 0 0 1-1.2-.7V1.8Z" />
@@ -167,19 +161,19 @@ export function TimerWidget() {
         </div>
 
         {/* Separator */}
-        <div className="h-5 w-px bg-border" />
+        <div className="h-5 w-px bg-border shrink-0" />
 
         {/* Current task */}
         <Popover>
           <PopoverTrigger
             render={
-              <button className="flex items-center gap-2 text-xs hover:bg-muted px-2 py-1.5 rounded-md transition-colors max-w-[200px]" />
+              <button className="flex items-center gap-2 text-xs hover:bg-muted px-2 py-1.5 rounded-md transition-colors max-w-[180px] sm:max-w-[200px] shrink-0" />
             }
           >
             {currentCategory && (
               <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: currentCategory.color }} />
             )}
-            <span className="truncate">{currentTask ? currentTask.title : 'Choisir une tâche...'}</span>
+            <span className="truncate">{currentTask ? currentTask.title : 'Tâche...'}</span>
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 text-muted-foreground">
               <path d="M2.5 4 5 6.5 7.5 4" />
             </svg>
@@ -261,7 +255,7 @@ export function TimerWidget() {
         <div className="flex-1" />
 
         {/* Mode toggle + expand */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => timer.setMode('stopwatch')}
             className={cn(
@@ -284,9 +278,9 @@ export function TimerWidget() {
 
         {timerMode === 'countdown' && (
           <>
-            <div className="h-5 w-px bg-border" />
-            {/* Quick presets */}
-            <div className="flex items-center gap-1">
+            <div className="h-5 w-px bg-border shrink-0 hidden sm:block" />
+            {/* Quick presets — hidden on small screens to avoid overflow */}
+            <div className="hidden sm:flex items-center gap-1 shrink-0">
               {[
                 { label: '5m', seconds: 300 },
                 { label: '15m', seconds: 900 },
@@ -309,8 +303,8 @@ export function TimerWidget() {
                 </button>
               ))}
             </div>
-            {/* Custom input */}
-            <div className="flex items-center gap-1">
+            {/* Custom input — hidden on small screens */}
+            <div className="hidden sm:flex items-center gap-1 shrink-0">
               <Input
                 type="number"
                 value={countdownHours}

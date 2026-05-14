@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useApp } from '@/lib/context'
 import { store } from '@/lib/store'
 import { PROJECT_STATUSES, CONTACT_STATUSES, PLATFORMS, TODO_PRIORITIES } from '@/lib/types'
-import type { Project, ProjectStatus, ProjectNote } from '@/lib/types'
+import type { Project, ProjectStatus, ProjectNote, ProjectRevenueType } from '@/lib/types'
 import { formatRelative } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,15 @@ function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+/** Convert a recurring revenue amount to its monthly equivalent (MRR). */
+function toMonthlyEquivalent(amount: number, type?: ProjectRevenueType): number {
+  if (!type || type === 'one-time') return 0
+  if (type === 'monthly') return amount
+  if (type === 'quarterly') return amount / 3
+  if (type === 'annual') return amount / 12
+  return 0
 }
 
 // ── Main Page ──
@@ -399,17 +408,35 @@ function OverviewTab({ project }: { project: Project }) {
           <StatCard label="Taches" value={`${stats?.tasksDone ?? 0}/${stats?.tasksCount ?? 0}`} />
           <StatCard label="Contacts lies" value={String(stats?.contactsCount ?? 0)} />
           <StatCard label="Posts marketing" value={String(stats?.postsCount ?? 0)} />
-          <div className="rounded-lg border border-border bg-muted/20 p-3">
-            <div className="text-[10px] text-muted-foreground mb-1">Revenue</div>
-            <Input
-              value={revenueValue}
-              onChange={(e) => setRevenueValue(e.target.value)}
-              onBlur={saveRevenue}
-              onKeyDown={(e) => e.key === 'Enter' && saveRevenue()}
-              className="h-7 text-sm font-semibold px-1"
-              type="number"
-            />
-            <div className="text-[10px] text-muted-foreground mt-0.5">EUR</div>
+          <div className="rounded-lg border border-border bg-muted/20 p-3 col-span-2">
+            <div className="text-[10px] text-muted-foreground mb-1">Revenu</div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={revenueValue}
+                onChange={(e) => setRevenueValue(e.target.value)}
+                onBlur={saveRevenue}
+                onKeyDown={(e) => e.key === 'Enter' && saveRevenue()}
+                className="h-7 text-sm font-semibold px-1 flex-1"
+                type="number"
+                step="0.01"
+              />
+              <select
+                value={project.revenueType || 'one-time'}
+                onChange={(e) => app.updateProject(project.id, { revenueType: e.target.value as ProjectRevenueType })}
+                className="h-7 rounded-md border border-input bg-transparent px-2 text-xs outline-none"
+              >
+                <option value="one-time">Ponctuel</option>
+                <option value="monthly">/mois (MRR)</option>
+                <option value="quarterly">/trimestre</option>
+                <option value="annual">/an (ARR)</option>
+              </select>
+            </div>
+            {project.revenueType && project.revenueType !== 'one-time' && (
+              <div className="text-[10px] text-muted-foreground mt-1">
+                MRR équivalent : <strong>{toMonthlyEquivalent(project.revenue || 0, project.revenueType).toFixed(2)} €</strong>
+                · ARR : <strong>{(toMonthlyEquivalent(project.revenue || 0, project.revenueType) * 12).toFixed(0)} €</strong>
+              </div>
+            )}
           </div>
           <StatCard label="Ad Spend" value={`${(stats?.totalSpend ?? 0).toFixed(2)} EUR`} />
         </div>
@@ -603,8 +630,9 @@ function NoteEditor({ note }: { note: ProjectNote }) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onBlur={saveContent}
-        placeholder="Ecrivez ici..."
-        className="flex-1 resize-none border-none shadow-none px-0 focus-visible:ring-0 text-sm"
+        placeholder="Écris ici..."
+        className="flex-1 resize-none border-none shadow-none px-0 focus-visible:ring-0 text-sm leading-relaxed py-3 whitespace-pre-wrap font-normal"
+        style={{ lineHeight: '1.7', letterSpacing: '0.01em' }}
       />
     </div>
   )
@@ -1187,7 +1215,7 @@ function StatsTab({ project }: { project: Project }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatKpi label="Posts" value={stats.postsCount} />
             <StatKpi label="Impressions" value={stats.totalImpressions.toLocaleString()} />
-            <StatKpi label="Engagement" value={engagement.toLocaleString()} hint={`${stats.totalLikes} 👍 · ${stats.totalComments} 💬 · ${stats.totalShares} ↗`} />
+            <StatKpi label="Engagement" value={engagement.toLocaleString()} hint={`${stats.totalLikes} likes · ${stats.totalComments} commentaires · ${stats.totalShares} partages`} />
             <StatKpi label="CTR" value={`${ctr.toFixed(2)}%`} hint={`${stats.totalClicks} clics`} />
           </div>
         </div>

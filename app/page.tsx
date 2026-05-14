@@ -66,9 +66,37 @@ export default function DashboardPage() {
       .map((p) => ({ project: p, revenue: p.revenue || 0 }))
       .filter((r) => r.revenue > 0)
       .sort((a, b) => b.revenue - a.revenue)
-    return { totalRevenue, totalAdSpend, netProfit, byProject }
+
+    // MRR/ARR (recurring revenue only)
+    let totalMRR = 0
+    const mrrByProject: { project: typeof projects[number]; mrr: number }[] = []
+    for (const p of projects) {
+      const t = p.revenueType
+      if (!t || t === 'one-time') continue
+      const mrr = t === 'monthly' ? (p.revenue || 0)
+        : t === 'quarterly' ? (p.revenue || 0) / 3
+        : t === 'annual' ? (p.revenue || 0) / 12
+        : 0
+      if (mrr > 0) {
+        totalMRR += mrr
+        mrrByProject.push({ project: p, mrr })
+      }
+    }
+    mrrByProject.sort((a, b) => b.mrr - a.mrr)
+    const totalARR = totalMRR * 12
+
+    // Ads vs revenue cross-data (per project)
+    const adsVsRevenue = projects.map((p) => {
+      const projectPosts = posts.filter((post) => post.projectId === p.id || (p.linkedPostIds || []).includes(post.id))
+      const adSpend = projectPosts.reduce((s, post) => s + (post.metrics.spend || 0), 0)
+      const revenue = p.revenue || 0
+      return { project: p, adSpend, revenue, roi: adSpend > 0 ? ((revenue - adSpend) / adSpend) * 100 : null }
+    }).filter((r) => r.adSpend > 0 || r.revenue > 0).sort((a, b) => (b.revenue + b.adSpend) - (a.revenue + a.adSpend))
+
+    return { totalRevenue, totalAdSpend, netProfit, byProject, totalMRR, totalARR, mrrByProject, adsVsRevenue }
   }, [projects, posts])
   const maxProjectRevenue = revenueStats.byProject[0]?.revenue || 1
+  const maxCrossValue = Math.max(...revenueStats.adsVsRevenue.flatMap((r) => [r.adSpend, r.revenue]), 1)
 
   return (
     <div className="flex flex-col h-full overflow-auto">
@@ -127,6 +155,101 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* MRR / ARR */}
+        {revenueStats.totalMRR > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <Card className="border-primary/40 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-muted-foreground">MRR — Revenu récurrent mensuel</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold tabular-nums">{revenueStats.totalMRR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {revenueStats.mrrByProject.length} projet{revenueStats.mrrByProject.length > 1 ? 's' : ''} avec revenu récurrent
+                </div>
+                {revenueStats.mrrByProject.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {revenueStats.mrrByProject.slice(0, 4).map(({ project, mrr }) => (
+                      <div key={project.id} className="flex items-center gap-2 text-xs">
+                        {project.color && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: project.color }} />}
+                        <span className="truncate flex-1">{project.name}</span>
+                        <span className="font-medium tabular-nums shrink-0">{mrr.toFixed(0)} €/mo</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-muted-foreground">ARR — Revenu récurrent annuel</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold tabular-nums">{revenueStats.totalARR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Projection annuelle sur la base du MRR actuel
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Par mois : <strong>{revenueStats.totalMRR.toFixed(0)} €</strong>
+                  · Par jour : <strong>{(revenueStats.totalMRR / 30).toFixed(2)} €</strong>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Ads vs Revenue cross-chart */}
+        {revenueStats.adsVsRevenue.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Ad spend vs revenu par projet</CardTitle>
+              <span className="text-[10px] text-muted-foreground">
+                Croise les dépenses publicitaires (posts liés au projet) avec le revenu généré
+              </span>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {revenueStats.adsVsRevenue.map(({ project, adSpend, revenue, roi }) => (
+                  <div key={project.id} className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs">
+                      {project.color && <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />}
+                      <span className="truncate flex-1 font-medium">{project.name}</span>
+                      {roi !== null && (
+                        <span className={cn(
+                          'text-[10px] font-medium px-1.5 py-0.5 rounded',
+                          roi >= 0 ? 'text-green-700 bg-green-100 dark:bg-green-950/40 dark:text-green-400' : 'text-red-700 bg-red-100 dark:bg-red-950/40 dark:text-red-400'
+                        )}>
+                          ROI {roi.toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                    {/* Ad spend bar */}
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="w-16 text-[10px] text-muted-foreground shrink-0">Ad spend</span>
+                      <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-red-400 dark:bg-red-500" style={{ width: `${(adSpend / maxCrossValue) * 100}%` }} />
+                      </div>
+                      <span className="font-medium tabular-nums shrink-0 w-16 text-right">{adSpend.toFixed(0)} €</span>
+                    </div>
+                    {/* Revenue bar */}
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="w-16 text-[10px] text-muted-foreground shrink-0">Revenu</span>
+                      <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-green-500" style={{ width: `${(revenue / maxCrossValue) * 100}%` }} />
+                      </div>
+                      <span className="font-medium tabular-nums shrink-0 w-16 text-right">{revenue.toFixed(0)} €</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-400" /> Dépenses ads</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500" /> Revenu</span>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Row 1: Quick stats */}

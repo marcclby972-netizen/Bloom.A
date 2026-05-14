@@ -76,7 +76,7 @@ export default function ContactDetailPage() {
               <CardTitle className="text-xs font-medium text-muted-foreground">Coordonnées</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
-              {contact.phone && <div>📱 {contact.phone}</div>}
+              {contact.phone && <div>Tél : {contact.phone}</div>}
               {contact.email && <div>📧 {contact.email}</div>}
               {contact.instagram && <div>📸 @{contact.instagram}</div>}
               {!contact.phone && !contact.email && !contact.instagram && (
