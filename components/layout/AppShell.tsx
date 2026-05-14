@@ -7,8 +7,11 @@ import { Sidebar } from './Sidebar'
 import { TimerWidget } from '@/components/timer/TimerWidget'
 import { ChatPanel } from '@/components/ai/ChatPanel'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { CookieBanner } from '@/components/cookies/CookieBanner'
 
 const PUBLIC_ROUTES = ['/login']
+// Routes légales — full-width sans sidebar mais doivent garder la bannière cookies
+const LEGAL_ROUTES = ['/privacy', '/terms', '/cookies']
 
 function MobileHeader() {
   const { setMobileMenuOpen, chatOpen, setChatOpen } = useApp()
@@ -71,9 +74,25 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { chatOpen } = useApp()
 
-  // Public routes (login, etc.) render without the app shell
+  // Public routes (login, etc.) render without the app shell, but still need the
+  // cookie banner so visitors landing on a public page can consent.
   if (PUBLIC_ROUTES.includes(pathname)) {
-    return <>{children}</>
+    return (
+      <>
+        {children}
+        <CookieBanner />
+      </>
+    )
+  }
+
+  // Legal routes render full-width (no sidebar/timer/chat) but keep the banner.
+  if (LEGAL_ROUTES.includes(pathname)) {
+    return (
+      <>
+        {children}
+        <CookieBanner />
+      </>
+    )
   }
 
   return (
@@ -88,6 +107,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       </div>
       {chatOpen && <ChatPanel />}
       <DesktopBell />
+      <CookieBanner />
     </div>
   )
 }

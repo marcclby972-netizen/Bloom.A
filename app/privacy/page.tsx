@@ -123,8 +123,15 @@ export default function PrivacyPage() {
 
         <Section title="5. Cookies and tracking">
           <p>
-            Bloom uses essential cookies (set by Supabase) to keep you signed in. We do not
-            use third-party analytics, advertising trackers, or fingerprinting.
+            Bloom uses essential cookies (set by Supabase) to keep you signed in, plus
+            optional functional storage in your browser to remember your interface
+            preferences. We do not use third-party analytics, advertising trackers, or
+            fingerprinting.
+          </p>
+          <p>
+            For an exhaustive list of every cookie and storage entry we use, including
+            their purpose and duration, and to manage your consent at any time, see our
+            dedicated <a href="/cookies" className="text-primary hover:underline">Cookies Policy</a>.
           </p>
         </Section>
 

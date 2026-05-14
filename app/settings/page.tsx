@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { store } from '@/lib/store'
 import { getSyncStatus, subscribeSyncStatus, refreshFromCloudWithStatus, flushPending } from '@/lib/cloud-sync'
 import { formatRelative } from '@/lib/date-utils'
+import { getCookiePreferences, resetConsent, subscribeCookiePrefs } from '@/lib/cookies'
+import { CookiePreferencesModal } from '@/components/cookies/CookiePreferencesModal'
 import { applyTheme } from '@/components/ThemeProvider'
 import { DEFAULT_SETTINGS, AI_MODELS, INTEGRATION_PROVIDERS, AI_NAME } from '@/lib/types'
 import type { AppSettings, Integration, AIModel, IntegrationStatus, Category } from '@/lib/types'
@@ -1045,11 +1047,14 @@ function DataSection() {
   const [syncing, setSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState(() => getSyncStatus())
   const [cacheConfirm, setCacheConfirm] = useState(false)
+  const [cookiePrefsOpen, setCookiePrefsOpen] = useState(false)
+  const [cookiePrefs, setCookiePrefs] = useState(() => getCookiePreferences())
 
   useEffect(() => {
     setStorageInfo(store.getStorageSize())
     const unsub = subscribeSyncStatus(() => setSyncStatus(getSyncStatus()))
-    return unsub
+    const unsubCookies = subscribeCookiePrefs(() => setCookiePrefs(getCookiePreferences()))
+    return () => { unsub(); unsubCookies() }
   }, [])
 
   const handleSyncNow = async () => {
@@ -1239,6 +1244,48 @@ function DataSection() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-sm">Cookies & confidentialité</CardTitle>
+          <CardDescription>
+            Gérez votre consentement aux cookies et technologies de stockage utilisés par Bloom.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <CookieStatusPill label="Essentiels" active locked />
+            <CookieStatusPill label="Fonctionnels" active={cookiePrefs.functional} />
+            <CookieStatusPill label="Audience" active={cookiePrefs.analytics} />
+            <CookieStatusPill label="Marketing" active={cookiePrefs.marketing} />
+          </div>
+
+          <div className="text-[11px] text-muted-foreground">
+            {cookiePrefs.consentedAt
+              ? <>Consentement enregistré {formatRelative(cookiePrefs.consentedAt)}</>
+              : <>Aucun consentement enregistré pour le moment</>}
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button size="sm" variant="outline" onClick={() => setCookiePrefsOpen(true)}>
+              Personnaliser
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => resetConsent()}>
+              Réinitialiser le consentement
+            </Button>
+            <a
+              href="/cookies"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-xs text-primary hover:underline px-2 py-1.5"
+            >
+              Politique cookies →
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+
+      <CookiePreferencesModal open={cookiePrefsOpen} onClose={() => setCookiePrefsOpen(false)} />
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-sm text-red-600">Zone de danger</CardTitle>
         </CardHeader>
         <CardContent>
@@ -1284,6 +1331,25 @@ function SettingRow({ label, description, children }: { label: string; descripti
         <p className="text-[10px] text-muted-foreground">{description}</p>
       </div>
       {children}
+    </div>
+  )
+}
+
+function CookieStatusPill({ label, active, locked }: { label: string; active: boolean; locked?: boolean }) {
+  return (
+    <div className={cn(
+      'rounded-md border px-2 py-1.5 flex flex-col items-start',
+      active
+        ? 'border-primary/30 bg-primary/5'
+        : 'border-border bg-background'
+    )}>
+      <span className="text-[10px] text-muted-foreground">{label}</span>
+      <span className={cn(
+        'text-[11px] font-medium mt-0.5',
+        active ? 'text-primary' : 'text-muted-foreground'
+      )}>
+        {locked ? 'Toujours actif' : active ? 'Activé' : 'Désactivé'}
+      </span>
     </div>
   )
 }
