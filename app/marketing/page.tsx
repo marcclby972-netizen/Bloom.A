@@ -6,6 +6,7 @@ import { PLATFORMS } from '@/lib/types'
 import { formatDateFr } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
 import { PostEditor } from '@/components/marketing/PostEditor'
+import { SocialImportModal } from '@/components/marketing/SocialImportModal'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -22,6 +23,7 @@ export default function MarketingPage() {
   const [tab, setTab] = useState<Tab>('posts')
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingPost, setEditingPost] = useState<Post | undefined>()
+  const [importOpen, setImportOpen] = useState(false)
 
   const handleEdit = (post: Post) => {
     setEditingPost(post)
@@ -59,12 +61,22 @@ export default function MarketingPage() {
             ))}
           </div>
         </div>
-        <Button onClick={handleNew} className="gap-1.5">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M7 1v12M1 7h12" />
-          </svg>
-          Nouveau post
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setImportOpen(true)} variant="outline" className="gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 1v8" />
+              <path d="M3.5 5.5L7 9l3.5-3.5" />
+              <path d="M2 12h10" />
+            </svg>
+            Importer
+          </Button>
+          <Button onClick={handleNew} className="gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M7 1v12M1 7h12" />
+            </svg>
+            Nouveau post
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-6">
@@ -76,6 +88,7 @@ export default function MarketingPage() {
       </div>
 
       <PostEditor open={editorOpen} onClose={() => { setEditorOpen(false); setEditingPost(undefined) }} post={editingPost} />
+      <SocialImportModal open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   )
 }
