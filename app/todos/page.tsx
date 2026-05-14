@@ -440,13 +440,20 @@ export default function TodosPage() {
                     ) : (
                       <span
                         className={cn(
-                          'text-sm cursor-pointer',
+                          'text-sm cursor-pointer flex items-center gap-1.5',
                           todo.done && 'line-through text-muted-foreground',
                           overdue && !todo.done && 'text-red-700 dark:text-red-400 font-medium'
                         )}
                         onDoubleClick={() => startEdit(todo.id, todo.title)}
                       >
-                        {todo.title}
+                        {todo.linkedTaskId && (
+                          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0" aria-label="Lié à un événement agenda">
+                            <rect x="1.5" y="2" width="8" height="7.5" rx="1" />
+                            <path d="M1.5 4h8" />
+                            <path d="M4 1v2M7 1v2" />
+                          </svg>
+                        )}
+                        <span>{todo.title}</span>
                       </span>
                     )}
                     {todo.date && !todo.done && (

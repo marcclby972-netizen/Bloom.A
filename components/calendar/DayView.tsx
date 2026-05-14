@@ -208,8 +208,14 @@ export function DayView() {
               )}
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className={cn('font-medium truncate', task.status === 'done' && 'line-through')}>
-                    {task.title}
+                  <div className={cn('font-medium truncate flex items-center gap-1', task.status === 'done' && 'line-through')}>
+                    {task.linkedTodoId && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0" aria-label="To-do lié">
+                        <rect x="1" y="1" width="8" height="8" rx="1.5" />
+                        <path d="M3 5l1.5 1.5L7 4" />
+                      </svg>
+                    )}
+                    <span className="truncate">{task.title}</span>
                   </div>
                   <div className="text-muted-foreground">
                     {task.startTime} - {task.endTime}

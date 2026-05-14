@@ -127,8 +127,19 @@ function updateTask(id: string, updates: Partial<Omit<Task, 'id'>>): Task | null
 }
 
 function deleteTask(id: string) {
+  // Also remove the linked todo (if any) and unlink reverse references
+  const task = getTasks().find((t) => t.id === id)
   write(KEYS.tasks, getTasks().filter((t) => t.id !== id))
   write(KEYS.timeEntries, getTimeEntries().filter((e) => e.taskId !== id))
+  if (task?.linkedTodoId) {
+    const todos = read<TodoItem>(KEYS.todos)
+    // Unlink the todo (don't delete it — user may want to keep it)
+    const idx = todos.findIndex((t) => t.id === task.linkedTodoId)
+    if (idx !== -1) {
+      todos[idx] = { ...todos[idx], linkedTaskId: undefined }
+      write(KEYS.todos, todos)
+    }
+  }
 }
 
 // ── Categories ──
@@ -699,15 +710,16 @@ function updateTodo(id: string, updates: Partial<Omit<TodoItem, 'id' | 'createdA
 function createTaskWithTodo(task: Omit<Task, 'id'>, autoCreateTodo: boolean): Task {
   const newTask = createTask(task)
   if (autoCreateTodo) {
-    const todo = createTodo({
+    const todoData: Omit<TodoItem, 'id' | 'createdAt'> = {
       title: task.title,
       done: task.status === 'done',
       date: task.date,
       priority: 'medium',
-      projectId: task.projectId,
       linkedTaskId: newTask.id,
-    })
-    // Update task with linkedTodoId
+    }
+    if (task.projectId) todoData.projectId = task.projectId
+    const todo = createTodo(todoData)
+    // Update task with linkedTodoId so the reverse sync works
     updateTask(newTask.id, { linkedTodoId: todo.id })
     return { ...newTask, linkedTodoId: todo.id }
   }
@@ -715,7 +727,17 @@ function createTaskWithTodo(task: Omit<Task, 'id'>, autoCreateTodo: boolean): Ta
 }
 
 function deleteTodo(id: string) {
+  // Unlink the reverse reference on linked task (if any)
+  const todo = read<TodoItem>(KEYS.todos).find((t) => t.id === id)
   write(KEYS.todos, read<TodoItem>(KEYS.todos).filter((t) => t.id !== id))
+  if (todo?.linkedTaskId) {
+    const tasks = getTasks()
+    const idx = tasks.findIndex((t) => t.id === todo.linkedTaskId)
+    if (idx !== -1) {
+      tasks[idx] = { ...tasks[idx], linkedTodoId: undefined }
+      write(KEYS.tasks, tasks)
+    }
+  }
 }
 
 // ── Settings ──

@@ -80,7 +80,7 @@ export function TaskEditor({ open, onClose, task, defaultDate, defaultStartTime 
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{task ? 'Modifier la tâche' : 'Nouvelle tâche'}</DialogTitle>
         </DialogHeader>
@@ -91,6 +91,48 @@ export function TaskEditor({ open, onClose, task, defaultDate, defaultStartTime 
             onChange={(e) => setTitle(e.target.value)}
             autoFocus
           />
+
+          {/* Auto-create todo toggle — prominent placement */}
+          {!task && (
+            <button
+              type="button"
+              onClick={() => setAutoCreateTodo(!autoCreateTodo)}
+              className={cn(
+                'w-full flex items-center gap-3 rounded-xl border p-3 transition-all text-left',
+                autoCreateTodo
+                  ? 'border-primary/40 bg-primary/5'
+                  : 'border-border bg-muted/30 hover:bg-muted/50'
+              )}
+            >
+              <div
+                className={cn(
+                  'relative h-5 w-9 rounded-full transition-colors shrink-0',
+                  autoCreateTodo ? 'bg-primary' : 'bg-muted-foreground/30'
+                )}
+              >
+                <span
+                  className={cn(
+                    'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+                    autoCreateTodo ? 'translate-x-[18px]' : 'translate-x-0.5'
+                  )}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium flex items-center gap-1.5">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                    <rect x="1.5" y="1.5" width="9" height="9" rx="1.5" />
+                    <path d="M3.5 6l1.5 1.5L8.5 4" />
+                  </svg>
+                  {autoCreateTodo ? 'Créer aussi un to-do lié' : 'Pas de to-do automatique'}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {autoCreateTodo
+                    ? 'Un to-do sera ajouté à ta liste. Validation synchronisée avec la tâche.'
+                    : 'Seulement un événement calendrier sera créé.'}
+                </p>
+              </div>
+            </button>
+          )}
 
           <Textarea
             placeholder="Description (optionnel)"
@@ -171,18 +213,6 @@ export function TaskEditor({ open, onClose, task, defaultDate, defaultStartTime 
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Tags</label>
             <TagInput value={tags} onChange={setTags} placeholder="Ajouter un tag (Entrée ou virgule)..." />
           </div>
-
-          {!task && (
-            <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={autoCreateTodo}
-                onChange={(e) => setAutoCreateTodo(e.target.checked)}
-                className="h-3.5 w-3.5 rounded accent-primary"
-              />
-              <span className="text-muted-foreground">Créer aussi un to-do lié (validation synchronisée)</span>
-            </label>
-          )}
 
           <div className="flex justify-between pt-2">
             {task && (
