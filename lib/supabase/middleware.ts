@@ -32,11 +32,13 @@ export async function updateSession(request: NextRequest) {
   // Public routes that don't require auth
   const isLoginPage = request.nextUrl.pathname === '/login'
   const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/')
+  const isLegalPage = request.nextUrl.pathname === '/privacy' || request.nextUrl.pathname === '/terms'
   const isPublicAsset = request.nextUrl.pathname.startsWith('/_next') ||
     request.nextUrl.pathname.startsWith('/assets') ||
     request.nextUrl.pathname.startsWith('/api/auth') ||
     request.nextUrl.pathname === '/favicon.ico' ||
-    request.nextUrl.pathname === '/bloom-logo.png'
+    request.nextUrl.pathname === '/bloom-logo.png' ||
+    isLegalPage
 
   if (isPublicAsset || isAuthCallback) {
     return supabaseResponse
