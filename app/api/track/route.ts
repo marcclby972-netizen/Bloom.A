@@ -13,15 +13,20 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders })
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}))
     const { siteId, eventType = 'pageview', path, referrer, sessionId } = body
-    if (!siteId || typeof siteId !== 'string') {
-      return NextResponse.json({ error: 'siteId required' }, { status: 400, headers: corsHeaders })
+    if (!siteId || typeof siteId !== 'string' || !UUID_RE.test(siteId)) {
+      return NextResponse.json({ error: 'Invalid siteId' }, { status: 400, headers: corsHeaders })
+    }
+    if (typeof eventType !== 'string' || eventType.length > 100) {
+      return NextResponse.json({ error: 'Invalid eventType' }, { status: 400, headers: corsHeaders })
     }
 
-    // Use service-less Supabase client (no auth needed for inserts due to RLS policy)
+    // Use service-less Supabase client (no auth — RLS policy allows anon insert)
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
