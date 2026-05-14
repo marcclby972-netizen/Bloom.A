@@ -217,19 +217,47 @@ export default function StatsPage() {
           </CardHeader>
           <CardContent>
             {weekComparison.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={weekComparison}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
-                  <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" unit="min" />
-                  <RechartsTooltip
-                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)' }}
-                    formatter={(value) => [`${value} min`]}
-                  />
-                  <Bar dataKey="lastSemaine" name="Semaine précédente" fill="#d1d5db" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="thisSemaine" name="Cette semaine" fill="oklch(0.55 0.17 50)" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={weekComparison}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
+                    <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" unit="min" />
+                    <RechartsTooltip
+                      contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)' }}
+                      formatter={(value) => [`${value} min`]}
+                    />
+                    <Bar dataKey="lastSemaine" name="Semaine précédente" radius={[3, 3, 0, 0]}>
+                      {weekComparison.map((entry) => (
+                        <Cell key={`prev-${entry.name}`} fill={entry.color} fillOpacity={0.35} />
+                      ))}
+                    </Bar>
+                    <Bar dataKey="thisSemaine" name="Cette semaine" radius={[3, 3, 0, 0]}>
+                      {weekComparison.map((entry) => (
+                        <Cell key={`curr-${entry.name}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                {/* Legend */}
+                <div className="flex flex-wrap gap-3 mt-2 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-sm bg-foreground/30" />
+                    <span>Semaine précédente (translucide)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-sm bg-foreground" />
+                    <span>Cette semaine (plein)</span>
+                  </div>
+                  <div className="flex-1" />
+                  {weekComparison.map((entry) => (
+                    <div key={entry.name} className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                      <span>{entry.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
                 Aucune donnée pour cette période
