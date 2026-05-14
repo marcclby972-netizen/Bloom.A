@@ -343,7 +343,5 @@ export const INTEGRATION_PROVIDERS = [
   { id: 'notion', name: 'Notion', icon: 'doc', category: 'productivity', description: 'Importer/exporter des notes' },
   { id: 'stripe', name: 'Stripe', icon: 'card', category: 'finance', description: 'Synchroniser les revenus de tes projets' },
   { id: 'youtube', name: 'YouTube', icon: 'youtube', category: 'social', description: 'Synchroniser vues, likes, commentaires de tes vidéos' },
-  { id: 'meta', name: 'Meta (Instagram + Facebook)', icon: 'meta', category: 'social', description: 'Synchroniser posts IG/FB et ad spend' },
-  { id: 'tiktok', name: 'TikTok', icon: 'tiktok', category: 'social', description: 'Synchroniser vues, likes, partages de tes vidéos' },
-  { id: 'linkedin', name: 'LinkedIn', icon: 'linkedin', category: 'social', description: 'Synchroniser posts et campagnes publicitaires' },
+  { id: 'linkedin', name: 'LinkedIn', icon: 'linkedin', category: 'social', description: 'Publier et planifier des posts depuis ton profil personnel' },
 ] as const

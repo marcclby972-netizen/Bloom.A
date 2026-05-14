@@ -6,16 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-type Platform = 'overview' | 'youtube' | 'meta' | 'tiktok' | 'linkedin'
+type Platform = 'overview' | 'youtube' | 'linkedin'
 
 const SESSION_KEY = 'bloom_guide_unlocked'
 
 const PLATFORMS: { id: Platform; label: string; difficulty: string; time: string; reviewTime: string }[] = [
   { id: 'overview', label: "Vue d'ensemble", difficulty: '—', time: '—', reviewTime: '—' },
   { id: 'youtube', label: 'YouTube', difficulty: 'Facile', time: '10 min', reviewTime: 'Instant' },
-  { id: 'meta', label: 'Meta (IG+FB)', difficulty: 'Moyen', time: '1-2 h', reviewTime: '1-3 semaines' },
-  { id: 'tiktok', label: 'TikTok', difficulty: 'Moyen', time: '45 min', reviewTime: '1-3 semaines' },
-  { id: 'linkedin', label: 'LinkedIn', difficulty: 'Difficile', time: '1 h', reviewTime: '2-4 semaines' },
+  { id: 'linkedin', label: 'LinkedIn', difficulty: 'Facile', time: '15 min', reviewTime: 'Instant' },
 ]
 
 export default function IntegrationsGuidePage() {
@@ -87,8 +85,6 @@ export default function IntegrationsGuidePage() {
         <div className="max-w-3xl mx-auto">
           {activePlatform === 'overview' && <Overview origin={origin} />}
           {activePlatform === 'youtube' && <YouTubeGuide origin={origin} />}
-          {activePlatform === 'meta' && <MetaGuide origin={origin} />}
-          {activePlatform === 'tiktok' && <TikTokGuide origin={origin} />}
           {activePlatform === 'linkedin' && <LinkedInGuide origin={origin} />}
         </div>
       </div>
@@ -346,191 +342,6 @@ function YouTubeGuide({ origin }: { origin: string }) {
     </div>
   )
 }
-
-// ════════════════════════════════════════════════════════════════════════
-// Meta guide
-// ════════════════════════════════════════════════════════════════════════
-
-function MetaGuide({ origin }: { origin: string }) {
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Meta (Instagram + Facebook)</CardTitle>
-          <CardDescription>Plus complexe : Business Verification + App Review pour la production. 1-2 h de setup + 1-2 semaines de review.</CardDescription>
-        </CardHeader>
-      </Card>
-
-      <div>
-        <Step num={1} title="Prérequis obligatoires">
-          <p>Avant tout, il te faut :</p>
-          <ul className="list-disc list-inside ml-2 space-y-1">
-            <li>Un <strong>compte Facebook</strong> personnel</li>
-            <li>Un <strong>compte Instagram Business ou Creator</strong> (pas perso !) lié à une <strong>Page Facebook</strong></li>
-          </ul>
-          <Info>
-            Sur l&apos;app Instagram → Paramètres → Compte → <strong>Passer à un compte professionnel</strong>.<br />
-            Sur Facebook → Créer une <strong>Page</strong> (pas un profil perso) → Paramètres → Instagram → connecte ton IG.
-          </Info>
-        </Step>
-
-        <Step num={2} title="Compte Business Meta">
-          <p>Va sur <ExtLink href="https://business.facebook.com/">business.facebook.com</ExtLink></p>
-          <p><strong>Créer un compte</strong> → renseigne le nom de ton business</p>
-          <p>Note ton <strong>Business ID</strong>.</p>
-        </Step>
-
-        <Step num={3} title="Créer l'App Meta">
-          <p>Va sur <ExtLink href="https://developers.facebook.com/apps">developers.facebook.com/apps</ExtLink></p>
-          <p><strong>Créer une app</strong> → type <strong>Business</strong></p>
-          <p>Nom de l&apos;app : <code className="bg-muted px-1 rounded">Bloom</code></p>
-          <p>Email : ton email</p>
-          <p>Compte Business : celui que tu viens de créer</p>
-          <p><strong>Créer</strong></p>
-        </Step>
-
-        <Step num={4} title="Ajouter les produits">
-          <p>Dans le dashboard de l&apos;app :</p>
-          <p><strong>Facebook Login for Business</strong> → <strong>Configurer</strong></p>
-          <p>Valid OAuth Redirect URIs :</p>
-          <CodeBlock value={`${origin}/api/auth/meta/callback`} label="Callback prod" />
-          <CodeBlock value="http://localhost:3000/api/auth/meta/callback" label="Localhost (dev)" />
-          <p>Ajoute aussi :</p>
-          <ul className="list-disc list-inside ml-2 space-y-0.5">
-            <li><strong>Marketing API</strong> (pour les ad spend)</li>
-            <li><strong>Instagram Graph API</strong> (automatique avec Facebook Login)</li>
-          </ul>
-        </Step>
-
-        <Step num={5} title="Copier les credentials">
-          <p>Menu de gauche → <strong>App settings</strong> → <strong>Basic</strong></p>
-          <p>Note :</p>
-          <ul className="list-disc list-inside ml-2 space-y-0.5">
-            <li><strong>App ID</strong> → <code className="bg-muted px-1 rounded">META_APP_ID</code></li>
-            <li><strong>App secret</strong> → clique <strong>Show</strong> → <code className="bg-muted px-1 rounded">META_APP_SECRET</code></li>
-          </ul>
-          <p><strong>App Domains</strong> : ajoute le domaine sans `https://`</p>
-          <CodeBlock value={origin.replace(/^https?:\/\//, '')} label="App Domain" />
-          <p><strong>Privacy Policy URL</strong> : obligatoire — mets <code className="bg-muted px-1 rounded">{origin}/privacy</code></p>
-          <p><strong>Save changes</strong> en bas.</p>
-        </Step>
-
-        <Step num={6} title="Permissions et App Review">
-          <p>Pour les permissions sensibles (<code className="bg-muted px-1 rounded">ads_read</code>, <code className="bg-muted px-1 rounded">instagram_manage_insights</code>) :</p>
-          <p>Menu → <strong>App Review</strong> → <strong>Permissions and Features</strong></p>
-          <p>Pour chaque permission → <strong>Request</strong> → remplir le formulaire :</p>
-          <ul className="list-disc list-inside ml-2 space-y-0.5">
-            <li>Explication de l&apos;usage</li>
-            <li>Vidéo de démonstration (Loom suffit, 2-3 min)</li>
-            <li>Confirmation que tu respectes les Platform Terms</li>
-          </ul>
-          <Warning>
-            En mode Development, ça marche uniquement pour ton compte et les comptes ajoutés en testeurs (Roles → Roles → Add People → Tester). Production = review obligatoire (1-3 semaines).
-          </Warning>
-        </Step>
-
-        <Step num={7} title="Variables Vercel + Connecter">
-          <p>Vercel → Settings → Environment Variables :</p>
-          <ul className="list-disc list-inside ml-2 space-y-0.5">
-            <li><code className="bg-muted px-1 rounded">META_APP_ID</code></li>
-            <li><code className="bg-muted px-1 rounded">META_APP_SECRET</code></li>
-          </ul>
-          <p>Redéploie → Bloom → Paramètres → Intégrations → <strong>Meta</strong> → <strong>Connecter Meta</strong></p>
-        </Step>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Pièges fréquents</CardTitle>
-        </CardHeader>
-        <CardContent className="text-xs space-y-2 text-muted-foreground">
-          <p><strong>« URL Blocked »</strong> → l&apos;URL de callback n&apos;est pas exactement dans la liste Valid OAuth Redirect URIs.</p>
-          <p><strong>« Insufficient permissions »</strong> → ton compte IG n&apos;est pas Business.</p>
-          <p><strong>« App not active »</strong> → tu n&apos;as pas mis ton mode sur Live ou pas ajouté de testeur.</p>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-// ════════════════════════════════════════════════════════════════════════
-// TikTok guide
-// ════════════════════════════════════════════════════════════════════════
-
-function TikTokGuide({ origin }: { origin: string }) {
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">TikTok</CardTitle>
-          <CardDescription>Long délai d&apos;approbation (1-3 semaines). Setup similaire à Meta.</CardDescription>
-        </CardHeader>
-      </Card>
-
-      <div>
-        <Step num={1} title="Compte TikTok Business">
-          <p>Sur l&apos;app TikTok → Paramètres → Compte → <strong>Passer à un compte professionnel</strong> → choisir <strong>Business</strong></p>
-        </Step>
-
-        <Step num={2} title="Créer l'App Developer">
-          <p>Va sur <ExtLink href="https://developers.tiktok.com/apps">developers.tiktok.com/apps</ExtLink></p>
-          <p>Connecte-toi avec ton compte TikTok</p>
-          <p><strong>Register as a developer</strong> (si pas déjà fait) → accepter terms</p>
-          <p><strong>Connect</strong> → <strong>Create app</strong></p>
-          <ul className="list-disc list-inside ml-2 space-y-0.5">
-            <li>App name : <code className="bg-muted px-1 rounded">Bloom</code></li>
-            <li>Description : « Productivity dashboard syncing TikTok creator stats »</li>
-            <li>Category : Business → <strong>Productivity</strong></li>
-          </ul>
-        </Step>
-
-        <Step num={3} title="Configuration">
-          <p>Dans l&apos;app TikTok :</p>
-          <p><strong>App info</strong> : ajoute le logo, l&apos;URL du site, la Privacy Policy URL :</p>
-          <CodeBlock value={origin} label="Site URL" />
-          <CodeBlock value={`${origin}/privacy`} label="Privacy Policy URL" />
-          <p><strong>Add products</strong> :</p>
-          <ul className="list-disc list-inside ml-2 space-y-0.5">
-            <li><strong>Login Kit (Web)</strong></li>
-            <li><strong>Content Posting API</strong> (optionnel)</li>
-          </ul>
-          <p>Redirect URI dans Login Kit :</p>
-          <CodeBlock value={`${origin}/api/auth/tiktok/callback`} label="Callback TikTok" />
-          <p><strong>Scopes</strong> : coche <code className="bg-muted px-1 rounded">user.info.basic</code>, <code className="bg-muted px-1 rounded">user.info.profile</code>, <code className="bg-muted px-1 rounded">user.info.stats</code>, <code className="bg-muted px-1 rounded">video.list</code></p>
-        </Step>
-
-        <Step num={4} title="Submit for review">
-          <p><strong>Verify your URL Prefix</strong> — TikTok demande un fichier de vérification à mettre sur ton site (on peut le servir via `public/`)</p>
-          <p><strong>Submit for review</strong> → attendre 1-3 semaines</p>
-        </Step>
-
-        <Step num={5} title="Credentials + Vercel">
-          <p>Dans l&apos;app TikTok → <strong>Basic info</strong> :</p>
-          <ul className="list-disc list-inside ml-2 space-y-0.5">
-            <li><strong>Client Key</strong> → <code className="bg-muted px-1 rounded">TIKTOK_CLIENT_KEY</code></li>
-            <li><strong>Client Secret</strong> → <code className="bg-muted px-1 rounded">TIKTOK_CLIENT_SECRET</code></li>
-          </ul>
-          <p>Vercel → Env vars → ajoute les deux → redéploie</p>
-          <p>Bloom → Paramètres → <strong>TikTok</strong> → <strong>Connecter TikTok</strong></p>
-        </Step>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Pièges fréquents</CardTitle>
-        </CardHeader>
-        <CardContent className="text-xs space-y-2 text-muted-foreground">
-          <p><strong>« Invalid scope »</strong> → certains scopes nécessitent l&apos;approbation TikTok.</p>
-          <p><strong>« Redirect URI not registered »</strong> → exactement la même URL côté TikTok et code.</p>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-// ════════════════════════════════════════════════════════════════════════
-// LinkedIn guide
-// ════════════════════════════════════════════════════════════════════════
 
 function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   const [code, setCode] = useState('')

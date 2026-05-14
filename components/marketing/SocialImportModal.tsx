@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Platform, PostMetrics } from '@/lib/types'
 
-type SocialPlatform = 'youtube' | 'meta' | 'tiktok' | 'linkedin'
+type SocialPlatform = 'youtube' | 'linkedin'
 
 type AccountInfo = { id: string; providerAccountId: string; metadata: Record<string, unknown> }
 
@@ -32,10 +32,8 @@ type SocialItem = {
   clicks?: number
 }
 
-const PLATFORM_INFO: Record<SocialPlatform, { label: string; endpoint: string; appPlatform: Platform; metaSubAction?: string }> = {
+const PLATFORM_INFO: Record<SocialPlatform, { label: string; endpoint: string; appPlatform: Platform }> = {
   youtube: { label: 'YouTube', endpoint: '/api/youtube?action=list_videos', appPlatform: 'youtube' },
-  meta: { label: 'Instagram', endpoint: '/api/meta?action=list_ig_media', appPlatform: 'instagram' },
-  tiktok: { label: 'TikTok', endpoint: '/api/tiktok?action=list_videos', appPlatform: 'tiktok' },
   linkedin: { label: 'LinkedIn', endpoint: '/api/linkedin?action=list_posts', appPlatform: 'linkedin' },
 }
 
@@ -49,7 +47,7 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
   const app = useApp()
   const [activePlatform, setActivePlatform] = useState<SocialPlatform>('youtube')
   const [accountsByPlatform, setAccountsByPlatform] = useState<Record<SocialPlatform, AccountInfo[]>>({
-    youtube: [], meta: [], tiktok: [], linkedin: [],
+    youtube: [], linkedin: [],
   })
   const [activeAccountId, setActiveAccountId] = useState<string | undefined>()
   const [items, setItems] = useState<SocialItem[]>([])
@@ -62,8 +60,8 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
   useEffect(() => {
     if (!open) return
     ;(async () => {
-      const platforms: SocialPlatform[] = ['youtube', 'meta', 'tiktok', 'linkedin']
-      const result: Record<SocialPlatform, AccountInfo[]> = { youtube: [], meta: [], tiktok: [], linkedin: [] }
+      const platforms: SocialPlatform[] = ['youtube', 'linkedin']
+      const result: Record<SocialPlatform, AccountInfo[]> = { youtube: [], linkedin: [] }
       await Promise.all(platforms.map(async (p) => {
         try {
           const res = await fetch(PLATFORM_INFO[p].endpoint.split('?')[0])
@@ -165,7 +163,7 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
     setImported((prev) => new Set(prev).add(item.id))
   }
 
-  const platforms: SocialPlatform[] = ['youtube', 'meta', 'tiktok', 'linkedin']
+  const platforms: SocialPlatform[] = ['youtube', 'linkedin']
   const hasAnyConnected = connectedPlatforms.size > 0
 
   return (

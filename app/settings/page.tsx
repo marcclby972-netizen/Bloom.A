@@ -125,11 +125,9 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
   const [oauthAccounts, setOauthAccounts] = useState<Record<string, OAuthAccount[]>>({})
 
   const refreshOAuth = useCallback(async () => {
-    const platforms = ['youtube', 'meta', 'tiktok', 'linkedin', 'google_calendar'] as const
+    const platforms = ['youtube', 'linkedin', 'google_calendar'] as const
     const endpoints: Record<typeof platforms[number], string> = {
       youtube: '/api/youtube',
-      meta: '/api/meta',
-      tiktok: '/api/tiktok',
       linkedin: '/api/linkedin',
       google_calendar: '/api/google-calendar',
     }
@@ -156,7 +154,7 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
     refreshOAuth()
     // Re-check when URL has a connection callback param
     const params = new URLSearchParams(window.location.search)
-    if (params.has('youtube') || params.has('meta') || params.has('tiktok') || params.has('linkedin') || params.has('google_calendar')) {
+    if (params.has('youtube') || params.has('linkedin') || params.has('google_calendar')) {
       setTimeout(() => window.location.reload(), 200)
     }
   }, [refreshOAuth])
