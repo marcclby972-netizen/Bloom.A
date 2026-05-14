@@ -617,8 +617,11 @@ function getProjectStats(projectId: string) {
   // Time by day (last 30 days)
   const timeByDay = new Map<string, number>()
   for (const entry of taskEntries) {
-    const day = new Date(entry.startedAt).toISOString().slice(0, 10)
-    timeByDay.set(day, (timeByDay.get(day) || 0) + entry.duration)
+    if (typeof entry.startedAt !== 'number' || !Number.isFinite(entry.startedAt)) continue
+    const d = new Date(entry.startedAt)
+    if (Number.isNaN(d.getTime())) continue
+    const day = d.toISOString().slice(0, 10)
+    timeByDay.set(day, (timeByDay.get(day) || 0) + (entry.duration || 0))
   }
 
   // Number of distinct days worked on

@@ -1525,7 +1525,7 @@ function ChargeRow({ charge, formatAmount, action }: {
         </div>
         <div className="text-muted-foreground truncate text-[10px] mt-0.5">
           {charge.description || charge.email || charge.id}
-          <span className="ml-1">· {new Date(charge.createdAt).toLocaleDateString('fr-FR')}</span>
+          <span className="ml-1">· {Number.isFinite(charge.createdAt) ? new Date(charge.createdAt).toLocaleDateString('fr-FR') : '—'}</span>
         </div>
       </div>
       <div className="shrink-0">{action}</div>
