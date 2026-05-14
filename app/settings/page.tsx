@@ -120,51 +120,52 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [keyInput, setKeyInput] = useState('')
   // OAuth providers store their tokens in Supabase, not in localStorage settings.
-  // Fetch the list of connected social/OAuth platforms on mount.
-  const [oauthConnected, setOauthConnected] = useState<Record<string, { account?: Record<string, unknown> }>>({})
-  useEffect(() => {
-    // Query each OAuth provider in parallel
+  // Fetch the list of connected social/OAuth platforms (with potentially multiple accounts each) on mount.
+  type OAuthAccount = { id: string; providerAccountId: string; metadata: Record<string, unknown> }
+  const [oauthAccounts, setOauthAccounts] = useState<Record<string, OAuthAccount[]>>({})
+
+  const refreshOAuth = useCallback(async () => {
     const platforms = ['youtube', 'meta', 'tiktok', 'linkedin', 'google_calendar'] as const
     const endpoints: Record<typeof platforms[number], string> = {
       youtube: '/api/youtube',
-      meta: '/api/meta?action=list_pages',
+      meta: '/api/meta',
       tiktok: '/api/tiktok',
       linkedin: '/api/linkedin',
       google_calendar: '/api/google-calendar',
     }
-    ;(async () => {
-      const result: Record<string, { account?: Record<string, unknown> }> = {}
-      await Promise.all(platforms.map(async (p) => {
-        try {
-          const res = await fetch(endpoints[p])
-          if (!res.ok) return
-          const data = await res.json()
-          if (data.connected) {
-            result[p] = { account: data.account || data.pages?.[0] }
+    const result: Record<string, OAuthAccount[]> = {}
+    await Promise.all(platforms.map(async (p) => {
+      try {
+        const res = await fetch(endpoints[p])
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.connected) {
+          // Multi-account providers return `accounts: [...]`; google_calendar still returns single token
+          if (Array.isArray(data.accounts)) {
+            result[p] = data.accounts as OAuthAccount[]
+          } else {
+            result[p] = [{ id: 'legacy', providerAccountId: 'legacy', metadata: data.account || {} }]
           }
-        } catch {/* ignore */}
-      }))
-      setOauthConnected(result)
-    })()
-    // Re-check when URL changes (after OAuth callback redirects)
-    const refresh = () => {
-      const params = new URLSearchParams(window.location.search)
-      if (params.has('youtube') || params.has('meta') || params.has('tiktok') || params.has('linkedin') || params.has('google_calendar')) {
-        // Trigger another fetch
-        setTimeout(() => window.location.reload(), 200)
-      }
-    }
-    refresh()
+        }
+      } catch {/* ignore */}
+    }))
+    setOauthAccounts(result)
   }, [])
 
-  const handleOAuthDisconnect = async (providerId: string) => {
-    const endpoint = providerId === 'google_calendar' ? '/api/google-calendar' : `/api/${providerId}`
-    await fetch(endpoint, { method: 'DELETE' })
-    setOauthConnected((prev) => {
-      const next = { ...prev }
-      delete next[providerId]
-      return next
-    })
+  useEffect(() => {
+    refreshOAuth()
+    // Re-check when URL has a connection callback param
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('youtube') || params.has('meta') || params.has('tiktok') || params.has('linkedin') || params.has('google_calendar')) {
+      setTimeout(() => window.location.reload(), 200)
+    }
+  }, [refreshOAuth])
+
+  const handleOAuthDisconnect = async (providerId: string, accountId?: string) => {
+    const base = providerId === 'google_calendar' ? '/api/google-calendar' : `/api/${providerId}`
+    const url = accountId && accountId !== 'legacy' ? `${base}?accountId=${encodeURIComponent(accountId)}` : base
+    await fetch(url, { method: 'DELETE' })
+    refreshOAuth()
   }
 
   const getIntegration = (providerId: string) => settings.integrations.find((i) => i.provider === providerId)
@@ -254,16 +255,19 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
             {providers.map((provider) => {
               const integration = getIntegration(provider.id)
               const isOAuth = provider.category === 'social' || provider.id === 'google_calendar'
-              const isOAuthConnected = isOAuth && !!oauthConnected[provider.id]
-              const oauthAccount = oauthConnected[provider.id]?.account as Record<string, unknown> | undefined
+              const accounts = oauthAccounts[provider.id] || []
+              const isOAuthConnected = isOAuth && accounts.length > 0
               const isConnected = isOAuthConnected || integration?.status === 'connected'
               const isError = integration?.status === 'error'
               const isEditing = editingKey === provider.id
 
-              // Friendly display of OAuth account info
-              const accountLabel = oauthAccount
-                ? (oauthAccount.channelTitle || oauthAccount.username || oauthAccount.name || oauthAccount.igUsername || 'Compte connecté') as string
-                : null
+              const oauthHref = provider.id === 'google_calendar' ? '/api/auth/google' : `/api/auth/${provider.id}`
+
+              const accountLabel = (acc: { metadata: Record<string, unknown> }) => {
+                const m = acc.metadata
+                return (m.channelTitle || m.username || m.userName || m.name || m.igUsername ||
+                  (m.user as { display_name?: string })?.display_name || 'Compte connecté') as string
+              }
 
               return (
                 <Card key={provider.id} className={cn(isConnected && 'border-green-300/40 bg-green-50/20 dark:bg-green-950/10')}>
@@ -280,11 +284,8 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
                         {isConnected && (
                           <span className="flex items-center gap-1 text-[10px] font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-950/40 px-1.5 py-0.5 rounded-full">
                             <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                            Connecté
+                            {accounts.length > 1 ? `${accounts.length} comptes` : 'Connecté'}
                           </span>
-                        )}
-                        {accountLabel && (
-                          <span className="text-[10px] text-muted-foreground italic">· {accountLabel}</span>
                         )}
                         {isError && (
                           <span className="flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
@@ -294,6 +295,25 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{provider.description}</p>
+
+                      {/* List of connected OAuth accounts */}
+                      {isOAuthConnected && (
+                        <div className="mt-2 space-y-1">
+                          {accounts.map((acc) => (
+                            <div key={acc.id} className="flex items-center gap-2 rounded-md border border-border bg-background/60 px-2.5 py-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
+                              <span className="text-xs truncate flex-1" title={accountLabel(acc)}>{accountLabel(acc)}</span>
+                              <button
+                                onClick={() => handleOAuthDisconnect(provider.id, acc.providerAccountId)}
+                                className="text-[10px] text-muted-foreground hover:text-destructive shrink-0"
+                                title="Déconnecter ce compte"
+                              >
+                                Retirer
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {integration?.lastSync && (
                         <p className="text-[10px] text-muted-foreground mt-1">
@@ -322,14 +342,14 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
 
                     <div className="flex items-center gap-1 shrink-0">
                       {isOAuthConnected ? (
-                        <>
-                          <Button size="xs" variant="ghost" onClick={() => { window.location.href = provider.id === 'google_calendar' ? '/api/auth/google' : `/api/auth/${provider.id}` }}>
-                            Reconnecter
-                          </Button>
-                          <Button size="xs" variant="destructive" onClick={() => handleOAuthDisconnect(provider.id)}>
-                            Déconnecter
-                          </Button>
-                        </>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => { window.location.href = oauthHref }}
+                          title="Ajouter un autre compte"
+                        >
+                          + Compte
+                        </Button>
                       ) : isConnected ? (
                         <>
                           <Button size="xs" variant="ghost" onClick={() => testConnection(provider.id)}>

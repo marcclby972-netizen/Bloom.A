@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useApp } from '@/lib/context'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 import type { Platform, PostMetrics } from '@/lib/types'
 
 type SocialPlatform = 'youtube' | 'meta' | 'tiktok' | 'linkedin'
+
+type AccountInfo = { id: string; providerAccountId: string; metadata: Record<string, unknown> }
 
 type SocialItem = {
   id: string
@@ -46,43 +48,51 @@ type Props = {
 export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
   const app = useApp()
   const [activePlatform, setActivePlatform] = useState<SocialPlatform>('youtube')
-  const [connectedPlatforms, setConnectedPlatforms] = useState<Set<SocialPlatform>>(new Set())
+  const [accountsByPlatform, setAccountsByPlatform] = useState<Record<SocialPlatform, AccountInfo[]>>({
+    youtube: [], meta: [], tiktok: [], linkedin: [],
+  })
+  const [activeAccountId, setActiveAccountId] = useState<string | undefined>()
   const [items, setItems] = useState<SocialItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [projectId, setProjectId] = useState<string | null>(defaultProjectId || null)
   const [imported, setImported] = useState<Set<string>>(new Set())
 
-  // Check which platforms are connected
+  // Detect connected platforms + their accounts
   useEffect(() => {
     if (!open) return
     ;(async () => {
       const platforms: SocialPlatform[] = ['youtube', 'meta', 'tiktok', 'linkedin']
-      const connected = new Set<SocialPlatform>()
+      const result: Record<SocialPlatform, AccountInfo[]> = { youtube: [], meta: [], tiktok: [], linkedin: [] }
       await Promise.all(platforms.map(async (p) => {
         try {
           const res = await fetch(PLATFORM_INFO[p].endpoint.split('?')[0])
           if (!res.ok) return
           const data = await res.json()
-          if (data.connected) connected.add(p)
+          if (data.connected && Array.isArray(data.accounts)) {
+            result[p] = data.accounts as AccountInfo[]
+          }
         } catch {/* ignore */}
       }))
-      setConnectedPlatforms(connected)
-      // Auto-select first connected
-      const firstConnected = platforms.find((p) => connected.has(p))
-      if (firstConnected) setActivePlatform(firstConnected)
+      setAccountsByPlatform(result)
+      const firstConnected = platforms.find((p) => result[p].length > 0)
+      if (firstConnected) {
+        setActivePlatform(firstConnected)
+        setActiveAccountId(result[firstConnected][0]?.providerAccountId)
+      }
     })()
   }, [open])
 
-  const loadItems = useCallback(async (platform: SocialPlatform) => {
+  const loadItems = useCallback(async (platform: SocialPlatform, accountId?: string) => {
     setLoading(true)
     setError('')
     setItems([])
     try {
-      const res = await fetch(PLATFORM_INFO[platform].endpoint)
+      const sep = PLATFORM_INFO[platform].endpoint.includes('?') ? '&' : '?'
+      const accountQs = accountId ? `${sep}accountId=${encodeURIComponent(accountId)}` : ''
+      const res = await fetch(`${PLATFORM_INFO[platform].endpoint}${accountQs}`)
       if (!res.ok) throw new Error((await res.json()).error || 'Erreur')
       const data = await res.json()
-      // The shape differs per platform — normalize to SocialItem[]
       const list: SocialItem[] = data.videos || data.items || data.posts || []
       setItems(list)
     } catch (err) {
@@ -92,11 +102,34 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
     }
   }, [])
 
+  // When platform changes, reset active account to the first one of that platform
   useEffect(() => {
-    if (open && connectedPlatforms.has(activePlatform)) {
-      loadItems(activePlatform)
+    const accs = accountsByPlatform[activePlatform]
+    if (accs.length > 0 && !accs.find((a) => a.providerAccountId === activeAccountId)) {
+      setActiveAccountId(accs[0].providerAccountId)
     }
-  }, [open, activePlatform, connectedPlatforms, loadItems])
+  }, [activePlatform, accountsByPlatform, activeAccountId])
+
+  // Load items whenever platform or account changes
+  useEffect(() => {
+    if (open && accountsByPlatform[activePlatform].length > 0 && activeAccountId) {
+      loadItems(activePlatform, activeAccountId)
+    }
+  }, [open, activePlatform, activeAccountId, accountsByPlatform, loadItems])
+
+  const connectedPlatforms = useMemo(() => {
+    const s = new Set<SocialPlatform>()
+    ;(Object.keys(accountsByPlatform) as SocialPlatform[]).forEach((p) => {
+      if (accountsByPlatform[p].length > 0) s.add(p)
+    })
+    return s
+  }, [accountsByPlatform])
+
+  const accountLabel = (acc: AccountInfo) => {
+    const m = acc.metadata
+    return (m.channelTitle || m.username || m.userName || m.name || m.igUsername ||
+      (m.user as { display_name?: string })?.display_name || 'Compte') as string
+  }
 
   const handleImport = (item: SocialItem) => {
     const platformAppId = PLATFORM_INFO[activePlatform].appPlatform
@@ -184,6 +217,28 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
               })}
             </div>
 
+            {/* Account selector (when multiple accounts for the active platform) */}
+            {accountsByPlatform[activePlatform].length > 1 && (
+              <div className="flex items-center gap-2 text-xs pb-2 border-b border-border flex-wrap">
+                <span className="text-muted-foreground">Compte :</span>
+                {accountsByPlatform[activePlatform].map((acc) => (
+                  <button
+                    key={acc.id}
+                    onClick={() => setActiveAccountId(acc.providerAccountId)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors',
+                      activeAccountId === acc.providerAccountId
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    {accountLabel(acc)}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Project picker */}
             {app.projects.length > 0 && (
               <div className="flex items-center gap-2 text-xs pb-2 border-b border-border">
@@ -198,7 +253,7 @@ export function SocialImportModal({ open, onClose, defaultProjectId }: Props) {
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
-                <Button size="xs" variant="ghost" onClick={() => loadItems(activePlatform)} className="ml-auto">
+                <Button size="xs" variant="ghost" onClick={() => loadItems(activePlatform, activeAccountId)} className="ml-auto">
                   Rafraîchir
                 </Button>
               </div>

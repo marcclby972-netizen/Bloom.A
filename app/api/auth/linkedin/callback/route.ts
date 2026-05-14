@@ -52,12 +52,14 @@ export async function GET(req: Request) {
 
   // Fetch user info via OpenID Connect userinfo endpoint
   let metadata: Record<string, unknown> = {}
+  let providerAccountId = ''
   try {
     const userRes = await fetch('https://api.linkedin.com/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     })
     if (userRes.ok) {
       const data = await userRes.json()
+      providerAccountId = data.sub
       metadata = {
         sub: data.sub,
         name: data.name,
@@ -81,9 +83,14 @@ export async function GET(req: Request) {
     }
   } catch {/* ignore */}
 
+  if (!providerAccountId) {
+    return NextResponse.redirect(`${url.origin}/settings?linkedin=no_account`)
+  }
+
   await saveToken({
     user_id: user.id,
     platform: 'linkedin',
+    provider_account_id: providerAccountId,
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token || null,
     expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),

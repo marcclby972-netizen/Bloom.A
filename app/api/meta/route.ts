@@ -1,19 +1,36 @@
 import { NextResponse } from 'next/server'
-import { getToken, refreshTokenIfNeeded, deleteToken } from '@/lib/social-oauth'
+import { getTokens, getTokenByAccount, refreshTokenIfNeeded, deleteTokenById, deleteAllTokens } from '@/lib/social-oauth'
 
 export const maxDuration = 30
 
 /**
- * GET /api/meta?action=list_ig_media&pageIndex=0
- * GET /api/meta?action=list_fb_posts&pageIndex=0
- * GET /api/meta?action=list_ads
+ * GET /api/meta — list all connected accounts
+ * GET /api/meta?action=list_ig_media&pageIndex=0&accountId=XXX
+ * GET /api/meta?action=list_fb_posts&pageIndex=0&accountId=XXX
+ * GET /api/meta?action=list_ads&accountId=XXX
  */
 export async function GET(req: Request) {
-  const token = await getToken('meta')
+  const url = new URL(req.url)
+  const accountId = url.searchParams.get('accountId') || undefined
+  const action = url.searchParams.get('action')
+
+  if (!action) {
+    const tokens = await getTokens('meta')
+    if (tokens.length === 0) return NextResponse.json({ connected: false }, { status: 200 })
+    return NextResponse.json({
+      connected: true,
+      account: tokens[0].account_metadata,
+      accounts: tokens.map((t) => ({
+        id: t.id,
+        providerAccountId: t.provider_account_id,
+        metadata: t.account_metadata,
+      })),
+    })
+  }
+
+  const token = await getTokenByAccount('meta', accountId)
   if (!token) return NextResponse.json({ connected: false }, { status: 200 })
 
-  const url = new URL(req.url)
-  const action = url.searchParams.get('action') || 'list_ig_media'
   const pageIndex = parseInt(url.searchParams.get('pageIndex') || '0', 10)
 
   try {
@@ -146,7 +163,14 @@ export async function GET(req: Request) {
   }
 }
 
-export async function DELETE() {
-  await deleteToken('meta')
+export async function DELETE(req: Request) {
+  const url = new URL(req.url)
+  const accountId = url.searchParams.get('accountId')
+  if (accountId) {
+    const token = await getTokenByAccount('meta', accountId)
+    if (token) await deleteTokenById(token.id)
+  } else {
+    await deleteAllTokens('meta')
+  }
   return new NextResponse(null, { status: 204 })
 }

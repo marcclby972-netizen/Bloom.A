@@ -1,18 +1,34 @@
 import { NextResponse } from 'next/server'
-import { getToken, refreshTokenIfNeeded, deleteToken } from '@/lib/social-oauth'
+import { getTokens, getTokenByAccount, refreshTokenIfNeeded, deleteTokenById, deleteAllTokens } from '@/lib/social-oauth'
 
 export const maxDuration = 30
 
 /**
- * GET /api/linkedin?action=list_posts&orgIndex=0
- * GET /api/linkedin?action=list_ads
+ * GET /api/linkedin — list all connected accounts
+ * GET /api/linkedin?action=list_posts&orgIndex=0&accountId=XXX
+ * GET /api/linkedin?action=list_ads&accountId=XXX
  */
 export async function GET(req: Request) {
-  const token = await getToken('linkedin')
-  if (!token) return NextResponse.json({ connected: false }, { status: 200 })
-
   const url = new URL(req.url)
-  const action = url.searchParams.get('action') || 'list_posts'
+  const accountId = url.searchParams.get('accountId') || undefined
+  const action = url.searchParams.get('action')
+
+  if (!action) {
+    const tokens = await getTokens('linkedin')
+    if (tokens.length === 0) return NextResponse.json({ connected: false }, { status: 200 })
+    return NextResponse.json({
+      connected: true,
+      account: tokens[0].account_metadata,
+      accounts: tokens.map((t) => ({
+        id: t.id,
+        providerAccountId: t.provider_account_id,
+        metadata: t.account_metadata,
+      })),
+    })
+  }
+
+  const token = await getTokenByAccount('linkedin', accountId)
+  if (!token) return NextResponse.json({ connected: false }, { status: 200 })
 
   try {
     const accessToken = await refreshTokenIfNeeded(token)
@@ -95,7 +111,14 @@ export async function GET(req: Request) {
   }
 }
 
-export async function DELETE() {
-  await deleteToken('linkedin')
+export async function DELETE(req: Request) {
+  const url = new URL(req.url)
+  const accountId = url.searchParams.get('accountId')
+  if (accountId) {
+    const token = await getTokenByAccount('linkedin', accountId)
+    if (token) await deleteTokenById(token.id)
+  } else {
+    await deleteAllTokens('linkedin')
+  }
   return new NextResponse(null, { status: 204 })
 }

@@ -1,18 +1,35 @@
 import { NextResponse } from 'next/server'
-import { getToken, refreshTokenIfNeeded, deleteToken } from '@/lib/social-oauth'
+import { getTokens, getTokenByAccount, refreshTokenIfNeeded, deleteTokenById, deleteAllTokens } from '@/lib/social-oauth'
 
 export const maxDuration = 30
 
 /**
- * GET /api/youtube?action=list_videos&maxResults=10
- * GET /api/youtube?action=video_stats&videoId=XXX
+ * GET /api/youtube — list all connected accounts
+ * GET /api/youtube?action=list_videos&accountId=XXX
+ * GET /api/youtube?action=video_stats&videoId=XXX&accountId=XXX
  */
 export async function GET(req: Request) {
-  const token = await getToken('youtube')
-  if (!token) return NextResponse.json({ connected: false }, { status: 200 })
-
   const url = new URL(req.url)
-  const action = url.searchParams.get('action') || 'list_videos'
+  const accountId = url.searchParams.get('accountId') || undefined
+  const action = url.searchParams.get('action')
+
+  // No action → return list of all connected accounts
+  if (!action) {
+    const tokens = await getTokens('youtube')
+    if (tokens.length === 0) return NextResponse.json({ connected: false }, { status: 200 })
+    return NextResponse.json({
+      connected: true,
+      account: tokens[0].account_metadata,
+      accounts: tokens.map((t) => ({
+        id: t.id,
+        providerAccountId: t.provider_account_id,
+        metadata: t.account_metadata,
+      })),
+    })
+  }
+
+  const token = await getTokenByAccount('youtube', accountId)
+  if (!token) return NextResponse.json({ connected: false }, { status: 200 })
 
   try {
     const accessToken = await refreshTokenIfNeeded(token)
@@ -87,7 +104,18 @@ export async function GET(req: Request) {
   }
 }
 
-export async function DELETE() {
-  await deleteToken('youtube')
+/**
+ * DELETE /api/youtube — disconnect all accounts
+ * DELETE /api/youtube?accountId=XXX — disconnect a specific account
+ */
+export async function DELETE(req: Request) {
+  const url = new URL(req.url)
+  const accountId = url.searchParams.get('accountId')
+  if (accountId) {
+    const token = await getTokenByAccount('youtube', accountId)
+    if (token) await deleteTokenById(token.id)
+  } else {
+    await deleteAllTokens('youtube')
+  }
   return new NextResponse(null, { status: 204 })
 }

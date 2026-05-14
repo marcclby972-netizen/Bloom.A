@@ -67,6 +67,7 @@ export async function GET(req: Request) {
   await saveToken({
     user_id: user.id,
     platform: 'tiktok',
+    provider_account_id: tokens.open_id,
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token,
     expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),

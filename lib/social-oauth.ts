@@ -1,6 +1,6 @@
 /**
  * Helper for social media OAuth token storage and refresh.
- * Used by youtube, meta, tiktok, linkedin integrations.
+ * Supports multiple accounts per user × platform via provider_account_id.
  */
 
 import { createClient } from './supabase/server'
@@ -8,8 +8,10 @@ import { createClient } from './supabase/server'
 export type SocialPlatform = 'youtube' | 'meta' | 'tiktok' | 'linkedin'
 
 export type SocialOAuthToken = {
+  id: string
   user_id: string
   platform: SocialPlatform
+  provider_account_id: string
   access_token: string
   refresh_token: string | null
   expires_at: string | null
@@ -17,31 +19,61 @@ export type SocialOAuthToken = {
   account_metadata: Record<string, unknown>
 }
 
-/** Save or update a token row */
-export async function saveToken(token: Omit<SocialOAuthToken, 'created_at' | 'updated_at'>) {
+/** Save or update a token row (upsert by user_id + platform + provider_account_id). */
+export async function saveToken(token: {
+  user_id: string
+  platform: SocialPlatform
+  provider_account_id: string
+  access_token: string
+  refresh_token: string | null
+  expires_at: string | null
+  scope: string | null
+  account_metadata: Record<string, unknown>
+}) {
   const supabase = await createClient()
   return supabase.from('social_oauth_tokens').upsert(
     { ...token, updated_at: new Date().toISOString() },
-    { onConflict: 'user_id,platform' }
+    { onConflict: 'user_id,platform,provider_account_id' }
   )
 }
 
-/** Get a token for the current user + platform */
-export async function getToken(platform: SocialPlatform): Promise<SocialOAuthToken | null> {
+/** Get all tokens for the current user + platform */
+export async function getTokens(platform: SocialPlatform): Promise<SocialOAuthToken[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  if (!user) return []
   const { data } = await supabase
     .from('social_oauth_tokens')
     .select('*')
     .eq('user_id', user.id)
     .eq('platform', platform)
-    .single()
-  return (data as SocialOAuthToken | null)
+    .order('created_at', { ascending: true })
+  return (data as SocialOAuthToken[] | null) || []
 }
 
-/** Delete a platform connection */
-export async function deleteToken(platform: SocialPlatform): Promise<void> {
+/** Get a specific token by accountId (provider_account_id) or row id */
+export async function getTokenByAccount(platform: SocialPlatform, accountId?: string): Promise<SocialOAuthToken | null> {
+  const tokens = await getTokens(platform)
+  if (tokens.length === 0) return null
+  if (!accountId) return tokens[0] // default: first connected
+  // Match either by provider_account_id or by row id (for flexibility)
+  return tokens.find((t) => t.provider_account_id === accountId || t.id === accountId) || null
+}
+
+/** Delete a specific token row by id */
+export async function deleteTokenById(id: string): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  await supabase
+    .from('social_oauth_tokens')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+}
+
+/** Delete all tokens for a platform (clears the connection entirely). */
+export async function deleteAllTokens(platform: SocialPlatform): Promise<void> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
@@ -54,7 +86,6 @@ export async function deleteToken(platform: SocialPlatform): Promise<void> {
 
 /**
  * Refresh an access token if expired. Returns the live access_token.
- * Each platform's refresh endpoint is slightly different — handled here.
  */
 export async function refreshTokenIfNeeded(token: SocialOAuthToken): Promise<string> {
   if (!token.expires_at) return token.access_token
@@ -82,8 +113,6 @@ export async function refreshTokenIfNeeded(token: SocialOAuthToken): Promise<str
     newAccess = data.access_token
     newExpiresIn = data.expires_in
   } else if (token.platform === 'meta') {
-    // Meta long-lived tokens last 60 days — no refresh endpoint per se,
-    // but we can exchange short-lived for long-lived once.
     const res = await fetch(`https://graph.facebook.com/v20.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&fb_exchange_token=${token.access_token}`)
     if (!res.ok) throw new Error('Meta token refresh failed')
     const data = await res.json() as { access_token: string; expires_in?: number }
@@ -131,7 +160,7 @@ export async function refreshTokenIfNeeded(token: SocialOAuthToken): Promise<str
     access_token: newAccess,
     refresh_token: newRefresh,
     expires_at: expiresAt,
-  }).eq('user_id', token.user_id).eq('platform', token.platform)
+  }).eq('id', token.id)
 
   return newAccess
 }

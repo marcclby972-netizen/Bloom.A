@@ -46,9 +46,17 @@ export async function GET(req: Request) {
   const accessToken = longData.access_token
   const expiresIn = longData.expires_in || 60 * 86400
 
-  // Step 3: list pages and IG business accounts
+  // Step 3: get FB user id (unique account id) + list pages and IG business accounts
   let metadata: Record<string, unknown> = {}
+  let providerAccountId = ''
   try {
+    const meRes = await fetch(`https://graph.facebook.com/v20.0/me?fields=id,name&access_token=${accessToken}`)
+    if (meRes.ok) {
+      const meData = await meRes.json()
+      providerAccountId = meData.id
+      metadata.userId = meData.id
+      metadata.userName = meData.name
+    }
     const pagesRes = await fetch(
       `https://graph.facebook.com/v20.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,profile_picture_url}&access_token=${accessToken}`
     )
@@ -58,22 +66,25 @@ export async function GET(req: Request) {
         id: string; name: string; access_token: string;
         instagram_business_account?: { id: string; username: string; profile_picture_url?: string }
       }
-      metadata = {
-        pages: (data.data || []).map((p: Page) => ({
-          id: p.id,
-          name: p.name,
-          pageAccessToken: p.access_token,
-          igBusinessId: p.instagram_business_account?.id,
-          igUsername: p.instagram_business_account?.username,
-          igPicture: p.instagram_business_account?.profile_picture_url,
-        })),
-      }
+      metadata.pages = (data.data || []).map((p: Page) => ({
+        id: p.id,
+        name: p.name,
+        pageAccessToken: p.access_token,
+        igBusinessId: p.instagram_business_account?.id,
+        igUsername: p.instagram_business_account?.username,
+        igPicture: p.instagram_business_account?.profile_picture_url,
+      }))
     }
   } catch {/* ignore */}
+
+  if (!providerAccountId) {
+    return NextResponse.redirect(`${url.origin}/settings?meta=no_account`)
+  }
 
   await saveToken({
     user_id: user.id,
     platform: 'meta',
+    provider_account_id: providerAccountId,
     access_token: accessToken,
     refresh_token: null,
     expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),

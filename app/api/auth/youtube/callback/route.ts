@@ -50,8 +50,9 @@ export async function GET(req: Request) {
     scope: string
   }
 
-  // Fetch channel info for nice display
+  // Fetch channel info for nice display + unique account id
   let metadata: Record<string, unknown> = {}
+  let providerAccountId = ''
   try {
     const channelRes = await fetch(
       'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
@@ -61,6 +62,7 @@ export async function GET(req: Request) {
       const data = await channelRes.json()
       const ch = data.items?.[0]
       if (ch) {
+        providerAccountId = ch.id
         metadata = {
           channelId: ch.id,
           channelTitle: ch.snippet?.title,
@@ -71,9 +73,14 @@ export async function GET(req: Request) {
     }
   } catch {/* ignore */}
 
+  if (!providerAccountId) {
+    return NextResponse.redirect(`${url.origin}/settings?youtube=no_channel`)
+  }
+
   await saveToken({
     user_id: user.id,
     platform: 'youtube',
+    provider_account_id: providerAccountId,
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token || null,
     expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
