@@ -3,9 +3,12 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 type Platform = 'overview' | 'youtube' | 'meta' | 'tiktok' | 'linkedin'
+
+const SESSION_KEY = 'bloom_guide_unlocked'
 
 const PLATFORMS: { id: Platform; label: string; difficulty: string; time: string; reviewTime: string }[] = [
   { id: 'overview', label: "Vue d'ensemble", difficulty: '—', time: '—', reviewTime: '—' },
@@ -18,10 +21,24 @@ const PLATFORMS: { id: Platform; label: string; difficulty: string; time: string
 export default function IntegrationsGuidePage() {
   const [activePlatform, setActivePlatform] = useState<Platform>('overview')
   const [origin, setOrigin] = useState('https://ton-domaine.vercel.app')
+  const [unlocked, setUnlocked] = useState(false)
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    if (typeof window !== 'undefined') setOrigin(window.location.origin)
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin)
+      setUnlocked(sessionStorage.getItem(SESSION_KEY) === '1')
+      setChecking(false)
+    }
   }, [])
+
+  if (checking) {
+    return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Chargement...</div>
+  }
+
+  if (!unlocked) {
+    return <LockScreen onUnlock={() => setUnlocked(true)} />
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -514,6 +531,88 @@ function TikTokGuide({ origin }: { origin: string }) {
 // ════════════════════════════════════════════════════════════════════════
 // LinkedIn guide
 // ════════════════════════════════════════════════════════════════════════
+
+function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+  const [code, setCode] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!code.trim()) return
+    setBusy(true)
+    setError('')
+    try {
+      const res = await fetch('/api/integrations-guide/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim() }),
+      })
+      if (res.ok) {
+        sessionStorage.setItem(SESSION_KEY, '1')
+        onUnlock()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error === 'Code not configured on server'
+          ? 'Le code n\'est pas configuré côté serveur (variable INTEGRATIONS_GUIDE_CODE).'
+          : 'Code incorrect.')
+      }
+    } catch {
+      setError('Erreur de connexion')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                <rect x="3" y="7" width="10" height="7" rx="2" />
+                <path d="M5 7V5a3 3 0 0 1 6 0v2" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold">Guide des intégrations</h1>
+              <p className="text-xs text-muted-foreground">Accès restreint</p>
+            </div>
+          </div>
+        </div>
+        <div className="h-px gradient-line" />
+      </div>
+
+      <div className="flex-1 overflow-auto p-4 sm:p-6 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-base">Page protégée</CardTitle>
+            <CardDescription>
+              Cette page contient des informations techniques d&apos;administration.
+              Entre le code d&apos;accès pour la consulter.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <Input
+                type="password"
+                placeholder="Code d'accès"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                autoFocus
+              />
+              {error && <p className="text-xs text-red-600">{error}</p>}
+              <Button type="submit" disabled={busy || !code.trim()} className="w-full">
+                {busy ? 'Vérification...' : 'Déverrouiller'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
 
 function LinkedInGuide({ origin }: { origin: string }) {
   return (
