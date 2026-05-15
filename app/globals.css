@@ -49,72 +49,92 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  /* Editorial cream palette — warm off-white background, deep ink foreground */
+  --background: oklch(0.975 0.005 85);          /* warm cream */
+  --foreground: oklch(0.18 0.01 80);             /* near-black, slight warm */
+  --card: oklch(0.99 0.003 85);                  /* soft white card */
+  --card-foreground: oklch(0.18 0.01 80);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.55 0.17 50);
+  --popover-foreground: oklch(0.18 0.01 80);
+  --primary: oklch(0.18 0.01 80);                /* black-ink primary (CTAs en pill noire) */
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.94 0.005 85);             /* light gray cream */
+  --secondary-foreground: oklch(0.18 0.01 80);
+  --muted: oklch(0.95 0.005 85);
+  --muted-foreground: oklch(0.45 0.01 80);
+  --accent: oklch(0.55 0.17 50);                 /* Bloom orange — accent ponctuel uniquement */
+  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: oklch(0.88 0.008 85);
+  --input: oklch(0.92 0.008 85);
   --ring: oklch(0.55 0.17 50);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --chart-1: oklch(0.55 0.17 50);
+  --chart-2: oklch(0.65 0.15 130);
+  --chart-3: oklch(0.55 0.18 220);
+  --chart-4: oklch(0.5 0.18 320);
+  --chart-5: oklch(0.6 0.12 60);
+  --radius: 1rem;                                /* rounded généreux comme Teplin */
   --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.55 0.17 50);
+  --sidebar-foreground: oklch(0.18 0.01 80);
+  --sidebar-primary: oklch(0.18 0.01 80);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.94 0.005 85);
+  --sidebar-accent-foreground: oklch(0.18 0.01 80);
+  --sidebar-border: oklch(0.88 0.008 85);
+  --sidebar-ring: oklch(0.55 0.17 50);
 }
 
 .dark {
-  --background: oklch(0.13 0.01 260);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.17 0.012 260);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.17 0.012 260);
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.65 0.18 50);
-  --primary-foreground: oklch(0.13 0 0);
-  --secondary: oklch(0.22 0.015 260);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.22 0.015 260);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.22 0.02 260);
-  --accent-foreground: oklch(0.95 0 0);
+  --background: oklch(0.16 0.005 80);            /* warm near-black */
+  --foreground: oklch(0.96 0.005 80);
+  --card: oklch(0.2 0.005 80);
+  --card-foreground: oklch(0.96 0.005 80);
+  --popover: oklch(0.2 0.005 80);
+  --popover-foreground: oklch(0.96 0.005 80);
+  --primary: oklch(0.95 0.005 80);                /* light primary in dark = inverted CTA */
+  --primary-foreground: oklch(0.16 0.005 80);
+  --secondary: oklch(0.24 0.005 80);
+  --secondary-foreground: oklch(0.96 0.005 80);
+  --muted: oklch(0.24 0.005 80);
+  --muted-foreground: oklch(0.65 0.005 80);
+  --accent: oklch(0.65 0.18 50);
+  --accent-foreground: oklch(0.16 0.005 80);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 12%);
   --ring: oklch(0.65 0.18 50);
   --chart-1: oklch(0.65 0.18 50);
-  --chart-2: oklch(0.6 0.15 280);
-  --chart-3: oklch(0.55 0.12 200);
-  --chart-4: oklch(0.5 0.1 150);
-  --chart-5: oklch(0.45 0.08 320);
-  --sidebar: oklch(0.11 0.015 260);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.65 0.18 50);
-  --sidebar-primary-foreground: oklch(0.13 0 0);
-  --sidebar-accent: oklch(0.2 0.02 260);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --chart-2: oklch(0.7 0.15 130);
+  --chart-3: oklch(0.6 0.18 220);
+  --chart-4: oklch(0.55 0.18 320);
+  --chart-5: oklch(0.65 0.12 60);
+  --sidebar: oklch(0.13 0.005 80);
+  --sidebar-foreground: oklch(0.96 0.005 80);
+  --sidebar-primary: oklch(0.95 0.005 80);
+  --sidebar-primary-foreground: oklch(0.16 0.005 80);
+  --sidebar-accent: oklch(0.24 0.005 80);
+  --sidebar-accent-foreground: oklch(0.96 0.005 80);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.5 0 0);
+}
+
+/* Adjust soft-card for dark mode */
+.dark .soft-card {
+  background: var(--card);
+  border-color: oklch(1 0 0 / 6%);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 20%), 0 8px 30px oklch(0 0 0 / 30%);
+}
+.dark .soft-card-hover:hover {
+  border-color: oklch(1 0 0 / 12%);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 20%), 0 12px 40px oklch(0 0 0 / 40%);
+}
+.dark .icon-square {
+  background: linear-gradient(180deg, oklch(0.92 0.005 80) 0%, oklch(0.85 0.005 80) 100%);
+  color: oklch(0.16 0.005 80);
+}
+.dark .h-accent::after,
+.dark .h-circle::before {
+  opacity: 0.7;
 }
 
 @layer base {
@@ -188,6 +208,152 @@
 /* ── Accent line gradient ── */
 .gradient-line {
   background: linear-gradient(90deg, oklch(0.65 0.18 50), oklch(0.55 0.15 280), oklch(0.5 0.12 200));
+}
+
+/* ── Editorial utilities (Teplin-like) ───────────────────────── */
+
+/* Hero — XL bold display */
+.h-display {
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  color: var(--foreground);
+}
+
+/* Section — large semibold */
+.h-section {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--foreground);
+}
+
+/* Hand-underlined accent — wraps a span to draw a sketchy underline */
+.h-accent {
+  position: relative;
+  display: inline-block;
+  color: oklch(0.45 0.01 80);
+  font-style: normal;
+}
+.h-accent::after {
+  content: '';
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  bottom: -4px;
+  height: 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14' preserveAspectRatio='none'%3E%3Cpath d='M2 8 Q 30 2 60 7 T 120 8 T 198 6' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+/* Hand-circled accent — draws an oval around the span */
+.h-circle {
+  position: relative;
+  display: inline-block;
+  color: oklch(0.45 0.01 80);
+  padding: 0 0.3em;
+}
+.h-circle::before {
+  content: '';
+  position: absolute;
+  inset: -4px -2px -2px -2px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 60' preserveAspectRatio='none'%3E%3Cpath d='M30 10 C 5 25 5 45 60 50 C 130 56 200 50 210 30 C 215 15 180 5 110 6 C 70 7 45 8 30 10 Z' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Soft card — rounded XL with very light border + soft shadow */
+.soft-card {
+  background: var(--card);
+  border: 1px solid oklch(0.92 0.005 85);
+  border-radius: 1.4rem;
+  box-shadow: 0 1px 3px oklch(0.18 0.01 80 / 3%), 0 8px 30px oklch(0.18 0.01 80 / 4%);
+  transition: border-color 200ms, box-shadow 200ms, transform 200ms;
+}
+.soft-card-hover:hover {
+  border-color: oklch(0.85 0.008 85);
+  box-shadow: 0 1px 3px oklch(0.18 0.01 80 / 3%), 0 12px 40px oklch(0.18 0.01 80 / 8%);
+}
+
+/* Numbered card label — "/01" "/02" etc. */
+.card-num {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: oklch(0.6 0.01 80);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* Soft icon square (dark bg, white icon, rounded with subtle shadow) */
+.icon-square {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.7rem;
+  background: linear-gradient(180deg, oklch(0.25 0.01 80) 0%, oklch(0.18 0.01 80) 100%);
+  color: oklch(0.97 0 0);
+  box-shadow: 0 1px 0 oklch(0 0 0 / 20%) inset, 0 4px 14px oklch(0.18 0.01 80 / 12%);
+}
+
+/* Pill — rounded full button/badge */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: var(--secondary);
+  color: var(--foreground);
+  transition: background-color 150ms;
+}
+.pill:hover { background: oklch(0.9 0.005 85); }
+.dark .pill:hover { background: oklch(0.25 0.015 260); }
+
+.pill-dark {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.pill-dark:hover { background: oklch(0.25 0.015 80); }
+
+/* Big KPI display (e.g. 700+ / 90% / 48h) */
+.kpi-display {
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+}
+.kpi-display-label {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: oklch(0.5 0.01 80);
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+
+/* Tag pill (for project status, categories) */
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  background: var(--secondary);
+  color: var(--foreground);
+  border: 1px solid oklch(0.9 0.005 85);
 }
 
 /* ── Soft mood utilities (Linear-like dark + accents) ── */

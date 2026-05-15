@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { AppProvider, useApp } from '@/lib/context'
 import { Sidebar } from './Sidebar'
+import { TopPillNav } from './TopPillNav'
 import { TimerWidget } from '@/components/timer/TimerWidget'
 import { ChatPanel } from '@/components/ai/ChatPanel'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
@@ -50,20 +51,20 @@ function MobileHeader() {
 }
 
 /**
- * Floating notification bell pinned to the top-right of the viewport.
- * - Hidden on mobile (the bell is in MobileHeader instead)
+ * Floating notification bell — pinned to the top-left of the viewport.
+ * Lives opposite to the TopPillNav's right CTA (Iris+avatar) so the two
+ * floating elements never collide.
+ *
+ * - Hidden on mobile (the bell lives in MobileHeader instead)
  * - z-[60] keeps it above page content and dialogs
  * - pointer-events: none on the wrapper so the area around the bell stays
  *   click-through; only the bell itself catches clicks via pointer-events-auto.
- *   This prevents the bell from blocking page buttons that happen to live in
- *   the same top-right corner.
- * - backdrop-blur + semi-transparent bg so the bell stays readable even
- *   when text or buttons sit underneath.
+ * - cream/dark adaptive bg via design tokens
  */
 function DesktopBell() {
   return (
-    <div className="hidden md:block fixed top-3 right-4 z-[60] pointer-events-none">
-      <div className="pointer-events-auto bg-background/85 backdrop-blur-md rounded-full shadow-lg border border-border/60">
+    <div className="hidden md:block fixed top-4 left-4 z-[60] pointer-events-none">
+      <div className="pointer-events-auto bg-background/85 backdrop-blur-md rounded-full shadow-lg border border-border h-12 flex items-center px-1">
         <NotificationBell />
       </div>
     </div>
@@ -96,17 +97,21 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen relative noise">
+    <div className="flex h-screen relative">
+      {/* Desktop : full-width content, floating top pill nav above */}
+      {/* Mobile : keep the existing drawer (Sidebar) + MobileHeader */}
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden gradient-mesh min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <MobileHeader />
-        <main className="flex-1 overflow-hidden flex flex-col min-w-0">
+        {/* Pad top on desktop so content doesn't slide under the floating pill nav */}
+        <main className="flex-1 overflow-hidden flex flex-col min-w-0 md:pt-20">
           {children}
         </main>
         <TimerWidget />
       </div>
-      {chatOpen && <ChatPanel />}
+      <TopPillNav />
       <DesktopBell />
+      {chatOpen && <ChatPanel />}
       <CookieBanner />
     </div>
   )

@@ -87,20 +87,25 @@ export default function ProjectsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* ── Soft hero header ───────────────────────────────────── */}
-      <header className="px-6 sm:px-10 lg:px-14 pt-10 pb-6 shrink-0">
+      {/* ── Editorial hero header ───────────────────────────────── */}
+      <header className="px-6 sm:px-10 lg:px-16 pt-6 pb-8 shrink-0 max-w-7xl mx-auto w-full">
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div>
-            <p className="text-xs text-muted-foreground tracking-wide">
+            <p className="card-num mb-2">
               {app.projects.length} projet{app.projects.length > 1 ? 's' : ''} · {app.projects.filter((p) => p.status === 'in_progress').length} en cours
             </p>
-            <h1 className="page-title mt-1.5">Projets</h1>
+            <h1 className="h-section">
+              Tes <span className="h-accent">projets</span>
+            </h1>
           </div>
           <button
             onClick={() => setCreatorOpen(true)}
-            className="text-sm font-medium px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="pill pill-dark"
           >
-            + Nouveau projet
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M6 2v8M2 6h8" />
+            </svg>
+            Nouveau projet
           </button>
         </div>
       </header>
@@ -158,10 +163,10 @@ export default function ProjectsPage() {
                             draggable
                             onDragStart={(e) => e.dataTransfer.setData('projectId', project.id)}
                             className={cn(
-                              'group relative rounded-md px-3 py-2.5 cursor-grab active:cursor-grabbing transition-all',
+                              'group relative rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing transition-all border',
                               isSelected
-                                ? 'bg-primary/8 ring-1 ring-primary/30'
-                                : 'hover:bg-white/[0.03]'
+                                ? 'bg-card border-foreground shadow-md'
+                                : 'bg-card border-border hover:border-foreground/40 hover:shadow-sm'
                             )}
                             onClick={() => handleSelectProject(project)}
                           >
@@ -169,19 +174,19 @@ export default function ProjectsPage() {
                             {project.color && (
                               <span
                                 className="absolute left-0 top-3 bottom-3 w-[2px] rounded-full"
-                                style={{ backgroundColor: project.color, opacity: 0.7 }}
+                                style={{ backgroundColor: project.color, opacity: 0.85 }}
                               />
                             )}
 
                             <div className="flex items-start justify-between gap-2">
                               <h3 className={cn(
                                 'text-sm leading-tight line-clamp-2',
-                                isSelected ? 'font-medium' : 'font-normal'
+                                isSelected ? 'font-semibold' : 'font-medium'
                               )}>
                                 {project.name}
                               </h3>
                               <button
-                                className="text-muted-foreground/40 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity text-xs shrink-0 -mt-0.5"
+                                className="text-muted-foreground/50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs shrink-0 -mt-0.5"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   if (isSelected) setSelectedProjectId(null)
@@ -194,7 +199,7 @@ export default function ProjectsPage() {
                             </div>
 
                             {!selectedProject && project.description && (
-                              <p className="text-[11px] text-muted-foreground/70 mt-1 line-clamp-2 leading-snug">
+                              <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-snug">
                                 {project.description}
                               </p>
                             )}
@@ -204,7 +209,7 @@ export default function ProjectsPage() {
                                 {tags.slice(0, selectedProject ? 2 : 3).map((tag) => (
                                   <span
                                     key={tag}
-                                    className="text-[9px] text-muted-foreground/80 px-1.5 py-0.5 rounded bg-white/[0.03]"
+                                    className="text-[9px] text-muted-foreground px-1.5 py-0.5 rounded-full bg-secondary"
                                   >
                                     {tag}
                                   </span>
@@ -213,7 +218,7 @@ export default function ProjectsPage() {
                             )}
 
                             {updatedLabel && (
-                              <div className="text-[10px] text-muted-foreground/50 mt-1.5 tabular-nums">
+                              <div className="text-[10px] text-muted-foreground/70 mt-1.5 tabular-nums">
                                 {updatedLabel}
                               </div>
                             )}
