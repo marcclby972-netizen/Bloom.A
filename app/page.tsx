@@ -2,17 +2,15 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useApp } from '@/lib/context'
 import { store } from '@/lib/store'
 import { CONTACT_STATUSES, PLATFORMS, PROJECT_STATUSES } from '@/lib/types'
 import { toDateString, formatDateFr, subDays, formatTime } from '@/lib/date-utils'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget'
 
 export default function DashboardPage() {
-  const { tasks, contacts, posts, projects, categories, timeEntries, selectedDate, vocalProjects, todos } = useApp()
+  const { tasks, contacts, posts, projects, categories, todos } = useApp()
   const today = new Date()
 
   const todayStr = toDateString(today)
@@ -33,14 +31,10 @@ export default function DashboardPage() {
   }, [contacts])
 
   const totalImpressions = posts.reduce((s, p) => s + p.metrics.impressions, 0)
-  const totalEngagement = posts.reduce((s, p) => s + p.metrics.likes + p.metrics.comments + p.metrics.shares, 0)
 
   const activeProjects = projects.filter((p) => p.status === 'in_progress').length
-  const ideaProjects = projects.filter((p) => p.status === 'idea').length
 
-  const todayTodos = todos.filter((t) => !t.done && t.date === todayStr).length
   const totalActiveTodos = todos.filter((t) => !t.done).length
-  const doneTodos = todos.filter((t) => t.done).length
   const overdueTodos = useMemo(
     () => todos.filter((t) => !t.done && t.date !== null && t.date < todayStr),
     [todos, todayStr]
@@ -55,7 +49,7 @@ export default function DashboardPage() {
       .slice(0, 5)
   }, [weekTimeByCategory, categories])
 
-  const recentPosts = posts.slice(0, 3)
+  const recentPosts = posts.slice(0, 4)
 
   // ── Revenue stats ──
   const revenueStats = useMemo(() => {
@@ -67,7 +61,6 @@ export default function DashboardPage() {
       .filter((r) => r.revenue > 0)
       .sort((a, b) => b.revenue - a.revenue)
 
-    // MRR/ARR (recurring revenue only)
     let totalMRR = 0
     const mrrByProject: { project: typeof projects[number]; mrr: number }[] = []
     for (const p of projects) {
@@ -85,7 +78,6 @@ export default function DashboardPage() {
     mrrByProject.sort((a, b) => b.mrr - a.mrr)
     const totalARR = totalMRR * 12
 
-    // Ads vs revenue cross-data (per project)
     const adsVsRevenue = projects.map((p) => {
       const projectPosts = posts.filter((post) => post.projectId === p.id || (p.linkedPostIds || []).includes(post.id))
       const adSpend = projectPosts.reduce((s, post) => s + (post.metrics.spend || 0), 0)
@@ -95,481 +87,448 @@ export default function DashboardPage() {
 
     return { totalRevenue, totalAdSpend, netProfit, byProject, totalMRR, totalARR, mrrByProject, adsVsRevenue }
   }, [projects, posts])
+
   const maxProjectRevenue = revenueStats.byProject[0]?.revenue || 1
   const maxCrossValue = Math.max(...revenueStats.adsVsRevenue.flatMap((r) => [r.adSpend, r.revenue]), 1)
+  const roiGlobal = revenueStats.totalAdSpend > 0
+    ? ((revenueStats.totalRevenue - revenueStats.totalAdSpend) / revenueStats.totalAdSpend) * 100
+    : null
 
   return (
     <div className="flex flex-col h-full overflow-auto">
-      <div className="shrink-0">
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 gap-3 flex-wrap">
-          <div className="flex items-center gap-3">
-            <Image src="/bloom-logo.png" alt="Bloom" width={24} height={24} className="rounded" />
-            <h1 className="text-lg font-semibold">Dashboard</h1>
+      {/* ── Hero header ────────────────────────────────────────────── */}
+      <header className="px-6 sm:px-10 lg:px-14 pt-10 sm:pt-14 pb-8 sm:pb-12">
+        <p className="text-xs text-muted-foreground tracking-wide">
+          {formatDateFr(today, 'EEEE d MMMM')} · semaine {Math.ceil(((today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) / 86400000 + new Date(today.getFullYear(), 0, 1).getDay() + 1) / 7)}
+        </p>
+        <h1 className="page-title mt-2">Bon retour.</h1>
+        {overdueTodos.length > 0 && (
+          <p className="text-sm text-amber-500 mt-3">
+            {overdueTodos.length} tâche{overdueTodos.length > 1 ? 's' : ''} en retard ·{' '}
+            <Link href="/todos" className="underline underline-offset-4 hover:text-amber-400">voir</Link>
+          </p>
+        )}
+      </header>
+
+      <div className="px-6 sm:px-10 lg:px-14 pb-14 space-y-12 sm:space-y-16">
+
+        {/* ── Aujourd'hui : 4 KPI dénudés ─────────────────────────── */}
+        <Section title="Aujourd'hui">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-10 gap-y-8 mt-6">
+            <KpiInline
+              num={todayTasks.length}
+              label="Tâches"
+              hint={`${doneTasks} fait${doneTasks > 1 ? 's' : ''} · ${inProgressTasks} en cours`}
+              href="/calendrier"
+            />
+            <KpiInline
+              num={formatTime(totalWeekMinutes * 60)}
+              label="Temps cette semaine"
+              hint={`${Math.round(totalWeekMinutes / 7)} min/jour`}
+              href="/stats"
+            />
+            <KpiInline
+              num={contacts.length}
+              label="Contacts"
+              hint={`${pipelineStats['client'] || 0} clients · ${pipelineStats['prospect'] || 0} prospects`}
+              href="/contacts"
+            />
+            <KpiInline
+              num={totalActiveTodos}
+              label="To-do actifs"
+              hint={overdueTodos.length > 0 ? `${overdueTodos.length} en retard` : 'À jour'}
+              hintTone={overdueTodos.length > 0 ? 'warn' : 'normal'}
+              href="/todos"
+            />
           </div>
-          <span className="text-xs sm:text-sm text-muted-foreground">{formatDateFr(today, 'EEEE d MMMM yyyy')}</span>
-        </div>
-        <div className="h-px gradient-line" />
-      </div>
+        </Section>
 
-      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* Row 0: Revenue highlight — always visible */}
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Revenus</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <Card className="border-primary/40 bg-primary/5">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                    <path d="M2 9.5l3-3 2 2 4-5" />
-                    <path d="M7 3.5h4v4" />
-                  </svg>
-                  Revenu total
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold tabular-nums">{revenueStats.totalRevenue.toLocaleString('fr-FR')} €</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {revenueStats.byProject.length} projet{revenueStats.byProject.length > 1 ? 's' : ''} générant des revenus
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Dépenses ads</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold tabular-nums">{revenueStats.totalAdSpend.toFixed(0)} €</div>
-                <div className="text-xs text-muted-foreground mt-1">Cumul des posts payants</div>
-              </CardContent>
-            </Card>
-            <Card className={cn(revenueStats.netProfit >= 0 ? 'border-green-300 bg-green-50/40 dark:bg-green-950/10' : 'border-red-300 bg-red-50/40 dark:bg-red-950/10')}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Bénéfice net</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={cn('text-2xl font-bold tabular-nums', revenueStats.netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400')}>
-                  {revenueStats.netProfit >= 0 ? '+' : ''}{revenueStats.netProfit.toLocaleString('fr-FR')} €
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Revenu - dépenses {revenueStats.totalAdSpend > 0 && `· ROI ${(((revenueStats.totalRevenue - revenueStats.totalAdSpend) / revenueStats.totalAdSpend) * 100).toFixed(0)}%`}
-                </div>
-              </CardContent>
-            </Card>
+        {/* ── Revenus : 3 KPI principaux + MRR/ARR ────────────────── */}
+        <Section title="Revenus" right={
+          roiGlobal !== null && (
+            <span className={cn(
+              'text-xs tabular-nums',
+              roiGlobal >= 0 ? 'text-emerald-400' : 'text-red-400'
+            )}>
+              ROI global {roiGlobal >= 0 ? '+' : ''}{roiGlobal.toFixed(0)}%
+            </span>
+          )
+        }>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-10 gap-y-8 mt-6">
+            <KpiInline
+              num={`${revenueStats.totalRevenue.toLocaleString('fr-FR')} €`}
+              label="Revenu total"
+              accent
+              hint={`${revenueStats.byProject.length} projet${revenueStats.byProject.length > 1 ? 's' : ''} actif${revenueStats.byProject.length > 1 ? 's' : ''}`}
+            />
+            <KpiInline
+              num={`${revenueStats.totalAdSpend.toFixed(0)} €`}
+              label="Dépenses ads"
+              hint="Cumul posts payants"
+            />
+            <KpiInline
+              num={`${revenueStats.netProfit >= 0 ? '+' : ''}${revenueStats.netProfit.toLocaleString('fr-FR')} €`}
+              label="Bénéfice net"
+              hint="Revenu − dépenses"
+              tone={revenueStats.netProfit >= 0 ? 'positive' : 'negative'}
+            />
+            <KpiInline
+              num={`${revenueStats.totalMRR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`}
+              label="MRR"
+              hint={`ARR ${revenueStats.totalARR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`}
+              accent
+            />
           </div>
-        </div>
 
-        {/* MRR / ARR + projection chart — always visible */}
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Revenu récurrent</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-            <Card className="border-primary/40 bg-primary/5">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">MRR</CardTitle>
-                <span className="text-[10px] text-muted-foreground">Revenu mensuel récurrent</span>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold tabular-nums">{revenueStats.totalMRR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {revenueStats.mrrByProject.length === 0
-                    ? 'Aucun projet récurrent. Ajoute un type /mois sur un projet.'
-                    : `${revenueStats.mrrByProject.length} projet${revenueStats.mrrByProject.length > 1 ? 's' : ''} récurrent${revenueStats.mrrByProject.length > 1 ? 's' : ''}`}
-                </div>
-                {revenueStats.mrrByProject.length > 0 && (
-                  <div className="mt-3 space-y-1">
-                    {revenueStats.mrrByProject.slice(0, 4).map(({ project, mrr }) => (
-                      <Link key={project.id} href="/projects" className="flex items-center gap-2 text-xs hover:bg-muted/50 -mx-1 px-1 rounded">
-                        {project.color && <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: project.color }} />}
-                        <span className="truncate flex-1">{project.name}</span>
-                        <span className="font-medium tabular-nums shrink-0">{mrr.toFixed(0)} €/mo</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">ARR</CardTitle>
-                <span className="text-[10px] text-muted-foreground">Annual Recurring Revenue</span>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold tabular-nums">{revenueStats.totalARR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</div>
-                <div className="text-xs text-muted-foreground mt-1">Projection sur 12 mois</div>
-                <div className="mt-3 text-xs text-muted-foreground space-y-0.5">
-                  <div>Mensuel : <strong className="text-foreground">{revenueStats.totalMRR.toFixed(0)} €</strong></div>
-                  <div>Quotidien : <strong className="text-foreground">{(revenueStats.totalMRR / 30).toFixed(2)} €</strong></div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="lg:col-span-1">
-              <CardHeader className="pb-1">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Projection 12 mois</CardTitle>
-                <span className="text-[10px] text-muted-foreground">À MRR constant</span>
-              </CardHeader>
-              <CardContent>
-                <MRRProjectionChart mrr={revenueStats.totalMRR} />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Ads vs Revenue cross-chart — always visible */}
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Performance ads vs revenu</h2>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Ad spend vs revenu par projet</CardTitle>
-              <span className="text-[10px] text-muted-foreground">
-                Croise les dépenses publicitaires (posts liés au projet) avec le revenu généré
-              </span>
-            </CardHeader>
-            <CardContent>
-              {revenueStats.adsVsRevenue.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p className="text-sm">Aucun projet avec activité financière.</p>
-                  <p className="text-xs mt-1">Crée un projet, ajoute-lui un revenu, et lie des posts marketing pour voir cette analyse.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    {revenueStats.adsVsRevenue.map(({ project, adSpend, revenue, roi }) => (
-                      <div key={project.id} className="space-y-1">
-                        <div className="flex items-center gap-2 text-xs">
-                          {project.color && <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />}
-                          <span className="truncate flex-1 font-medium">{project.name}</span>
-                          {roi !== null && (
-                            <span className={cn(
-                              'text-[10px] font-medium px-1.5 py-0.5 rounded',
-                              roi >= 0 ? 'text-green-700 bg-green-100 dark:bg-green-950/40 dark:text-green-400' : 'text-red-700 bg-red-100 dark:bg-red-950/40 dark:text-red-400'
-                            )}>
-                              ROI {roi.toFixed(0)}%
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="w-16 text-[10px] text-muted-foreground shrink-0">Ad spend</span>
-                          <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full rounded-full bg-red-400 dark:bg-red-500" style={{ width: `${(adSpend / maxCrossValue) * 100}%` }} />
-                          </div>
-                          <span className="font-medium tabular-nums shrink-0 w-16 text-right">{adSpend.toFixed(0)} €</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="w-16 text-[10px] text-muted-foreground shrink-0">Revenu</span>
-                          <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full rounded-full bg-green-500" style={{ width: `${(revenue / maxCrossValue) * 100}%` }} />
-                          </div>
-                          <span className="font-medium tabular-nums shrink-0 w-16 text-right">{revenue.toFixed(0)} €</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-3 mt-3 text-[10px] text-muted-foreground">
-                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-400" /> Dépenses ads</span>
-                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500" /> Revenu</span>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Row 1: Quick stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Tâches aujourd&apos;hui</CardTitle></CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{todayTasks.length}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {doneTasks} terminée{doneTasks > 1 ? 's' : ''} · {inProgressTasks} en cours
+          {/* MRR projection — slim, no card */}
+          {revenueStats.totalMRR > 0 && (
+            <div className="mt-10 pt-6 border-t hairline">
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                <span>Projection 12 mois à MRR constant</span>
+                <span className="tabular-nums">
+                  Cumul fin d&apos;année · <strong className="text-foreground">{(revenueStats.totalMRR * 12).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</strong>
+                </span>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Temps cette semaine</CardTitle></CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatTime(totalWeekMinutes * 60)}</div>
-              <div className="text-xs text-muted-foreground mt-1">{Math.round(totalWeekMinutes / 7)} min/jour en moy.</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Contacts</CardTitle></CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{contacts.length}</div>
-              <div className="text-xs text-muted-foreground mt-1">{pipelineStats['client'] || 0} clients · {pipelineStats['prospect'] || 0} prospects</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Posts marketing</CardTitle></CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{posts.length}</div>
-              <div className="text-xs text-muted-foreground mt-1">{totalImpressions.toLocaleString()} impressions</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Projets</CardTitle></CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{projects.length}</div>
-              <div className="text-xs text-muted-foreground mt-1">{activeProjects} en cours · {ideaProjects} idées</div>
-            </CardContent>
-          </Card>
-        </div>
+              <MRRProjectionChart mrr={revenueStats.totalMRR} />
+            </div>
+          )}
+        </Section>
 
-        {/* Row 2: Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-          {/* Pipeline mini */}
-          <Link href="/pipeline" className="block">
-            <Card className="hover:border-primary/50 transition-colors h-full">
-              <CardHeader><CardTitle className="text-sm">Pipeline CRM</CardTitle></CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {CONTACT_STATUSES.filter((s) => s.value !== 'inactive').map((s) => (
-                    <div key={s.value} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
-                        <span>{s.label}</span>
-                      </div>
-                      <span className="text-sm font-medium">{pipelineStats[s.value] || 0}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Temps par catégorie */}
-          <Link href="/stats" className="block">
-            <Card className="hover:border-primary/50 transition-colors h-full">
-              <CardHeader><CardTitle className="text-sm">Temps par catégorie (7j)</CardTitle></CardHeader>
-              <CardContent>
-                {topCategories.length > 0 ? (
-                  <div className="space-y-2">
-                    {topCategories.map((d) => (
-                      <div key={d.cat!.id} className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: d.cat!.color }} />
-                        <span className="text-xs flex-1 truncate">{d.cat!.name}</span>
-                        <span className="text-xs font-medium tabular-nums">{d.minutes} min</span>
-                        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${Math.min((d.minutes / (topCategories[0]?.minutes || 1)) * 100, 100)}%`, backgroundColor: d.cat!.color }} />
-                        </div>
-                      </div>
-                    ))}
+        {/* ── Performance ads vs revenu — list rows ────────────────── */}
+        {revenueStats.adsVsRevenue.length > 0 && (
+          <Section title="Performance projet">
+            <ul className="mt-6 divide-y hairline">
+              {revenueStats.adsVsRevenue.map(({ project, adSpend, revenue, roi }) => (
+                <li key={project.id} className="row-hover py-4 -mx-2 px-2 rounded-md">
+                  <div className="flex items-center gap-3 mb-2">
+                    {project.color && (
+                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />
+                    )}
+                    <span className="text-sm font-medium flex-1 truncate">{project.name}</span>
+                    {roi !== null && (
+                      <span className={cn(
+                        'text-xs tabular-nums shrink-0',
+                        roi >= 0 ? 'text-emerald-400' : 'text-red-400'
+                      )}>
+                        ROI {roi >= 0 ? '+' : ''}{roi.toFixed(0)}%
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground py-4 text-center">Aucun temps enregistré</div>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Today tasks */}
-          <Link href="/calendrier" className="block">
-            <Card className="hover:border-primary/50 transition-colors h-full">
-              <CardHeader><CardTitle className="text-sm">Tâches du jour</CardTitle></CardHeader>
-              <CardContent>
-                {todayTasks.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {todayTasks.slice(0, 5).map((task) => {
-                      const cat = categories.find((c) => c.id === task.categoryId)
-                      return (
-                        <div key={task.id} className="flex items-center gap-2 text-xs">
-                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${task.status === 'done' ? 'bg-green-500' : task.status === 'in_progress' ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
-                          <span className={`truncate flex-1 ${task.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>{task.title}</span>
-                          <span className="text-muted-foreground shrink-0">{task.startTime}</span>
-                        </div>
-                      )
-                    })}
-                    {todayTasks.length > 5 && <div className="text-xs text-muted-foreground">+{todayTasks.length - 5} autres</div>}
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+                    <DualBar label="Ads" value={adSpend} max={maxCrossValue} tone="muted" />
+                    <DualBar label="Revenu" value={revenue} max={maxCrossValue} tone="primary" />
                   </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground py-4 text-center">Aucune tâche aujourd&apos;hui</div>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
-
-        {/* Optional: Google Calendar widget (only shown when connected) */}
-        <GoogleCalendarWidget />
-
-        {/* Revenue per project — only shown if any project has revenue */}
-        {revenueStats.byProject.length > 0 && (
-          <Link href="/projects" className="block">
-            <Card className="hover:border-primary/50 transition-colors">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm">Revenus par projet</CardTitle>
-                <span className="text-[10px] text-muted-foreground">{revenueStats.byProject.length} actif{revenueStats.byProject.length > 1 ? 's' : ''}</span>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {revenueStats.byProject.slice(0, 6).map(({ project, revenue }) => {
-                    const pct = (revenue / maxProjectRevenue) * 100
-                    const projectShare = revenueStats.totalRevenue > 0 ? (revenue / revenueStats.totalRevenue) * 100 : 0
-                    return (
-                      <div key={project.id} className="space-y-1">
-                        <div className="flex items-center gap-2 text-xs">
-                          {project.color && <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />}
-                          <span className="truncate flex-1">{project.name}</span>
-                          <span className="font-medium tabular-nums shrink-0">{revenue.toLocaleString('fr-FR')} €</span>
-                          <span className="text-[10px] text-muted-foreground shrink-0 w-10 text-right">{projectShare.toFixed(0)}%</span>
-                        </div>
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${pct}%`, backgroundColor: project.color || 'oklch(0.55 0.17 50)' }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {revenueStats.byProject.length > 6 && (
-                    <div className="text-[10px] text-muted-foreground pt-1">+{revenueStats.byProject.length - 6} autres projets</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+                </li>
+              ))}
+            </ul>
+          </Section>
         )}
 
-        {/* Row 3: More details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-          {/* Recent posts */}
-          <Link href="/marketing" className="block">
-            <Card className="hover:border-primary/50 transition-colors h-full">
-              <CardHeader><CardTitle className="text-sm">Derniers posts</CardTitle></CardHeader>
-              <CardContent>
-                {recentPosts.length > 0 ? (
-                  <div className="space-y-2">
-                    {recentPosts.map((post) => {
-                      const plat = PLATFORMS.find((p) => p.value === post.platform)
-                      const eng = post.metrics.likes + post.metrics.comments + post.metrics.shares
-                      return (
-                        <div key={post.id} className="flex items-center gap-2 text-xs">
-                          <span className="h-5 w-5 rounded text-white text-[8px] font-bold flex items-center justify-center shrink-0" style={{ backgroundColor: plat?.color }}>{plat?.label.slice(0, 2).toUpperCase()}</span>
-                          <span className="truncate flex-1">{post.title}</span>
-                          <span className="text-muted-foreground shrink-0">{eng.toLocaleString()} eng.</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground py-4 text-center">Aucun post</div>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
+        {/* ── Revenus par projet (si données) ──────────────────────── */}
+        {revenueStats.byProject.length > 0 && (
+          <Section title="Revenus par projet" right={
+            <Link href="/projects" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Voir tout →
+            </Link>
+          }>
+            <ul className="mt-6 space-y-3">
+              {revenueStats.byProject.slice(0, 6).map(({ project, revenue }) => {
+                const pct = (revenue / maxProjectRevenue) * 100
+                const share = revenueStats.totalRevenue > 0 ? (revenue / revenueStats.totalRevenue) * 100 : 0
+                return (
+                  <li key={project.id} className="space-y-1.5">
+                    <div className="flex items-center gap-3 text-sm">
+                      {project.color && (
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />
+                      )}
+                      <span className="truncate flex-1">{project.name}</span>
+                      <span className="tabular-nums text-muted-foreground text-xs">{share.toFixed(0)}%</span>
+                      <span className="font-medium tabular-nums shrink-0 w-24 text-right">
+                        {revenue.toLocaleString('fr-FR')} €
+                      </span>
+                    </div>
+                    <div className="h-[3px] bg-muted/40 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: project.color || 'var(--primary)',
+                          opacity: 0.85,
+                        }}
+                      />
+                    </div>
+                  </li>
+                )
+              })}
+              {revenueStats.byProject.length > 6 && (
+                <li className="text-xs text-muted-foreground pt-1">
+                  +{revenueStats.byProject.length - 6} autres
+                </li>
+              )}
+            </ul>
+          </Section>
+        )}
 
-          {/* Projects */}
-          <Link href="/projects" className="block">
-            <Card className="hover:border-primary/50 transition-colors h-full">
-              <CardHeader><CardTitle className="text-sm">Projets</CardTitle></CardHeader>
-              <CardContent>
-                {projects.length > 0 ? (
-                  <div className="space-y-2">
-                    {projects.slice(0, 4).map((p) => {
-                      const status = PROJECT_STATUSES.find((s) => s.value === p.status)
-                      return (
-                        <div key={p.id} className="flex items-center gap-2 text-xs">
-                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: status?.color }} />
-                          <span className="truncate flex-1">{p.name}</span>
-                          <span className="text-muted-foreground shrink-0">{status?.label}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground py-4 text-center">Aucun projet</div>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* To-Do */}
-          <Link href="/todos" className="block">
-            <Card className={cn(
-              "transition-colors h-full",
-              overdueTodos.length > 0
-                ? "border-red-300 hover:border-red-400 bg-red-50/30 dark:bg-red-950/10"
-                : "hover:border-primary/50"
-            )}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm">To-Do</CardTitle>
-                {overdueTodos.length > 0 && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white animate-pulse">
-                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <circle cx="4" cy="4" r="3" />
-                      <path d="M4 2.5v2M4 5.5v.01" />
-                    </svg>
-                    {overdueTodos.length} en retard
+        {/* ── 3 colonnes : Pipeline · Temps · Tâches du jour ──────── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-12">
+          {/* Pipeline */}
+          <Section title="Pipeline" right={<MiniLink href="/pipeline" />}>
+            <ul className="mt-5 space-y-3">
+              {CONTACT_STATUSES.filter((s) => s.value !== 'inactive').map((s) => (
+                <li key={s.value} className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.color }} />
+                    <span className="text-muted-foreground">{s.label}</span>
                   </span>
+                  <span className="tabular-nums font-medium">{pipelineStats[s.value] || 0}</span>
+                </li>
+              ))}
+            </ul>
+          </Section>
+
+          {/* Temps par catégorie */}
+          <Section title="Temps · 7 jours" right={<MiniLink href="/stats" />}>
+            {topCategories.length > 0 ? (
+              <ul className="mt-5 space-y-3">
+                {topCategories.map((d) => (
+                  <li key={d.cat!.id} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 truncate">
+                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: d.cat!.color }} />
+                        <span className="truncate">{d.cat!.name}</span>
+                      </span>
+                      <span className="tabular-nums text-muted-foreground text-xs">{d.minutes} min</span>
+                    </div>
+                    <div className="h-[2px] bg-muted/40 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.min((d.minutes / (topCategories[0]?.minutes || 1)) * 100, 100)}%`,
+                          backgroundColor: d.cat!.color,
+                          opacity: 0.8,
+                        }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyHint>Aucun temps enregistré</EmptyHint>
+            )}
+          </Section>
+
+          {/* Tâches du jour */}
+          <Section title="Tâches du jour" right={<MiniLink href="/calendrier" />}>
+            {todayTasks.length > 0 ? (
+              <ul className="mt-5 space-y-2.5">
+                {todayTasks.slice(0, 6).map((task) => (
+                  <li key={task.id} className="flex items-center gap-2 text-sm">
+                    <span className={cn(
+                      'h-1.5 w-1.5 rounded-full shrink-0',
+                      task.status === 'done' ? 'bg-emerald-500'
+                      : task.status === 'in_progress' ? 'bg-primary'
+                      : 'bg-muted-foreground/40'
+                    )} />
+                    <span className={cn('truncate flex-1', task.status === 'done' && 'line-through text-muted-foreground')}>
+                      {task.title}
+                    </span>
+                    <span className="text-muted-foreground text-xs tabular-nums shrink-0">{task.startTime}</span>
+                  </li>
+                ))}
+                {todayTasks.length > 6 && (
+                  <li className="text-xs text-muted-foreground">+{todayTasks.length - 6}</li>
                 )}
-              </CardHeader>
-              <CardContent>
-                {totalActiveTodos > 0 ? (
-                  <div className="space-y-2">
-                    {[...overdueTodos, ...todos.filter((t) => !t.done && !(t.date !== null && t.date < todayStr))].slice(0, 4).map((todo) => {
-                      const isLate = !todo.done && todo.date !== null && todo.date < todayStr
-                      return (
-                        <div key={todo.id} className="flex items-center gap-2 text-xs">
-                          <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{
-                            backgroundColor: todo.priority === 'high' ? '#EF4444' : todo.priority === 'medium' ? '#F59E0B' : '#6B7280'
-                          }} />
-                          <span className={cn(
-                            "truncate flex-1",
-                            isLate && "text-red-600 dark:text-red-400 font-medium"
-                          )}>{todo.title}</span>
-                          <span className={cn(
-                            "shrink-0 text-[10px]",
-                            isLate ? "text-red-600 dark:text-red-400 font-semibold" : "text-muted-foreground"
-                          )}>
-                            {isLate ? "Retard" : todo.date === todayStr ? "Auj." : todo.date ? todo.date.slice(5) : 'Plus tard'}
-                          </span>
-                        </div>
-                      )
-                    })}
-                    {totalActiveTodos > 4 && <div className="text-xs text-muted-foreground">+{totalActiveTodos - 4} autres</div>}
-                  </div>
-                ) : doneTodos > 0 ? (
-                  <div className="text-xs text-muted-foreground py-4 text-center">Tout est fait ! ({doneTodos} termine{doneTodos > 1 ? 's' : ''})</div>
-                ) : (
-                  <div className="text-xs text-muted-foreground py-4 text-center">Aucune tache</div>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
+              </ul>
+            ) : (
+              <EmptyHint>Aucune tâche</EmptyHint>
+            )}
+          </Section>
         </div>
+
+        {/* ── 2 colonnes : Posts · Projets ────────────────────────── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
+          <Section title="Derniers posts" right={<MiniLink href="/marketing" />}>
+            {recentPosts.length > 0 ? (
+              <ul className="mt-5 divide-y hairline">
+                {recentPosts.map((post) => {
+                  const plat = PLATFORMS.find((p) => p.value === post.platform)
+                  const eng = post.metrics.likes + post.metrics.comments + post.metrics.shares
+                  return (
+                    <li key={post.id} className="row-hover py-3 -mx-2 px-2 rounded-md">
+                      <div className="flex items-center gap-3 text-sm">
+                        <span
+                          className="h-6 w-6 rounded text-white text-[9px] font-semibold flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: plat?.color }}
+                        >
+                          {plat?.label.slice(0, 2).toUpperCase()}
+                        </span>
+                        <span className="truncate flex-1">{post.title}</span>
+                        <span className="text-muted-foreground text-xs tabular-nums shrink-0">
+                          {eng.toLocaleString()} eng.
+                        </span>
+                      </div>
+                    </li>
+                  )
+                })}
+                <li className="text-xs text-muted-foreground pt-2">
+                  Total impressions · <strong className="text-foreground tabular-nums">{totalImpressions.toLocaleString()}</strong>
+                </li>
+              </ul>
+            ) : (
+              <EmptyHint>Aucun post</EmptyHint>
+            )}
+          </Section>
+
+          <Section title="Projets" right={<MiniLink href="/projects" />}>
+            {projects.length > 0 ? (
+              <ul className="mt-5 divide-y hairline">
+                {projects.slice(0, 5).map((p) => {
+                  const status = PROJECT_STATUSES.find((s) => s.value === p.status)
+                  return (
+                    <li key={p.id} className="row-hover py-3 -mx-2 px-2 rounded-md">
+                      <div className="flex items-center gap-3 text-sm">
+                        {p.color ? (
+                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                        ) : (
+                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: status?.color }} />
+                        )}
+                        <span className="truncate flex-1">{p.name}</span>
+                        <span className="text-muted-foreground text-xs shrink-0">{status?.label}</span>
+                      </div>
+                    </li>
+                  )
+                })}
+                <li className="text-xs text-muted-foreground pt-2">
+                  {activeProjects} en cours · {projects.length} au total
+                </li>
+              </ul>
+            ) : (
+              <EmptyHint>Aucun projet</EmptyHint>
+            )}
+          </Section>
+        </div>
+
+        {/* Optional Google Calendar widget */}
+        <GoogleCalendarWidget />
       </div>
     </div>
   )
 }
 
+// ── Subcomponents ────────────────────────────────────────────────
+
+function Section({
+  title, right, children,
+}: {
+  title: string
+  right?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section>
+      <header className="flex items-center justify-between gap-3">
+        <span className="section-title">{title}</span>
+        {right && <span className="shrink-0">{right}</span>}
+      </header>
+      {children}
+    </section>
+  )
+}
+
+function KpiInline({
+  num, label, hint, hintTone, accent, tone, href,
+}: {
+  num: React.ReactNode
+  label: string
+  hint?: React.ReactNode
+  hintTone?: 'normal' | 'warn'
+  accent?: boolean
+  tone?: 'positive' | 'negative'
+  href?: string
+}) {
+  const inner = (
+    <>
+      <div className={cn(
+        'kpi-num transition-colors',
+        accent && 'text-primary',
+        tone === 'positive' && 'text-emerald-400',
+        tone === 'negative' && 'text-red-400',
+      )}>
+        {num}
+      </div>
+      <div className="kpi-label mt-2">{label}</div>
+      {hint && (
+        <div className={cn(
+          'text-[11px] mt-1',
+          hintTone === 'warn' ? 'text-amber-500' : 'text-muted-foreground/80'
+        )}>
+          {hint}
+        </div>
+      )}
+    </>
+  )
+  if (href) {
+    return <Link href={href} className="block group cursor-pointer">{inner}</Link>
+  }
+  return <div className="block group">{inner}</div>
+}
+
+function DualBar({ label, value, max, tone }: { label: string; value: number; max: number; tone: 'primary' | 'muted' }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="tabular-nums text-xs font-medium">{value.toFixed(0)} €</span>
+      </div>
+      <div className="h-[3px] bg-muted/40 rounded-full overflow-hidden">
+        <div
+          className={cn(
+            'h-full rounded-full',
+            tone === 'primary' ? 'bg-primary opacity-90' : 'bg-muted-foreground/50'
+          )}
+          style={{ width: `${(value / max) * 100}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function MiniLink({ href }: { href: string }) {
+  return (
+    <Link
+      href={href}
+      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+    >
+      Voir →
+    </Link>
+  )
+}
+
+function EmptyHint({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-5 text-xs text-muted-foreground italic">
+      {children}
+    </div>
+  )
+}
+
 /**
- * Stripe-style area chart for MRR projection over 12 months.
- * Uses pure SVG with a smooth area fill.
+ * MRR projection chart — slim soft area + line, full width, no card box.
  */
 function MRRProjectionChart({ mrr }: { mrr: number }) {
-  // Generate 12 monthly data points. We assume constant MRR (no growth assumption).
   const months = Array.from({ length: 12 }, (_, i) => ({
     label: new Date(new Date().setMonth(new Date().getMonth() + i)).toLocaleDateString('fr-FR', { month: 'short' }),
     value: mrr,
   }))
   const cumulative = months.map((m, i) => ({ ...m, total: m.value * (i + 1) }))
   const maxTotal = cumulative[cumulative.length - 1].total || 1
-  const W = 280
-  const H = 100
-  const padX = 4
+  const W = 800
+  const H = 80
+  const padX = 0
   const padY = 8
   const usableW = W - padX * 2
   const usableH = H - padY * 2
 
-  if (mrr === 0) {
-    return (
-      <div className="flex items-center justify-center h-[100px] text-[10px] text-muted-foreground italic text-center px-2">
-        Définis un revenu mensuel sur au moins un projet pour voir la projection.
-      </div>
-    )
-  }
-
-  // Build path
   const points = cumulative.map((p, i) => ({
     x: padX + (i / (cumulative.length - 1)) * usableW,
     y: padY + (1 - p.total / maxTotal) * usableH,
@@ -580,26 +539,20 @@ function MRRProjectionChart({ mrr }: { mrr: number }) {
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-24" preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-20" preserveAspectRatio="none">
         <defs>
-          <linearGradient id="mrr-gradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="oklch(0.55 0.17 50)" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="oklch(0.55 0.17 50)" stopOpacity="0" />
+          <linearGradient id="mrr-gradient-soft" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d={areaPath} fill="url(#mrr-gradient)" />
-        <path d={linePath} fill="none" stroke="oklch(0.55 0.17 50)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        {points.map((p, i) => i % 3 === 0 && (
-          <circle key={i} cx={p.x} cy={p.y} r="2" fill="oklch(0.55 0.17 50)" />
-        ))}
+        <path d={areaPath} fill="url(#mrr-gradient-soft)" />
+        <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <div className="flex justify-between text-[9px] text-muted-foreground mt-1 px-1">
-        <span>{months[0].label}</span>
-        <span>{months[5].label}</span>
-        <span>{months[11].label}</span>
-      </div>
-      <div className="mt-1 text-[10px] text-muted-foreground">
-        Cumul fin d&apos;année : <strong className="text-foreground tabular-nums">{(mrr * 12).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</strong>
+      <div className="flex justify-between text-[10px] text-muted-foreground/70 mt-1">
+        {months.filter((_, i) => i % 2 === 0).map((m, i) => (
+          <span key={i}>{m.label}</span>
+        ))}
       </div>
     </div>
   )

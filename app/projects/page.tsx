@@ -86,29 +86,41 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border shrink-0">
-        <h1 className="text-lg font-semibold">Projets</h1>
-        <Button size="sm" onClick={() => setCreatorOpen(true)}>+ Projet</Button>
-      </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* ── Soft hero header ───────────────────────────────────── */}
+      <header className="px-6 sm:px-10 lg:px-14 pt-10 pb-6 shrink-0">
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-xs text-muted-foreground tracking-wide">
+              {app.projects.length} projet{app.projects.length > 1 ? 's' : ''} · {app.projects.filter((p) => p.status === 'in_progress').length} en cours
+            </p>
+            <h1 className="page-title mt-1.5">Projets</h1>
+          </div>
+          <button
+            onClick={() => setCreatorOpen(true)}
+            className="text-sm font-medium px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            + Nouveau projet
+          </button>
+        </div>
+      </header>
 
-      {/* Body: Kanban + Detail */}
+      {/* ── Body : Kanban (soft) + Detail ─────────────────────── */}
       <div className="flex flex-1 min-h-0 flex-col md:flex-row">
-        {/* Left: Kanban columns */}
+        {/* Kanban — colonnes sans bordures, headers soft */}
         <div className={cn(
-          "shrink-0 overflow-x-auto border-b md:border-b-0 md:border-r border-border transition-all",
-          selectedProject ? "md:w-[340px]" : "flex-1"
+          'shrink-0 overflow-x-auto px-6 sm:px-10 lg:px-14 pb-6 transition-all',
+          selectedProject ? 'md:w-[380px] md:px-6' : 'flex-1'
         )}>
-          <div className="flex md:h-full min-w-max">
+          <div className="flex gap-6 md:h-full min-w-max md:min-w-0">
             {effectiveStatuses.map((status) => {
               const projects = app.projects.filter((p) => p.status === status.value)
               return (
                 <div
                   key={status.value}
                   className={cn(
-                    "border-r border-border last:border-r-0",
-                    selectedProject ? "w-[170px]" : "w-[240px] md:flex-1 md:min-w-[260px]"
+                    'flex flex-col min-h-0',
+                    selectedProject ? 'w-[180px]' : 'w-[260px] md:flex-1 md:min-w-[240px]'
                   )}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
@@ -116,63 +128,95 @@ export default function ProjectsPage() {
                     if (projectId) handleDrop(projectId, status.value)
                   }}
                 >
-                  <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30">
-                    <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
-                    <span className="text-xs font-medium truncate">{status.label}</span>
-                    <span className="ml-auto text-[10px] text-muted-foreground">{projects.length}</span>
+                  {/* Column header — soft tracking-wider, no bg, no border */}
+                  <div className="flex items-center gap-2 mb-3 px-1">
+                    <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
+                      {status.label}
+                    </span>
+                    <span className="ml-auto text-[10px] tabular-nums text-muted-foreground/60">
+                      {projects.length}
+                    </span>
                   </div>
-                  <div className="p-2 space-y-1.5 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 130px)' }}>
+
+                  {/* Cards — no borders, soft hover, accent dot */}
+                  <div className="space-y-1 overflow-y-auto pb-4 -mx-1 px-1" style={{ maxHeight: 'calc(100vh - 220px)' }}>
                     <CardListBoundary>
+                      {projects.length === 0 && (
+                        <div className="text-[11px] text-muted-foreground/50 italic px-2 py-3">
+                          Aucun projet
+                        </div>
+                      )}
                       {projects.map((project) => {
-                        // Belt-and-suspenders: even though formatRelative is hardened,
-                        // protect each card from any future crash so one bad row
-                        // can't take down the whole column.
                         let updatedLabel = ''
                         try { updatedLabel = formatRelative(project.updatedAt) } catch {/* swallow */}
                         const tags = Array.isArray(project.tags) ? project.tags : []
+                        const isSelected = selectedProjectId === project.id
                         return (
                           <div
                             key={project.id}
                             draggable
                             onDragStart={(e) => e.dataTransfer.setData('projectId', project.id)}
                             className={cn(
-                              "rounded-lg border bg-background p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all group relative",
-                              selectedProjectId === project.id
-                                ? "border-primary ring-1 ring-primary/30"
-                                : "border-border"
+                              'group relative rounded-md px-3 py-2.5 cursor-grab active:cursor-grabbing transition-all',
+                              isSelected
+                                ? 'bg-primary/8 ring-1 ring-primary/30'
+                                : 'hover:bg-white/[0.03]'
                             )}
-                            style={project.color ? {
-                              borderLeftColor: project.color,
-                              borderLeftWidth: '3px',
-                            } : undefined}
                             onClick={() => handleSelectProject(project)}
                           >
-                            <div className="flex items-start justify-between gap-1">
-                              <h3 className="text-xs font-medium leading-tight line-clamp-2">{project.name}</h3>
+                            {/* Accent dot (project color) — subtle left marker */}
+                            {project.color && (
+                              <span
+                                className="absolute left-0 top-3 bottom-3 w-[2px] rounded-full"
+                                style={{ backgroundColor: project.color, opacity: 0.7 }}
+                              />
+                            )}
+
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className={cn(
+                                'text-sm leading-tight line-clamp-2',
+                                isSelected ? 'font-medium' : 'font-normal'
+                              )}>
+                                {project.name}
+                              </h3>
                               <button
-                                className="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] shrink-0"
+                                className="text-muted-foreground/40 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity text-xs shrink-0 -mt-0.5"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  if (selectedProjectId === project.id) setSelectedProjectId(null)
+                                  if (isSelected) setSelectedProjectId(null)
                                   app.deleteProject(project.id)
                                 }}
+                                aria-label="Supprimer le projet"
                               >
                                 ×
                               </button>
                             </div>
+
                             {!selectedProject && project.description && (
-                              <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{project.description}</p>
+                              <p className="text-[11px] text-muted-foreground/70 mt-1 line-clamp-2 leading-snug">
+                                {project.description}
+                              </p>
                             )}
+
                             {tags.length > 0 && (
-                              <div className="flex flex-wrap gap-0.5 mt-1.5">
-                                {tags.slice(0, selectedProject ? 2 : 4).map((tag) => (
-                                  <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5 text-[9px]">{tag}</span>
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {tags.slice(0, selectedProject ? 2 : 3).map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="text-[9px] text-muted-foreground/80 px-1.5 py-0.5 rounded bg-white/[0.03]"
+                                  >
+                                    {tag}
+                                  </span>
                                 ))}
                               </div>
                             )}
-                            <div className="text-[9px] text-muted-foreground mt-1.5">
-                              {updatedLabel}
-                            </div>
+
+                            {updatedLabel && (
+                              <div className="text-[10px] text-muted-foreground/50 mt-1.5 tabular-nums">
+                                {updatedLabel}
+                              </div>
+                            )}
                           </div>
                         )
                       })}
@@ -184,9 +228,9 @@ export default function ProjectsPage() {
           </div>
         </div>
 
-        {/* Right: Detail Panel */}
+        {/* Detail Panel — séparé par hairline plutôt que bordure marquée */}
         {selectedProject && (
-          <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex-1 min-w-0 flex flex-col border-t md:border-t-0 md:border-l hairline">
             <ProjectDetail
               project={selectedProject}
               onClose={() => setSelectedProjectId(null)}

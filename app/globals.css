@@ -190,7 +190,89 @@
   background: linear-gradient(90deg, oklch(0.65 0.18 50), oklch(0.55 0.15 280), oklch(0.5 0.12 200));
 }
 
-/* ── Smooth scrollbar ── */
+/* ── Soft mood utilities (Linear-like dark + accents) ── */
+
+/* Hairline divider — replaces card borders for separating list items */
+.hairline {
+  border-color: oklch(1 0 0 / 6%);
+}
+.dark .hairline {
+  border-color: oklch(1 0 0 / 6%);
+}
+
+/* Section title — large, light, with discreet accent dot */
+.section-title {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.section-title::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--primary);
+  opacity: 0.9;
+}
+
+/* Big inline KPI — no card, just a number + label stacked */
+.kpi-num {
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-label {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--muted-foreground);
+  letter-spacing: 0.02em;
+}
+
+/* Page header — oversized soft title */
+.page-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+/* Hover row — subtle bg shift only, no border movement */
+.row-hover {
+  transition: background-color 120ms ease-out;
+}
+.row-hover:hover {
+  background-color: oklch(1 0 0 / 3%);
+}
+.dark .row-hover:hover {
+  background-color: oklch(1 0 0 / 3%);
+}
+
+/* Soft inline pill (used for status, ROI, MRR badges) */
+.soft-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: oklch(1 0 0 / 4%);
+  color: var(--muted-foreground);
+}
+.dark .soft-pill {
+  background: oklch(1 0 0 / 4%);
+}
+
+/* Smooth scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
