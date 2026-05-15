@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Montserrat, Playfair_Display, Inter } from "next/font/google";
+import { Geist_Mono, Montserrat } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
@@ -8,22 +8,13 @@ const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
-});
-
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -45,7 +36,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${montserrat.variable} ${playfair.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${montserrat.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

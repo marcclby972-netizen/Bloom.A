@@ -30,12 +30,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-const FONT_CSS_MAP: Record<string, string> = {
-  montserrat: 'var(--font-montserrat)',
-  playfair: 'var(--font-playfair)',
-  inter: 'var(--font-inter)',
-}
-
 export function applyTheme() {
   if (typeof window === 'undefined') return
   const settings = store.getSettings()
@@ -55,7 +49,8 @@ export function applyTheme() {
     }
   }
 
-  // Font
-  const fontFamily = FONT_CSS_MAP[settings.font || 'montserrat'] || FONT_CSS_MAP.montserrat
-  html.style.setProperty('--font-sans', fontFamily)
+  // Font — always Montserrat, no picker.
+  // We force it via inline style so it overrides any other CSS variable
+  // (and any stale `settings.font` left over from when the picker existed).
+  html.style.setProperty('--font-sans', 'var(--font-montserrat)')
 }
