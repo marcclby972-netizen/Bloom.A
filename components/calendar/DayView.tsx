@@ -7,7 +7,7 @@ import { getHoursArray, timeToMinutes, minutesToTime } from '@/lib/date-utils'
 import { TaskEditor } from '@/components/tasks/TaskEditor'
 import { cn } from '@/lib/utils'
 
-const HOUR_HEIGHT = 64
+const HOUR_HEIGHT = 52  // shrunk from 64
 const HOURS = getHoursArray()
 
 export function DayView() {
@@ -139,23 +139,31 @@ export function DayView() {
             style={{ top: i * HOUR_HEIGHT, height: HOUR_HEIGHT }}
             onClick={() => handleSlotClick(hour)}
           >
-            <div className="w-16 shrink-0 pr-3 pt-1 text-right text-xs text-muted-foreground">
+            <div className="w-12 shrink-0 pr-2 pt-0.5 text-right text-[10px] text-muted-foreground tabular-nums">
               {hour}
             </div>
             <div className="flex-1 border-l border-border/30" />
           </div>
         ))}
 
-        {/* Current time indicator */}
-        {isToday && (
-          <div
-            className="absolute left-16 right-0 z-20 flex items-center pointer-events-none"
-            style={{ top: (currentMinutes / (24 * 60)) * (HOURS.length * HOUR_HEIGHT) }}
-          >
-            <div className="h-2.5 w-2.5 -ml-1.5 rounded-full bg-red-500" />
-            <div className="h-px flex-1 bg-red-500" />
-          </div>
-        )}
+        {/* Current time indicator — ALWAYS visible by default, on any day.
+            On non-today days it appears as a translucent reference line so you
+            still see where "now" is in the calendar. */}
+        <div
+          className={cn(
+            'absolute left-12 right-0 z-20 flex items-center pointer-events-none transition-opacity',
+            isToday ? 'opacity-100' : 'opacity-40'
+          )}
+          style={{ top: (currentMinutes / (24 * 60)) * (HOURS.length * HOUR_HEIGHT) }}
+        >
+          <div className="h-2 w-2 -ml-1 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+          <div className="h-px flex-1 bg-red-500" />
+          {!isToday && (
+            <span className="ml-2 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[9px] font-medium">
+              maintenant
+            </span>
+          )}
+        </div>
 
         {/* Task blocks */}
         {dayTasks.map((task) => {
@@ -170,7 +178,7 @@ export function DayView() {
             <div
               key={task.id}
               className={cn(
-                'group/task absolute left-[4.5rem] right-3 z-10 cursor-pointer rounded-md border px-2.5 py-1.5 text-xs transition-shadow hover:shadow-md',
+                'group/task absolute left-14 right-3 z-10 cursor-pointer rounded-md border px-2 py-1 text-[11px] leading-tight transition-shadow hover:shadow-md',
                 task.status === 'done' && 'opacity-60',
                 isResizing && 'shadow-lg ring-2 ring-primary/40 z-30'
               )}

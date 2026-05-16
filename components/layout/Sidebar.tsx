@@ -165,11 +165,10 @@ export function Sidebar() {
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-      {/* Header: logo + collapse toggle */}
+      {/* Header: logo only (no "Bloom" wordmark) */}
       <div className={cn('flex items-center mb-4 px-3', expanded ? 'justify-between' : 'md:justify-center justify-between')}>
         <div className="flex items-center gap-2.5 min-w-0">
           <Image src="/bloom-logo.png" alt="Bloom" width={28} height={28} className="rounded-md shrink-0" />
-          <span className={cn('text-sm font-semibold truncate', !expanded && 'md:hidden')}>Bloom</span>
         </div>
         <button
           onClick={() => setExpanded(!expanded)}
@@ -224,9 +223,14 @@ export function Sidebar() {
           )}
         >
           <span className="shrink-0">
+            {/* Settings icon — minimal slider/control style */}
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="10" cy="10" r="2.5" />
-              <path d="M10 1.5v2.5M10 16v2.5M1.5 10H4M16 10h2.5M4.2 4.2l1.8 1.8M14 14l1.8 1.8M15.8 4.2 14 6M6 14l-1.8 1.8" />
+              <line x1="3" y1="6" x2="13" y2="6" />
+              <line x1="17" y1="6" x2="17" y2="6" />
+              <circle cx="15" cy="6" r="2" />
+              <line x1="3" y1="14" x2="7" y2="14" />
+              <line x1="11" y1="14" x2="17" y2="14" />
+              <circle cx="9" cy="14" r="2" />
             </svg>
           </span>
           <span className={cn('text-xs font-medium truncate', !expanded && 'md:hidden')}>Paramètres</span>
@@ -245,11 +249,10 @@ export function Sidebar() {
           )}
         >
           <span className="shrink-0">
+            {/* AI icon — minimal speech-bubble with spark */}
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 2l2 4.5h-4L10 2Z" />
-              <path d="M6 8l-2 4.5h4L6 8Z" />
-              <path d="M14 8l2 4.5h-4L14 8Z" />
-              <circle cx="10" cy="16" r="2" />
+              <path d="M3 4.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8l-3.5 3v-3H5a2 2 0 0 1-2-2v-7Z" />
+              <path d="M10 6.5l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7L10 6.5Z" fill="currentColor" stroke="none" />
             </svg>
           </span>
           <span className={cn('text-xs font-medium truncate', !expanded && 'md:hidden')}>{AI_NAME}</span>

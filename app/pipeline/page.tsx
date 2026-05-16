@@ -5,6 +5,7 @@ import { useApp } from '@/lib/context'
 import { CONTACT_STATUSES, type ContactStatus } from '@/lib/types'
 import { ContactCard } from '@/components/crm/ContactCard'
 import { ContactEditor } from '@/components/crm/ContactEditor'
+import { SocialComposer } from '@/components/pipeline/SocialComposer'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -60,8 +61,10 @@ export default function PipelinePage() {
         <Button size="sm" onClick={() => handleAdd('prospect')}>+ Contact</Button>
       </div>
 
-      <div className="flex-1 overflow-x-auto">
-        <div className="flex h-full min-w-max">
+      {/* Pipeline columns + composer side-by-side */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 overflow-x-auto">
+          <div className="flex h-full min-w-max">
           {cols.map((col) => {
             const colContacts = contacts.filter((c) => c.status === col.value)
             const isOver = dragOverCol === col.value
@@ -116,7 +119,11 @@ export default function PipelinePage() {
               </div>
             )
           })}
+          </div>
         </div>
+
+        {/* Right-side post composer (xl+ only — fills the empty space) */}
+        <SocialComposer />
       </div>
 
       <ContactEditor

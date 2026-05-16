@@ -10,9 +10,9 @@ import { ChatPanel } from '@/components/ai/ChatPanel'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { CookieBanner } from '@/components/cookies/CookieBanner'
 
-const PUBLIC_ROUTES = ['/login']
+const PUBLIC_ROUTES = ['/login', '/onboard', '/ui-ux-pro-max']
 // Routes légales — full-width sans sidebar mais doivent garder la bannière cookies
-const LEGAL_ROUTES = ['/privacy', '/terms', '/cookies']
+const LEGAL_ROUTES = ['/privacy', '/terms', '/cookies', '/pricing']
 
 function MobileHeader() {
   const { setMobileMenuOpen, chatOpen, setChatOpen } = useApp()
@@ -27,9 +27,8 @@ function MobileHeader() {
           <path d="M3 5h14M3 10h14M3 15h14" />
         </svg>
       </button>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center">
         <Image src="/bloom-logo.png" alt="Bloom" width={22} height={22} className="rounded-md" />
-        <span className="text-sm font-semibold">Bloom</span>
       </div>
       <div className="flex items-center gap-1">
         <NotificationBell />

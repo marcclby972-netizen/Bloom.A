@@ -94,9 +94,7 @@ export default function ProjectsPage() {
             <p className="card-num mb-2">
               {app.projects.length} projet{app.projects.length > 1 ? 's' : ''} · {app.projects.filter((p) => p.status === 'in_progress').length} en cours
             </p>
-            <h1 className="h-section">
-              Tes <span className="h-accent">projets</span>
-            </h1>
+            <h1 className="h-section">Tes projets</h1>
           </div>
           <button
             onClick={() => setCreatorOpen(true)}

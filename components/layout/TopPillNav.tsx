@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useApp } from '@/lib/context'
 import { useAuth } from '@/lib/supabase/use-auth'
+import { isAdmin } from '@/lib/admin'
 import { AI_NAME } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -18,63 +19,136 @@ const PRIMARY_NAV = [
 ] as const
 
 const SECONDARY_NAV = [
-  { href: '/pipeline', label: 'Pipeline' },
-  { href: '/contacts', label: 'Contacts' },
-  { href: '/vocal', label: 'Vocal' },
-  { href: '/stats', label: 'Stats' },
-  { href: '/vault', label: 'Coffre-fort' },
-  { href: '/integrations-guide', label: 'Guide' },
-  { href: '/settings', label: 'Paramètres' },
+  { href: '/pipeline', label: 'Pipeline', adminOnly: false },
+  { href: '/contacts', label: 'Contacts', adminOnly: false },
+  { href: '/vocal', label: 'Vocal', adminOnly: false },
+  { href: '/stats', label: 'Stats', adminOnly: false },
+  { href: '/chrono', label: 'Chrono', adminOnly: false },
+  { href: '/vault', label: 'Coffre-fort', adminOnly: false },
+  { href: '/integrations-guide', label: 'Guide intégrations', adminOnly: true },
+  { href: '/settings', label: 'Paramètres', adminOnly: false },
 ] as const
+
+const WORKSPACES = [
+  { id: 'solo', label: 'Espace personnel', hint: 'Tes projets perso' },
+  { id: 'shared', label: 'Espace partagé', hint: 'Projets en commun' },
+] as const
+
+const WORKSPACE_KEY = 'bloom_active_workspace'
 
 /**
  * Floating pill navigation — Teplin-style.
  *
- * Layout: fixed top-center pill containing logo + 5 primary items + "Plus" overflow menu.
- * On the right side, a separate floating dark pill with avatar + Iris (AI chat) toggle.
+ * Layout:
+ * - Center pill: workspace selector + logo + 5 primary items + Plus dropdown
+ * - Right tab: iPhone-radius subtle white container with Iris (AI) + avatar
  *
- * - Backdrop blur + cream/dark adaptive bg
- * - z-[60] above page content (notification bell is z-[60] too — bell sits in
- *   its own corner, no overlap risk thanks to layout)
- * - On mobile (< md), hidden — the existing MobileHeader + drawer take over.
+ * Hidden on mobile (existing drawer + MobileHeader take over).
  */
 export function TopPillNav() {
   const pathname = usePathname()
   const { chatOpen, setChatOpen } = useApp()
   const { user, signOut } = useAuth()
-  const [moreOpen, setMoreOpen] = useState(false)
-  const moreRef = useRef<HTMLDivElement>(null)
+  const userIsAdmin = isAdmin(user?.email)
 
-  // Close "Plus" menu on outside click
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [wsOpen, setWsOpen] = useState(false)
+  const [activeWs, setActiveWs] = useState<string>('solo')
+  const moreRef = useRef<HTMLDivElement>(null)
+  const wsRef = useRef<HTMLDivElement>(null)
+
+  // Persist + restore active workspace
   useEffect(() => {
-    if (!moreOpen) return
+    if (typeof window === 'undefined') return
+    const saved = localStorage.getItem(WORKSPACE_KEY)
+    if (saved && WORKSPACES.some((w) => w.id === saved)) setActiveWs(saved)
+  }, [])
+  const switchWs = (id: string) => {
+    setActiveWs(id)
+    setWsOpen(false)
+    if (typeof window !== 'undefined') localStorage.setItem(WORKSPACE_KEY, id)
+  }
+
+  // Close menus on outside click
+  useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+      if (moreOpen && moreRef.current && !moreRef.current.contains(e.target as Node)) {
         setMoreOpen(false)
+      }
+      if (wsOpen && wsRef.current && !wsRef.current.contains(e.target as Node)) {
+        setWsOpen(false)
       }
     }
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
-  }, [moreOpen])
+  }, [moreOpen, wsOpen])
 
   // Close on route change
   useEffect(() => {
     setMoreOpen(false)
+    setWsOpen(false)
   }, [pathname])
 
   const isActive = (href: string) =>
     pathname === href || (href !== '/' && pathname.startsWith(href))
 
   const userInitial = user?.email?.[0]?.toUpperCase() || '·'
+  const activeWsLabel = WORKSPACES.find((w) => w.id === activeWs)?.label || 'Espace'
+  const visibleSecondary = SECONDARY_NAV.filter((item) => !item.adminOnly || userIsAdmin)
 
   return (
     <>
+      {/* ── Workspace selector (top-left, separate from main pill) ── */}
+      <div ref={wsRef} className="hidden md:block fixed top-4 left-[88px] z-[60]">
+        <button
+          onClick={() => setWsOpen((v) => !v)}
+          className="h-12 px-4 inline-flex items-center gap-2.5 rounded-full bg-background/85 backdrop-blur-md shadow-lg border border-border hover:bg-background transition-colors"
+          aria-haspopup="menu"
+          aria-expanded={wsOpen}
+        >
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span className="text-[13px] font-medium tracking-tight">{activeWsLabel}</span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
+            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            className={cn('transition-transform text-muted-foreground', wsOpen && 'rotate-180')}>
+            <path d="M2 4l3 3 3-3" />
+          </svg>
+        </button>
+
+        {wsOpen && (
+          <div role="menu" className="absolute top-full left-0 mt-3 min-w-[220px] py-2 rounded-2xl bg-background border border-border shadow-xl">
+            {WORKSPACES.map((ws) => {
+              const isCurrent = ws.id === activeWs
+              return (
+                <button
+                  key={ws.id}
+                  onClick={() => switchWs(ws.id)}
+                  role="menuitem"
+                  className={cn(
+                    'w-full text-left flex items-start gap-3 px-4 py-2.5 transition-colors',
+                    isCurrent ? 'bg-secondary' : 'hover:bg-secondary/60'
+                  )}
+                >
+                  <span className={cn(
+                    'h-2 w-2 rounded-full mt-1.5 shrink-0',
+                    isCurrent ? 'bg-emerald-500' : 'bg-muted-foreground/40'
+                  )} />
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-medium">{ws.label}</div>
+                    <div className="text-[11px] text-muted-foreground">{ws.hint}</div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {/* ── Center pill (logo + nav) ────────────────────────────── */}
       <nav
         aria-label="Navigation principale"
-        className="hidden md:flex fixed top-4 left-1/2 -translate-x-1/2 z-[60] items-center gap-1 px-1.5 h-12 rounded-full bg-background/80 backdrop-blur-md shadow-lg border border-border"
+        className="hidden md:flex fixed top-4 left-1/2 -translate-x-1/2 z-[60] items-center gap-1 px-1.5 h-12 rounded-full bg-background/85 backdrop-blur-md shadow-lg border border-border"
       >
-        {/* Logo */}
         <Link
           href="/"
           aria-label="Bloom — accueil"
@@ -83,10 +157,8 @@ export function TopPillNav() {
           <Image src="/bloom-logo.png" alt="Bloom" width={20} height={20} className="rounded" />
         </Link>
 
-        {/* Vertical divider */}
         <span className="h-5 w-px bg-border mx-1" />
 
-        {/* Primary items */}
         {PRIMARY_NAV.map((item) => {
           const active = isActive(item.href)
           return (
@@ -94,7 +166,7 @@ export function TopPillNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                'h-9 px-3 inline-flex items-center text-[13px] font-medium tracking-tight rounded-full transition-colors uppercase',
+                'h-9 px-3 inline-flex items-center text-[12px] font-medium tracking-tight rounded-full transition-colors uppercase',
                 active
                   ? 'text-foreground bg-secondary'
                   : 'text-muted-foreground hover:text-foreground'
@@ -105,33 +177,27 @@ export function TopPillNav() {
           )
         })}
 
-        {/* "Plus" overflow menu */}
         <div ref={moreRef} className="relative">
           <button
             onClick={() => setMoreOpen((v) => !v)}
             className={cn(
-              'h-9 px-3 inline-flex items-center gap-1 text-[13px] font-medium tracking-tight rounded-full transition-colors uppercase',
+              'h-9 px-3 inline-flex items-center gap-1 text-[12px] font-medium tracking-tight rounded-full transition-colors uppercase',
               moreOpen ? 'text-foreground bg-secondary' : 'text-muted-foreground hover:text-foreground'
             )}
             aria-expanded={moreOpen}
             aria-haspopup="menu"
           >
             Plus
-            <svg
-              width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
               strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-              className={cn('transition-transform', moreOpen && 'rotate-180')}
-            >
+              className={cn('transition-transform', moreOpen && 'rotate-180')}>
               <path d="M2 4l3 3 3-3" />
             </svg>
           </button>
 
           {moreOpen && (
-            <div
-              role="menu"
-              className="absolute top-full right-0 mt-3 min-w-[180px] py-1.5 rounded-2xl bg-background border border-border shadow-xl"
-            >
-              {SECONDARY_NAV.map((item) => {
+            <div role="menu" className="absolute top-full right-0 mt-3 min-w-[210px] py-1.5 rounded-2xl bg-background border border-border shadow-xl">
+              {visibleSecondary.map((item) => {
                 const active = isActive(item.href)
                 return (
                   <Link
@@ -166,27 +232,28 @@ export function TopPillNav() {
         </div>
       </nav>
 
-      {/* ── Right-side dark CTA pill (Iris + avatar) ─────────────── */}
-      <div className="hidden md:flex fixed top-4 right-4 z-[60] items-center gap-2 pl-1 pr-1 h-12 rounded-full bg-foreground text-background shadow-lg">
+      {/* ── Right tab : iPhone-radius subtle white container ────── */}
+      {/* iOS uses ~22px radius for a 44px-tall pill — we mimic with rounded-[22px] on h-12. */}
+      <div className="hidden md:flex fixed top-4 right-4 z-[60] items-center gap-1 px-1 h-12 rounded-[22px] bg-background/90 backdrop-blur-md shadow-lg border border-border">
         <button
           onClick={() => setChatOpen(!chatOpen)}
-          className="h-10 px-4 inline-flex items-center gap-2 text-[13px] font-medium tracking-tight rounded-full hover:bg-white/10 transition-colors"
+          className={cn(
+            'h-10 px-3.5 inline-flex items-center gap-2 text-[13px] font-medium tracking-tight rounded-[18px] transition-colors',
+            chatOpen ? 'bg-foreground text-background' : 'hover:bg-secondary'
+          )}
           aria-label={`Ouvrir ${AI_NAME}`}
         >
-          <svg
-            width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor"
-            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-          >
-            <path d="M10 2l2 4.5h-4L10 2Z" />
-            <path d="M6 8l-2 4.5h4L6 8Z" />
-            <path d="M14 8l2 4.5h-4L14 8Z" />
-            <circle cx="10" cy="16" r="2" />
+          {/* AI icon — speech bubble + spark, more distinctive than the diamond */}
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 4.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8l-3.5 3v-3H5a2 2 0 0 1-2-2v-7Z" />
+            <path d="M10 6.5l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7L10 6.5Z" fill="currentColor" stroke="none" />
           </svg>
           {AI_NAME}
         </button>
+
         <Link
           href="/settings"
-          className="h-10 w-10 rounded-full inline-flex items-center justify-center bg-background/15 text-background text-[12px] font-semibold hover:bg-background/25 transition-colors"
+          className="h-10 w-10 rounded-[18px] inline-flex items-center justify-center bg-foreground text-background text-[12px] font-semibold hover:opacity-90 transition-opacity"
           title={user?.email || 'Profil'}
         >
           {userInitial}

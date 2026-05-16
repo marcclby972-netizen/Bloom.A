@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/supabase/use-auth'
+import { isAdmin } from '@/lib/admin'
 
 type Platform = 'overview' | 'youtube' | 'linkedin'
 
@@ -17,10 +20,15 @@ const PLATFORMS: { id: Platform; label: string; difficulty: string; time: string
 ]
 
 export default function IntegrationsGuidePage() {
+  const { user, loading: authLoading } = useAuth()
   const [activePlatform, setActivePlatform] = useState<Platform>('overview')
   const [origin, setOrigin] = useState('https://ton-domaine.vercel.app')
   const [unlocked, setUnlocked] = useState(false)
   const [checking, setChecking] = useState(true)
+
+  // Admin gate — render an explicit forbidden screen for non-admins
+  const userIsAdmin = isAdmin(user?.email)
+  const adminGateActive = !authLoading && !userIsAdmin
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -30,8 +38,32 @@ export default function IntegrationsGuidePage() {
     }
   }, [])
 
-  if (checking) {
+  if (checking || authLoading) {
     return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Chargement...</div>
+  }
+
+  if (adminGateActive) {
+    return (
+      <div className="flex h-full items-center justify-center px-6">
+        <div className="text-center max-w-md">
+          <div className="mx-auto h-12 w-12 rounded-full bg-secondary flex items-center justify-center mb-5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+              <rect x="4" y="10" width="16" height="11" rx="2" />
+              <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+            </svg>
+          </div>
+          <h1 className="text-lg font-semibold mb-2">Accès réservé aux admins</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Cette section documente la configuration technique des intégrations OAuth
+            (création des apps Developer, env vars, etc.). Elle est réservée à l&apos;équipe
+            qui maintient l&apos;app.
+          </p>
+          <Link href="/" className="pill pill-dark text-sm py-3 px-5 inline-flex">
+            Retour au dashboard
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   if (!unlocked) {

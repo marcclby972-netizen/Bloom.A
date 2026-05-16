@@ -77,26 +77,18 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col h-full overflow-auto">
-      <div className="px-6 sm:px-10 lg:px-16 pt-6 pb-20 max-w-7xl mx-auto w-full">
+      <div className="px-6 sm:px-10 lg:px-16 pt-6 pb-20 max-w-7xl mx-auto w-full animate-in fade-in duration-500">
 
-        {/* ── Hero ─────────────────────────────────────────────── */}
-        <header className="text-center pt-10 pb-16">
-          <p className="text-sm text-muted-foreground tracking-wide mb-4">
-            {formatDateFr(today, 'EEEE d MMMM yyyy')}
-          </p>
-          <h1 className="h-display">
-            Bon retour. <span className="h-accent">Voici ta journée.</span>
-          </h1>
-          {overdueTodos.length > 0 && (
-            <Link
-              href="/todos"
-              className="inline-flex items-center gap-2 mt-6 pill bg-amber-100 text-amber-900 hover:bg-amber-200"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              {overdueTodos.length} tâche{overdueTodos.length > 1 ? 's' : ''} en retard →
-            </Link>
-          )}
-        </header>
+        {/* Overdue inline banner (only shown if relevant) */}
+        {overdueTodos.length > 0 && (
+          <Link
+            href="/todos"
+            className="inline-flex items-center gap-2 mb-6 pill bg-amber-100 text-amber-900 hover:bg-amber-200"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            {overdueTodos.length} tâche{overdueTodos.length > 1 ? 's' : ''} en retard →
+          </Link>
+        )}
 
         {/* ── Numbered KPI grid (Teplin style) ─────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
@@ -119,9 +111,7 @@ export default function DashboardPage() {
         {/* ── Revenus — section éditoriale ──────────────────────── */}
         <section className="mb-16">
           <div className="flex items-end justify-between mb-8 flex-wrap gap-4">
-            <h2 className="h-section">
-              Tes <span className="h-accent">revenus</span> ce mois
-            </h2>
+            <h2 className="h-section">Tes revenus ce mois</h2>
             <Link href="/projects" className="pill text-xs">
               Voir tous les projets →
             </Link>
@@ -200,9 +190,7 @@ export default function DashboardPage() {
 
         {/* ── 3 colonnes Pipeline · Temps · Tâches ──────────────── */}
         <section className="mb-16">
-          <h2 className="h-section mb-8">
-            Vue <span className="h-accent">d&apos;ensemble</span>
-          </h2>
+          <h2 className="h-section mb-8">Vue d&apos;ensemble</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <SoftListCard num="/01" title="Pipeline" href="/pipeline">
               {CONTACT_STATUSES.filter((s) => s.value !== 'inactive').map((s) => (
@@ -268,9 +256,7 @@ export default function DashboardPage() {
 
         {/* ── Posts + Projets ───────────────────────────────────── */}
         <section className="mb-16">
-          <h2 className="h-section mb-8">
-            <span className="h-accent">Activité</span> récente
-          </h2>
+          <h2 className="h-section mb-8">Activité récente</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <SoftListCard num="/01" title="Derniers posts" href="/marketing">
               {posts.length > 0 ? (
