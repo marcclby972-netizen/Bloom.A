@@ -6,6 +6,7 @@ import { getSyncStatus, subscribeSyncStatus, refreshFromCloudWithStatus, flushPe
 import { formatRelative } from '@/lib/date-utils'
 import { getCookiePreferences, resetConsent, subscribeCookiePrefs } from '@/lib/cookies'
 import { CookiePreferencesModal } from '@/components/cookies/CookiePreferencesModal'
+import { useAuth } from '@/lib/supabase/use-auth'
 import { applyTheme } from '@/components/ThemeProvider'
 import { DEFAULT_SETTINGS, AI_MODELS, INTEGRATION_PROVIDERS, AI_NAME } from '@/lib/types'
 import type { AppSettings, Integration, AIModel, IntegrationStatus, Category } from '@/lib/types'
@@ -18,6 +19,10 @@ import { Switch } from '@/components/ui/switch'
 
 // ── Settings sections ──
 const SECTIONS = [
+  { id: 'account', label: 'Mon compte', icon: <UserIcon /> },
+  { id: 'security', label: 'Sécurité', icon: <ShieldIcon /> },
+  { id: 'billing', label: 'Abonnement', icon: <CreditCardIcon /> },
+  { id: 'team', label: 'Équipe', icon: <UsersIcon /> },
   { id: 'integrations', label: 'Intégrations', icon: <PlugIcon /> },
   { id: 'ai', label: 'IA & Modèles', icon: <BrainIcon /> },
   { id: 'voice', label: 'Voix & Audio', icon: <MicIcon /> },
@@ -31,7 +36,7 @@ type SectionId = (typeof SECTIONS)[number]['id']
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
-  const [activeSection, setActiveSection] = useState<SectionId>('integrations')
+  const [activeSection, setActiveSection] = useState<SectionId>('account')
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
@@ -89,6 +94,10 @@ export default function SettingsPage() {
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-2xl space-y-6">
+          {activeSection === 'account' && <AccountSection />}
+          {activeSection === 'security' && <SecuritySection />}
+          {activeSection === 'billing' && <BillingSection />}
+          {activeSection === 'team' && <TeamSection />}
           {activeSection === 'integrations' && (
             <IntegrationsSection settings={settings} onUpdate={(integrations) => updateField('integrations', integrations)} />
           )}
@@ -301,8 +310,8 @@ function IntegrationsSection({ settings, onUpdate }: { settings: AppSettings; on
                       {/* List of connected OAuth accounts */}
                       {isOAuthConnected && (
                         <div className="mt-2 space-y-1">
-                          {accounts.map((acc) => (
-                            <div key={acc.id} className="flex items-center gap-2 rounded-md border border-border bg-background/60 px-2.5 py-1.5">
+                          {accounts.map((acc, accIdx) => (
+                            <div key={`${provider.id}:${acc.id || 'na'}:${acc.providerAccountId || ''}:${accIdx}`} className="flex items-center gap-2 rounded-md border border-border bg-background/60 px-2.5 py-1.5">
                               <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                               <span className="text-xs truncate flex-1" title={accountLabel(acc)}>{accountLabel(acc)}</span>
                               <button
@@ -1320,6 +1329,536 @@ function DataSection() {
 }
 
 // ════════════════════════════════════════════
+// ACCOUNT SECTION
+// ════════════════════════════════════════════
+
+function AccountSection() {
+  const { user } = useAuth()
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [timezone, setTimezone] = useState('Europe/Paris')
+  const [language, setLanguage] = useState('fr')
+  const [saved, setSaved] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setName(localStorage.getItem('bloom_user_name') || '')
+    setPhone(localStorage.getItem('bloom_user_phone') || '')
+    setTimezone(localStorage.getItem('bloom_user_tz') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris')
+    setLanguage(localStorage.getItem('bloom_user_lang') || 'fr')
+    setAvatarUrl(localStorage.getItem('bloom_user_avatar'))
+  }, [])
+
+  const emailVerified = !!user?.email_confirmed_at
+
+  const save = () => {
+    localStorage.setItem('bloom_user_name', name)
+    localStorage.setItem('bloom_user_phone', phone)
+    localStorage.setItem('bloom_user_tz', timezone)
+    localStorage.setItem('bloom_user_lang', language)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1800)
+  }
+
+  const handleAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      localStorage.setItem('bloom_user_avatar', dataUrl)
+      setAvatarUrl(dataUrl)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <>
+      <div>
+        <h3 className="text-base font-semibold">Mon compte</h3>
+        <p className="text-sm text-muted-foreground mt-1">Tes informations personnelles et préférences globales.</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Profil</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 rounded-full bg-muted overflow-hidden flex items-center justify-center border border-border shrink-0">
+              {avatarUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={avatarUrl} alt="avatar" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xl font-semibold text-muted-foreground">
+                  {(name || user?.email || '?')[0]?.toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div>
+              <label className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md border border-border hover:bg-muted cursor-pointer transition-colors">
+                Changer la photo
+                <input type="file" accept="image/*" onChange={handleAvatar} className="hidden" />
+              </label>
+              <p className="text-[10px] text-muted-foreground mt-1.5">PNG, JPG. Max 2 Mo.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">Nom complet</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Marc Cloubey" />
+            </div>
+            <div>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">Téléphone</label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+33 6 …" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">Email</label>
+            <div className="flex items-center gap-2">
+              <Input value={user?.email || ''} readOnly className="opacity-70" />
+              <span className={cn(
+                'text-[10px] font-medium px-2 py-1 rounded-full shrink-0',
+                emailVerified
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+              )}>
+                {emailVerified ? 'Vérifié' : 'Non vérifié'}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">Fuseau horaire</label>
+              <select
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+              >
+                <option value="Europe/Paris">Europe/Paris (UTC+1)</option>
+                <option value="Europe/London">Europe/London (UTC+0)</option>
+                <option value="America/New_York">America/New_York (UTC-5)</option>
+                <option value="America/Los_Angeles">America/Los_Angeles (UTC-8)</option>
+                <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">Langue de l&apos;interface</label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+              >
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            {saved && <span className="text-xs text-emerald-600">Sauvegardé ✓</span>}
+            <Button size="sm" onClick={save}>Sauvegarder</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
+// SECURITY SECTION
+// ════════════════════════════════════════════
+
+const MOCK_SESSIONS = [
+  { id: 's1', device: 'MacBook Pro · Chrome', location: 'Paris, FR', lastActive: 'maintenant', current: true },
+  { id: 's2', device: 'iPhone 15 · Safari', location: 'Paris, FR', lastActive: 'il y a 2 h' },
+  { id: 's3', device: 'iPad Air · Safari', location: 'Lyon, FR', lastActive: 'il y a 3 jours' },
+]
+
+function SecuritySection() {
+  const [oldPwd, setOldPwd] = useState('')
+  const [newPwd, setNewPwd] = useState('')
+  const [confirmPwd, setConfirmPwd] = useState('')
+  const [tfaOn, setTfaOn] = useState(false)
+  const [sessions, setSessions] = useState(MOCK_SESSIONS)
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+
+  const changePassword = async () => {
+    if (!newPwd || newPwd.length < 8) return setMsg({ kind: 'err', text: 'Mot de passe trop court (min 8 caractères).' })
+    if (newPwd !== confirmPwd) return setMsg({ kind: 'err', text: 'Les mots de passe ne correspondent pas.' })
+    try {
+      const supabase = (await import('@/lib/supabase/client')).createClient()
+      const { error } = await supabase.auth.updateUser({ password: newPwd })
+      if (error) throw error
+      setMsg({ kind: 'ok', text: 'Mot de passe mis à jour.' })
+      setOldPwd(''); setNewPwd(''); setConfirmPwd('')
+    } catch (e) {
+      setMsg({ kind: 'err', text: e instanceof Error ? e.message : 'Erreur inconnue' })
+    }
+    setTimeout(() => setMsg(null), 4000)
+  }
+
+  const revoke = (id: string) => {
+    setSessions((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  return (
+    <>
+      <div>
+        <h3 className="text-base font-semibold">Sécurité</h3>
+        <p className="text-sm text-muted-foreground mt-1">Protège ton compte et gère tes sessions actives.</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Mot de passe</CardTitle>
+          <CardDescription>Mise à jour immédiate via Supabase Auth.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Input type="password" placeholder="Mot de passe actuel" value={oldPwd} onChange={(e) => setOldPwd(e.target.value)} />
+          <Input type="password" placeholder="Nouveau mot de passe (8+ caractères)" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
+          <Input type="password" placeholder="Confirmer le nouveau mot de passe" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} />
+          {msg && (
+            <p className={cn('text-xs', msg.kind === 'ok' ? 'text-emerald-600' : 'text-red-600')}>{msg.text}</p>
+          )}
+          <div className="flex justify-end pt-1">
+            <Button size="sm" onClick={changePassword} disabled={!newPwd || newPwd !== confirmPwd}>
+              Mettre à jour
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Authentification 2 facteurs (2FA)</CardTitle>
+          <CardDescription>Ajoute une seconde couche via TOTP (Google Authenticator, 1Password, etc.).</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SettingRow label="Activer le 2FA" description={tfaOn ? 'Le 2FA est actif sur ton compte.' : 'Recommandé pour les comptes professionnels.'}>
+            <Switch checked={tfaOn} onCheckedChange={(v) => setTfaOn(!!v)} />
+          </SettingRow>
+          {tfaOn && (
+            <div className="mt-4 p-4 rounded-lg border border-border bg-muted/30 text-center">
+              <div className="inline-block h-32 w-32 bg-foreground/5 rounded-md flex items-center justify-center text-xs text-muted-foreground">
+                QR code TOTP
+                <br />
+                (Bientôt)
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-3">Scanne ce QR avec ton app d&apos;authentification.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Sessions actives</CardTitle>
+          <CardDescription>Liste des appareils connectés. Révoque toute session suspecte.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2">
+            {sessions.map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-background/60">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {s.device}
+                    {s.current && <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">Cette session</span>}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{s.location} · {s.lastActive}</p>
+                </div>
+                {!s.current && (
+                  <button onClick={() => revoke(s.id)} className="text-xs text-red-600 hover:underline shrink-0">Révoquer</button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
+// BILLING SECTION
+// ════════════════════════════════════════════
+
+const MOCK_INVOICES = [
+  { id: 'inv-2026-05', date: '01/05/2026', amount: '8,60 €', status: 'Payée', url: '#' },
+  { id: 'inv-2026-04', date: '01/04/2026', amount: '8,60 €', status: 'Payée', url: '#' },
+  { id: 'inv-2026-03', date: '01/03/2026', amount: '8,60 €', status: 'Payée', url: '#' },
+]
+
+function BillingSection() {
+  const [plan] = useState<'free' | 'pro' | 'business'>('pro')
+  const [cancelOpen, setCancelOpen] = useState(false)
+
+  const PLAN_LABELS = {
+    free: { label: 'Gratuit', color: 'bg-muted text-muted-foreground' },
+    pro: { label: 'Pro', color: 'bg-foreground text-background' },
+    business: { label: 'Business', color: 'bg-amber-500 text-white' },
+  }
+
+  return (
+    <>
+      <div>
+        <h3 className="text-base font-semibold">Abonnement & facturation</h3>
+        <p className="text-sm text-muted-foreground mt-1">Gère ton plan, ton moyen de paiement et tes factures.</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Plan actuel</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full', PLAN_LABELS[plan].color)}>
+                  {PLAN_LABELS[plan].label}
+                </span>
+                <span className="text-xs text-muted-foreground">8,60 € / mois</span>
+              </div>
+              <p className="text-sm font-medium">Bloom Pro</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Renouvellement le 1<sup>er</sup> juin 2026</p>
+            </div>
+            <a href="/pricing" className="text-xs font-medium underline underline-offset-4 hover:no-underline">
+              Comparer les plans →
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Moyen de paiement</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-background/60">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-12 rounded bg-gradient-to-br from-foreground/80 to-foreground flex items-center justify-center text-[10px] font-bold text-background tracking-wider">
+                VISA
+              </div>
+              <div>
+                <p className="text-sm font-medium">Visa •••• 4242</p>
+                <p className="text-[10px] text-muted-foreground">Expire 12/27</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline">Modifier</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Historique des factures</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <table className="w-full text-sm">
+            <thead className="border-b border-border bg-muted/30">
+              <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                <th className="px-4 py-2 font-medium">Date</th>
+                <th className="px-4 py-2 font-medium">Montant</th>
+                <th className="px-4 py-2 font-medium">Statut</th>
+                <th className="px-4 py-2 font-medium text-right">PDF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MOCK_INVOICES.map((inv) => (
+                <tr key={inv.id} className="border-b border-border last:border-b-0">
+                  <td className="px-4 py-3 tabular-nums">{inv.date}</td>
+                  <td className="px-4 py-3 font-medium tabular-nums">{inv.amount}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      {inv.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <a href={inv.url} className="text-xs text-primary hover:underline">Télécharger</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <Card className="border-red-300/50">
+        <CardHeader>
+          <CardTitle className="text-sm text-red-600">Annuler l&apos;abonnement</CardTitle>
+          <CardDescription>Ton accès reste actif jusqu&apos;à la fin du cycle en cours.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!cancelOpen ? (
+            <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}>
+              Annuler mon abonnement
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs">Es-tu sûr ? Tu perdras l&apos;accès aux features Pro à la fin du cycle de facturation.</p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="destructive" onClick={() => { setCancelOpen(false); alert('Demande envoyée — un email te sera envoyé pour confirmer.') }}>
+                  Confirmer l&apos;annulation
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setCancelOpen(false)}>Garder mon abonnement</Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
+// TEAM SECTION
+// ════════════════════════════════════════════
+
+type TeamRole = 'admin' | 'manager' | 'viewer'
+const MOCK_TEAM: { id: string; name: string; email: string; role: TeamRole; active: boolean }[] = [
+  { id: 't1', name: 'Marc Cloubey', email: 'marc.clby.972@gmail.com', role: 'admin', active: true },
+]
+
+function TeamSection() {
+  const [members, setMembers] = useState(MOCK_TEAM)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<TeamRole>('viewer')
+  const [pendingInvites, setPendingInvites] = useState<{ id: string; email: string; role: TeamRole }[]>([])
+
+  const ROLE_LABELS: Record<TeamRole, string> = { admin: 'Admin', manager: 'Manager', viewer: 'Lecteur' }
+
+  const sendInvite = () => {
+    if (!inviteEmail.trim()) return
+    setPendingInvites((prev) => [...prev, { id: `inv-${Date.now()}`, email: inviteEmail.trim(), role: inviteRole }])
+    setInviteEmail('')
+    setInviteRole('viewer')
+    setInviteOpen(false)
+  }
+
+  const removeMember = (id: string) => {
+    if (!confirm('Supprimer ce membre de l\'équipe ?')) return
+    setMembers((prev) => prev.filter((m) => m.id !== id))
+  }
+
+  const cancelInvite = (id: string) => {
+    setPendingInvites((prev) => prev.filter((i) => i.id !== id))
+  }
+
+  return (
+    <>
+      <div className="flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="text-base font-semibold">Équipe & accès</h3>
+          <p className="text-sm text-muted-foreground mt-1">Invite des collaborateurs et gère leurs rôles.</p>
+        </div>
+        <Button size="sm" onClick={() => setInviteOpen(true)}>+ Inviter</Button>
+      </div>
+
+      {inviteOpen && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Nouvelle invitation</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              type="email"
+              placeholder="email@exemple.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+            />
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as TeamRole)}
+              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+            >
+              <option value="viewer">Lecteur — vue seule</option>
+              <option value="manager">Manager — édite contenu</option>
+              <option value="admin">Admin — accès total</option>
+            </select>
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={() => setInviteOpen(false)}>Annuler</Button>
+              <Button size="sm" onClick={sendInvite} disabled={!inviteEmail.trim()}>Envoyer l&apos;invitation</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Membres ({members.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2">
+            {members.map((m) => (
+              <li key={m.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-background/60">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-[11px] font-semibold shrink-0">
+                    {m.name[0]?.toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{m.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{m.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-secondary">
+                    {ROLE_LABELS[m.role]}
+                  </span>
+                  <span className={cn(
+                    'h-1.5 w-1.5 rounded-full',
+                    m.active ? 'bg-emerald-500' : 'bg-muted-foreground/40'
+                  )} />
+                  {m.role !== 'admin' && (
+                    <button
+                      onClick={() => removeMember(m.id)}
+                      className="text-xs text-muted-foreground hover:text-red-600 transition-colors"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      {pendingInvites.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Invitations en attente ({pendingInvites.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {pendingInvites.map((inv) => (
+                <li key={inv.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/10">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">En attente</span>
+                    <span className="text-sm truncate">{inv.email}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{ROLE_LABELS[inv.role]}</span>
+                  </div>
+                  <button
+                    onClick={() => cancelInvite(inv.id)}
+                    className="text-xs text-muted-foreground hover:text-red-600 transition-colors shrink-0"
+                  >
+                    Annuler
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+    </>
+  )
+}
+
+// ════════════════════════════════════════════
 // SHARED COMPONENTS
 // ════════════════════════════════════════════
 
@@ -1524,6 +2063,45 @@ function DatabaseIcon() {
       <ellipse cx="8" cy="4" rx="5" ry="2" />
       <path d="M3 4v4c0 1.1 2.2 2 5 2s5-.9 5-2V4" />
       <path d="M3 8v4c0 1.1 2.2 2 5 2s5-.9 5-2V8" />
+    </svg>
+  )
+}
+
+function UserIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="5.5" r="2.8" />
+      <path d="M2.5 14c0-2.8 2.4-5.2 5.5-5.2s5.5 2.4 5.5 5.2" />
+    </svg>
+  )
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 1.5L2.5 3.5v5c0 3 2 5.5 5.5 6.5 3.5-1 5.5-3.5 5.5-6.5v-5L8 1.5Z" />
+      <path d="M5.5 8L7 9.5l3.5-3.5" />
+    </svg>
+  )
+}
+
+function CreditCardIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" />
+      <path d="M1.5 7h13" />
+      <path d="M4 10h2" />
+    </svg>
+  )
+}
+
+function UsersIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="6" cy="6" r="2.3" />
+      <circle cx="11.5" cy="7" r="1.8" />
+      <path d="M1.5 13.5c0-2.2 2-4 4.5-4s4.5 1.8 4.5 4" />
+      <path d="M10.5 13.5c0-1.5 1.4-2.8 3-2.8s3 1 3 2.8" />
     </svg>
   )
 }

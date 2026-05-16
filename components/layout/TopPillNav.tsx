@@ -232,24 +232,42 @@ export function TopPillNav() {
         </div>
       </nav>
 
-      {/* ── Right tab : iPhone-radius subtle white container ────── */}
-      {/* iOS uses ~22px radius for a 44px-tall pill — we mimic with rounded-[22px] on h-12. */}
-      <div className="hidden md:flex fixed top-4 right-4 z-[60] items-center gap-1 px-1 h-12 rounded-[22px] bg-background/90 backdrop-blur-md shadow-lg border border-border">
+      {/* ── Right lateral tab : vertical, detached from edge ────── */}
+      {/* iPhone-radius (rounded-[22px]), positioned vertically centered,
+          right-6 = 24px from right edge (detached) instead of right-4 = 16px.
+          Stack: Iris button on top, avatar/profile at bottom. */}
+      <div className="hidden md:flex fixed top-1/2 -translate-y-1/2 right-6 z-[60] flex-col items-center gap-1 px-1 py-1 w-12 rounded-[22px] bg-background/90 backdrop-blur-md shadow-lg border border-border">
         <button
           onClick={() => setChatOpen(!chatOpen)}
           className={cn(
-            'h-10 px-3.5 inline-flex items-center gap-2 text-[13px] font-medium tracking-tight rounded-[18px] transition-colors',
-            chatOpen ? 'bg-foreground text-background' : 'hover:bg-secondary'
+            'h-10 w-10 inline-flex items-center justify-center rounded-[18px] transition-colors',
+            chatOpen ? 'bg-foreground text-background' : 'hover:bg-secondary text-foreground'
           )}
           aria-label={`Ouvrir ${AI_NAME}`}
+          title={AI_NAME}
         >
-          {/* AI icon — speech bubble + spark, more distinctive than the diamond */}
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          {/* AI icon — speech bubble + spark */}
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 4.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8l-3.5 3v-3H5a2 2 0 0 1-2-2v-7Z" />
             <path d="M10 6.5l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7L10 6.5Z" fill="currentColor" stroke="none" />
           </svg>
-          {AI_NAME}
         </button>
+
+        <Link
+          href="/chrono"
+          className="h-10 w-10 inline-flex items-center justify-center rounded-[18px] transition-colors hover:bg-secondary text-foreground"
+          title="Chrono"
+          aria-label="Chrono"
+        >
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="10" cy="11" r="6.5" />
+            <path d="M10 11V7" />
+            <path d="M8 2.5h4" />
+            <path d="M10 2.5v2" />
+          </svg>
+        </Link>
+
+        <div className="h-px w-6 bg-border my-0.5" />
 
         <Link
           href="/settings"
