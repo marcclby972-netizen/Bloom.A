@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useApp } from '@/lib/context'
 import { store } from '@/lib/store'
@@ -12,6 +12,12 @@ import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidge
 export default function DashboardPage() {
   const { tasks, contacts, posts, projects, categories, todos } = useApp()
   const today = new Date()
+
+  // Mounted gate: localStorage / context data isn't available during SSR.
+  // Without this, every KPI computed from useApp() mismatches between server
+  // (always-empty arrays) and client (real data) and triggers hydration errors.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   const todayStr = toDateString(today)
   const todayTasks = tasks.filter((t) => t.date === todayStr)
@@ -74,6 +80,29 @@ export default function DashboardPage() {
   }, [projects, posts])
 
   const maxProjectRevenue = revenueStats.byProject[0]?.revenue || 1
+
+  // Skeleton during SSR / before localStorage hydrates — keeps the layout
+  // stable and identical between server & client so no hydration warning.
+  if (!mounted) {
+    return (
+      <div className="flex flex-col h-full overflow-auto">
+        <div className="px-6 sm:px-10 lg:px-16 pt-6 pb-20 max-w-7xl mx-auto w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="soft-card p-6 h-[160px] animate-pulse">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="h-3 w-10 bg-muted rounded" />
+                  <div className="h-10 w-10 bg-muted rounded-lg" />
+                </div>
+                <div className="h-3 w-20 bg-muted rounded mb-3" />
+                <div className="h-8 w-24 bg-muted rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full overflow-auto">
