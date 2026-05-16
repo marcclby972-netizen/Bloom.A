@@ -29,32 +29,40 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Public routes that don't require auth
-  const isLoginPage = request.nextUrl.pathname === '/login'
-  const isAuthCallback = request.nextUrl.pathname.startsWith('/auth/')
-  const isLegalPage = request.nextUrl.pathname === '/privacy' || request.nextUrl.pathname === '/terms'
-  const isPublicAsset = request.nextUrl.pathname.startsWith('/_next') ||
-    request.nextUrl.pathname.startsWith('/assets') ||
-    request.nextUrl.pathname.startsWith('/api/auth') ||
-    request.nextUrl.pathname === '/favicon.ico' ||
-    request.nextUrl.pathname === '/bloom-logo.png' ||
+  // Public pages: landing at /, login, legal, onboarding, pricing, cookies
+  const pathname = request.nextUrl.pathname
+  const isLandingPage = pathname === '/'
+  const isLoginPage = pathname === '/login'
+  const isOnboardPage = pathname === '/onboard'
+  const isAuthCallback = pathname.startsWith('/auth/')
+  const isLegalPage =
+    pathname === '/privacy' || pathname === '/terms' || pathname === '/cookies' || pathname === '/pricing'
+  const isPublicAsset =
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/assets') ||
+    pathname.startsWith('/api/auth') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/bloom-logo.png' ||
     isLegalPage
+
+  const isPublicPage = isLandingPage || isLoginPage || isOnboardPage
 
   if (isPublicAsset || isAuthCallback) {
     return supabaseResponse
   }
 
-  // Not logged in -> redirect to login
-  if (!user && !isLoginPage) {
+  // Not logged in -> let public pages render, redirect everything else to landing
+  if (!user) {
+    if (isPublicPage) return supabaseResponse
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/'
     return NextResponse.redirect(url)
   }
 
-  // Logged in and on login page -> redirect to dashboard
-  if (user && isLoginPage) {
+  // Logged in and on landing/login -> redirect to dashboard
+  if (isLandingPage || isLoginPage) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 

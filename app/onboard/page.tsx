@@ -106,7 +106,7 @@ export default function OnboardPage() {
       if (selectedGoals.size > 0) localStorage.setItem('bloom_user_goals', JSON.stringify([...selectedGoals]))
       if (chosenIntegrations.size > 0) localStorage.setItem('bloom_chosen_integrations', JSON.stringify([...chosenIntegrations]))
     }
-    router.push('/')
+    router.push('/dashboard')
   }
 
   return (

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   {
-    href: '/',
+    href: '/dashboard',
     label: 'Dashboard',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

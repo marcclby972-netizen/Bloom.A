@@ -11,7 +11,7 @@ import { AI_NAME } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const PRIMARY_NAV = [
-  { href: '/', label: 'Dashboard' },
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/projects', label: 'Projets' },
   { href: '/todos', label: 'To-Do' },
   { href: '/calendrier', label: 'Calendrier' },
@@ -90,7 +90,7 @@ export function TopPillNav() {
   }, [pathname])
 
   const isActive = (href: string) =>
-    pathname === href || (href !== '/' && pathname.startsWith(href))
+    pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
 
   const userInitial = user?.email?.[0]?.toUpperCase() || '·'
   const activeWsLabel = WORKSPACES.find((w) => w.id === activeWs)?.label || 'Espace'
@@ -150,8 +150,8 @@ export function TopPillNav() {
         className="hidden md:flex fixed top-4 left-1/2 -translate-x-1/2 z-[60] items-center gap-1 px-1.5 h-12 rounded-full bg-background/85 backdrop-blur-md shadow-lg border border-border"
       >
         <Link
-          href="/"
-          aria-label="Bloom — accueil"
+          href="/dashboard"
+          aria-label="Bloom — dashboard"
           className="h-9 w-9 ml-0.5 flex items-center justify-center rounded-full hover:bg-secondary transition-colors"
         >
           <Image src="/bloom-logo.png" alt="Bloom" width={20} height={20} className="rounded" />

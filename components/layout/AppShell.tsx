@@ -10,7 +10,8 @@ import { ChatPanel } from '@/components/ai/ChatPanel'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { CookieBanner } from '@/components/cookies/CookieBanner'
 
-const PUBLIC_ROUTES = ['/login', '/onboard', '/ui-ux-pro-max']
+// Public routes — landing, login, onboarding (no app nav, no sidebar)
+const PUBLIC_ROUTES = ['/', '/login', '/onboard']
 // Routes légales — full-width sans sidebar mais doivent garder la bannière cookies
 const LEGAL_ROUTES = ['/privacy', '/terms', '/cookies', '/pricing']
 

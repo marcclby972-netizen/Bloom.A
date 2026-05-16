@@ -1,439 +1,189 @@
 'use client'
 
-import { useMemo, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useApp } from '@/lib/context'
-import { store } from '@/lib/store'
-import { CONTACT_STATUSES, PLATFORMS, PROJECT_STATUSES } from '@/lib/types'
-import { toDateString, formatDateFr, subDays, formatTime } from '@/lib/date-utils'
-import { cn } from '@/lib/utils'
-import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget'
+import Image from 'next/image'
+import { useEffect, useState } from 'react'
 
-export default function DashboardPage() {
-  const { tasks, contacts, posts, projects, categories, todos } = useApp()
-  const today = new Date()
+const SECTIONS = [
+  { num: '/ 01', title: 'Tâches & Calendrier', desc: 'Vue jour/semaine/mois avec timeline précise, drag & drop, et chronomètre lié à chaque tâche.' },
+  { num: '/ 02', title: 'Pipeline CRM', desc: 'Tes contacts du prospect au client. Drag & drop entre statuts, follow-ups automatiques.' },
+  { num: '/ 03', title: 'Marketing & ROI', desc: 'Posts social par plateforme, métriques d’engagement, ROI par projet, croisement ads vs revenu.' },
+  { num: '/ 04', title: 'Stripe automatique', desc: 'Connecte ton Stripe une fois, Bloom récupère revenus + abonnements et calcule MRR/ARR par projet.' },
+  { num: '/ 05', title: 'Iris IA', desc: 'Assistant Claude/GPT/Gemini contextuel à toutes tes données — apporte ta clé API.' },
+  { num: '/ 06', title: 'Coffre-fort chiffré', desc: 'Mots de passe en AES-256-GCM côté client. Personne — pas même nous — n’y accède.' },
+]
 
-  // Mounted gate: localStorage / context data isn't available during SSR.
-  // Without this, every KPI computed from useApp() mismatches between server
-  // (always-empty arrays) and client (real data) and triggers hydration errors.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+const KPIS = [
+  { value: '12+', label: 'modules intégrés dans une seule app' },
+  { value: '0', label: 'tracker tiers — RGPD compliant par défaut' },
+  { value: '< 1s', label: 'temps de chargement de chaque page' },
+]
 
-  const todayStr = toDateString(today)
-  const todayTasks = tasks.filter((t) => t.date === todayStr)
-  const doneTasks = todayTasks.filter((t) => t.status === 'done').length
+export default function LandingPage() {
+  const [yearly, setYearly] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
-  const weekStart = toDateString(subDays(today, 6))
-  const weekTimeByCategory = useMemo(
-    () => store.getTotalTimeByCategory(weekStart, todayStr),
-    [weekStart, todayStr]
-  )
-  const totalWeekMinutes = Math.round(
-    Object.values(weekTimeByCategory).reduce((s, v) => s + v, 0) / 60
-  )
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', onScroll)
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
-  const pipelineStats = useMemo(() => {
-    const stats: Record<string, number> = {}
-    for (const s of CONTACT_STATUSES) {
-      stats[s.value] = contacts.filter((c) => c.status === s.value).length
-    }
-    return stats
-  }, [contacts])
-
-  const totalActiveTodos = todos.filter((t) => !t.done).length
-  const overdueTodos = useMemo(
-    () => todos.filter((t) => !t.done && t.date !== null && t.date < todayStr),
-    [todos, todayStr]
-  )
-
-  const topCategories = useMemo(() => {
-    const catMap = new Map(categories.map((c) => [c.id, c]))
-    return Object.entries(weekTimeByCategory)
-      .map(([catId, seconds]) => ({ cat: catMap.get(catId), minutes: Math.round(seconds / 60) }))
-      .filter((d) => d.cat)
-      .sort((a, b) => b.minutes - a.minutes)
-      .slice(0, 5)
-  }, [weekTimeByCategory, categories])
-
-  // ── Revenue stats ──
-  const revenueStats = useMemo(() => {
-    const totalRevenue = projects.reduce((sum, p) => sum + (p.revenue || 0), 0)
-    const totalAdSpend = posts.reduce((sum, p) => sum + (p.metrics.spend || 0), 0)
-    const netProfit = totalRevenue - totalAdSpend
-    const byProject = projects
-      .map((p) => ({ project: p, revenue: p.revenue || 0 }))
-      .filter((r) => r.revenue > 0)
-      .sort((a, b) => b.revenue - a.revenue)
-
-    let totalMRR = 0
-    for (const p of projects) {
-      const t = p.revenueType
-      if (!t || t === 'one-time') continue
-      const mrr = t === 'monthly' ? (p.revenue || 0)
-        : t === 'quarterly' ? (p.revenue || 0) / 3
-        : t === 'annual' ? (p.revenue || 0) / 12
-        : 0
-      if (mrr > 0) totalMRR += mrr
-    }
-
-    return { totalRevenue, totalAdSpend, netProfit, byProject, totalMRR, totalARR: totalMRR * 12 }
-  }, [projects, posts])
-
-  const maxProjectRevenue = revenueStats.byProject[0]?.revenue || 1
-
-  // Skeleton during SSR / before localStorage hydrates — keeps the layout
-  // stable and identical between server & client so no hydration warning.
-  if (!mounted) {
-    return (
-      <div className="flex flex-col h-full overflow-auto">
-        <div className="px-6 sm:px-10 lg:px-16 pt-6 pb-20 max-w-7xl mx-auto w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="soft-card p-6 h-[160px] animate-pulse">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="h-3 w-10 bg-muted rounded" />
-                  <div className="h-10 w-10 bg-muted rounded-lg" />
-                </div>
-                <div className="h-3 w-20 bg-muted rounded mb-3" />
-                <div className="h-8 w-24 bg-muted rounded" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const monthly = 8.6
+  const annual = 72.24
+  const savings = ((monthly * 12 - annual) / (monthly * 12)) * 100
 
   return (
-    <div className="flex flex-col h-full overflow-auto">
-      <div className="px-6 sm:px-10 lg:px-16 pt-6 pb-20 max-w-7xl mx-auto w-full animate-in fade-in duration-500">
+    <div className="min-h-screen bg-background">
+      {/* ── Floating nav (Teplin style) ─────────────────────────── */}
+      <nav className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-2 h-12 rounded-full bg-background/85 backdrop-blur-md border border-border transition-shadow ${scrolled ? 'shadow-lg' : 'shadow-md'}`}>
+        <Link href="/" className="h-9 w-9 ml-0.5 flex items-center justify-center rounded-full hover:bg-secondary transition-colors">
+          <Image src="/bloom-logo.png" alt="Bloom" width={20} height={20} className="rounded" />
+        </Link>
+        <span className="h-5 w-px bg-border mx-1" />
+        <a href="#features" className="h-9 px-3 inline-flex items-center text-[12px] font-medium tracking-tight rounded-full text-muted-foreground hover:text-foreground transition-colors uppercase">Features</a>
+        <a href="#pricing" className="h-9 px-3 inline-flex items-center text-[12px] font-medium tracking-tight rounded-full text-muted-foreground hover:text-foreground transition-colors uppercase">Pricing</a>
+        <a href="#faq" className="h-9 px-3 inline-flex items-center text-[12px] font-medium tracking-tight rounded-full text-muted-foreground hover:text-foreground transition-colors uppercase">FAQ</a>
+        <Link href="/login" className="ml-1 h-9 px-4 inline-flex items-center text-[12px] font-medium tracking-tight rounded-full bg-foreground text-background hover:opacity-90 transition-opacity uppercase">
+          Connexion
+        </Link>
+      </nav>
 
-        {/* Overdue inline banner (only shown if relevant) */}
-        {overdueTodos.length > 0 && (
+      {/* ── Hero ──────────────────────────────────────────────────── */}
+      <section className="px-6 pt-32 sm:pt-40 pb-20 max-w-5xl mx-auto text-center">
+        <p className="card-num mb-6 animate-in fade-in duration-700">/ TON COCKPIT PERSONNEL</p>
+        <h1 className="h-display animate-in fade-in slide-in-from-bottom-2 duration-700">
+          Tout ce que tu fais, dans <span className="italic">une</span> seule app.
+        </h1>
+        <p className="mt-8 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-2 duration-700 delay-150">
+          Tâches, calendrier, CRM, marketing, revenus Stripe, IA, vocal, coffre-fort.
+          Une seule app, un seul prix, tes données chiffrées.
+        </p>
+        <div className="mt-10 flex items-center justify-center gap-3 flex-wrap animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
           <Link
-            href="/todos"
-            className="inline-flex items-center gap-2 mb-6 pill bg-amber-100 text-amber-900 hover:bg-amber-200"
+            href="/onboard"
+            className="pill pill-dark text-sm py-3.5 px-6"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            {overdueTodos.length} tâche{overdueTodos.length > 1 ? 's' : ''} en retard →
+            Commencer — 14 jours gratuits
           </Link>
-        )}
-
-        {/* ── Numbered KPI grid (Teplin style) ─────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-          <NumberedCard num="/01" href="/calendrier" icon={<IconCheck />} title="Tâches" kpi={String(todayTasks.length)}>
-            {doneTasks} fait{doneTasks > 1 ? 's' : ''} · {todayTasks.length - doneTasks} restant
-          </NumberedCard>
-          <NumberedCard num="/02" href="/stats" icon={<IconClock />} title="Cette semaine" kpi={formatTime(totalWeekMinutes * 60)}>
-            {Math.round(totalWeekMinutes / 7)} min/jour en moyenne
-          </NumberedCard>
-          <NumberedCard num="/03" href="/contacts" icon={<IconUsers />} title="Contacts" kpi={String(contacts.length)}>
-            {pipelineStats['client'] || 0} clients · {pipelineStats['prospect'] || 0} prospects
-          </NumberedCard>
-          <NumberedCard num="/04" href="/todos" icon={<IconList />} title="To-Do actifs" kpi={String(totalActiveTodos)}>
-            {overdueTodos.length > 0
-              ? <span className="text-amber-600 font-medium">{overdueTodos.length} en retard</span>
-              : 'À jour'}
-          </NumberedCard>
+          <a href="#features" className="pill text-sm py-3.5 px-6">
+            Voir les features →
+          </a>
         </div>
 
-        {/* ── Revenus — section éditoriale ──────────────────────── */}
-        <section className="mb-16">
-          <div className="flex items-end justify-between mb-8 flex-wrap gap-4">
-            <h2 className="h-section">Tes revenus ce mois</h2>
-            <Link href="/projects" className="pill text-xs">
-              Voir tous les projets →
-            </Link>
-          </div>
+        {/* social proof line */}
+        <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto">
+          {KPIS.map((k) => (
+            <div key={k.label} className="soft-card p-5 text-center">
+              <div className="kpi-display">{k.value}</div>
+              <div className="text-xs text-muted-foreground mt-2">{k.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Total revenue — featured card with subtle accent */}
-            <div className="soft-card p-7 lg:col-span-2">
-              <p className="card-num mb-4">/ TOTAL</p>
-              <div className="flex items-end gap-3 mb-2">
-                <div className="kpi-display">{revenueStats.totalRevenue.toLocaleString('fr-FR')} €</div>
-                {revenueStats.netProfit !== 0 && (
-                  <span className={cn(
-                    'mb-2 text-sm font-medium tabular-nums',
-                    revenueStats.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'
-                  )}>
-                    {revenueStats.netProfit >= 0 ? '+' : ''}{revenueStats.netProfit.toLocaleString('fr-FR')} € net
-                  </span>
-                )}
+      {/* ── Features grid ─────────────────────────────────────────── */}
+      <section id="features" className="px-6 py-20 max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <p className="card-num mb-3">/ FEATURES</p>
+          <h2 className="h-section">Tout ce dont tu as besoin. Rien que tu n&apos;utiliseras pas.</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {SECTIONS.map((s, i) => (
+            <div
+              key={s.num}
+              className="soft-card soft-card-hover p-7 animate-in fade-in slide-in-from-bottom-3"
+              style={{ animationDelay: `${i * 80}ms`, animationDuration: '600ms', animationFillMode: 'backwards' }}
+            >
+              <div className="flex items-start justify-between mb-5">
+                <span className="card-num">{s.num}</span>
+                <span className="icon-square">
+                  <span className="text-base font-semibold">{i + 1}</span>
+                </span>
               </div>
-              <p className="kpi-display-label">
-                {revenueStats.byProject.length} projet{revenueStats.byProject.length > 1 ? 's' : ''} actif{revenueStats.byProject.length > 1 ? 's' : ''}
-                {revenueStats.totalAdSpend > 0 && ` · ${revenueStats.totalAdSpend.toFixed(0)} € dépensés en ads`}
-              </p>
-
-              {/* Top projects bars */}
-              {revenueStats.byProject.length > 0 && (
-                <div className="mt-7 space-y-3">
-                  {revenueStats.byProject.slice(0, 4).map(({ project, revenue }) => {
-                    const pct = (revenue / maxProjectRevenue) * 100
-                    return (
-                      <div key={project.id} className="space-y-1.5">
-                        <div className="flex items-center gap-3 text-sm">
-                          {project.color && (
-                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />
-                          )}
-                          <span className="truncate flex-1 font-medium">{project.name}</span>
-                          <span className="font-semibold tabular-nums shrink-0 text-foreground">
-                            {revenue.toLocaleString('fr-FR')} €
-                          </span>
-                        </div>
-                        <div className="h-1 bg-secondary rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${pct}%`, backgroundColor: project.color || 'currentColor' }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              <h3 className="text-lg font-semibold mb-2">{s.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
             </div>
-
-            {/* MRR card */}
-            <div className="soft-card p-7 flex flex-col">
-              <p className="card-num mb-4">/ MRR</p>
-              <div className="kpi-display">{revenueStats.totalMRR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</div>
-              <p className="kpi-display-label">
-                {revenueStats.totalMRR > 0
-                  ? <>ARR <strong className="text-foreground tabular-nums">{revenueStats.totalARR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</strong></>
-                  : 'Aucun revenu récurrent encore'}
-              </p>
-
-              {revenueStats.totalMRR > 0 && (
-                <div className="mt-auto pt-6 text-xs text-muted-foreground">
-                  À MRR constant, projection 12 mois ≈
-                  <div className="text-foreground font-semibold tabular-nums text-base mt-1">
-                    {(revenueStats.totalMRR * 12).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* ── 3 colonnes Pipeline · Temps · Tâches ──────────────── */}
-        <section className="mb-16">
-          <h2 className="h-section mb-8">Vue d&apos;ensemble</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <SoftListCard num="/01" title="Pipeline" href="/pipeline">
-              {CONTACT_STATUSES.filter((s) => s.value !== 'inactive').map((s) => (
-                <li key={s.value} className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.color }} />
-                    <span className="text-muted-foreground">{s.label}</span>
-                  </span>
-                  <span className="tabular-nums font-semibold text-foreground">{pipelineStats[s.value] || 0}</span>
-                </li>
-              ))}
-            </SoftListCard>
-
-            <SoftListCard num="/02" title="Temps · 7 jours" href="/stats">
-              {topCategories.length > 0 ? (
-                topCategories.map((d) => (
-                  <li key={d.cat!.id} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 truncate">
-                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: d.cat!.color }} />
-                        <span className="truncate">{d.cat!.name}</span>
-                      </span>
-                      <span className="tabular-nums text-xs font-medium">{d.minutes} min</span>
-                    </div>
-                    <div className="h-[2px] bg-secondary rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${Math.min((d.minutes / (topCategories[0]?.minutes || 1)) * 100, 100)}%`,
-                          backgroundColor: d.cat!.color,
-                        }}
-                      />
-                    </div>
-                  </li>
-                ))
-              ) : (
-                <li className="text-xs text-muted-foreground italic">Aucun temps enregistré</li>
-              )}
-            </SoftListCard>
-
-            <SoftListCard num="/03" title="Tâches du jour" href="/calendrier">
-              {todayTasks.length > 0 ? (
-                todayTasks.slice(0, 5).map((task) => (
-                  <li key={task.id} className="flex items-center gap-2 text-sm">
-                    <span className={cn(
-                      'h-1.5 w-1.5 rounded-full shrink-0',
-                      task.status === 'done' ? 'bg-emerald-500'
-                      : task.status === 'in_progress' ? 'bg-accent'
-                      : 'bg-muted-foreground/40'
-                    )} />
-                    <span className={cn('truncate flex-1', task.status === 'done' && 'line-through text-muted-foreground')}>
-                      {task.title}
-                    </span>
-                    <span className="text-muted-foreground text-xs tabular-nums shrink-0">{task.startTime}</span>
-                  </li>
-                ))
-              ) : (
-                <li className="text-xs text-muted-foreground italic">Aucune tâche aujourd&apos;hui</li>
-              )}
-            </SoftListCard>
-          </div>
-        </section>
-
-        {/* ── Posts + Projets ───────────────────────────────────── */}
-        <section className="mb-16">
-          <h2 className="h-section mb-8">Activité récente</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SoftListCard num="/01" title="Derniers posts" href="/marketing">
-              {posts.length > 0 ? (
-                posts.slice(0, 4).map((post) => {
-                  const plat = PLATFORMS.find((p) => p.value === post.platform)
-                  const eng = post.metrics.likes + post.metrics.comments + post.metrics.shares
-                  return (
-                    <li key={post.id} className="flex items-center gap-3 text-sm">
-                      <span
-                        className="h-7 w-7 rounded-md text-white text-[9px] font-semibold flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: plat?.color }}
-                      >
-                        {plat?.label.slice(0, 2).toUpperCase()}
-                      </span>
-                      <span className="truncate flex-1">{post.title}</span>
-                      <span className="text-muted-foreground text-xs tabular-nums shrink-0">{eng.toLocaleString()}</span>
-                    </li>
-                  )
-                })
-              ) : (
-                <li className="text-xs text-muted-foreground italic">Aucun post</li>
-              )}
-            </SoftListCard>
-
-            <SoftListCard num="/02" title="Projets" href="/projects">
-              {projects.length > 0 ? (
-                projects.slice(0, 5).map((p) => {
-                  const status = PROJECT_STATUSES.find((s) => s.value === p.status)
-                  return (
-                    <li key={p.id} className="flex items-center gap-3 text-sm">
-                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: p.color || status?.color }} />
-                      <span className="truncate flex-1">{p.name}</span>
-                      <span className="tag-pill shrink-0">{status?.label}</span>
-                    </li>
-                  )
-                })
-              ) : (
-                <li className="text-xs text-muted-foreground italic">Aucun projet</li>
-              )}
-            </SoftListCard>
-          </div>
-        </section>
-
-        {/* Optional Google Calendar widget */}
-        <GoogleCalendarWidget />
-      </div>
-    </div>
-  )
-}
-
-// ── Subcomponents ────────────────────────────────────────────────
-
-/**
- * Numbered KPI card — Teplin style with /01 number, dark icon square,
- * title, KPI display, and small hint at bottom.
- */
-function NumberedCard({
-  num, icon, title, kpi, children, href,
-}: {
-  num: string
-  icon: React.ReactNode
-  title: string
-  kpi: string
-  children?: React.ReactNode
-  href?: string
-}) {
-  const inner = (
-    <div className="soft-card soft-card-hover p-6 h-full flex flex-col">
-      <div className="flex items-start justify-between mb-4">
-        <span className="card-num">{num}</span>
-        <span className="icon-square" aria-hidden>{icon}</span>
-      </div>
-      <p className="text-sm font-medium text-muted-foreground mb-1.5">{title}</p>
-      <div className="kpi-display">{kpi}</div>
-      {children && <p className="kpi-display-label mt-auto pt-3">{children}</p>}
-    </div>
-  )
-  if (href) return <Link href={href} className="block group">{inner}</Link>
-  return inner
-}
-
-/**
- * Soft card containing a list — used for Pipeline, Temps, Posts, Projets.
- */
-function SoftListCard({
-  num, title, href, children,
-}: {
-  num: string
-  title: string
-  href?: string
-  children: React.ReactNode
-}) {
-  const inner = (
-    <div className="soft-card soft-card-hover p-6 h-full">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <p className="card-num">{num}</p>
-          <h3 className="text-base font-semibold mt-0.5">{title}</h3>
+          ))}
         </div>
-        {href && (
-          <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-            →
-          </span>
-        )}
-      </div>
-      <ul className="space-y-3">{children}</ul>
+      </section>
+
+      {/* ── Pricing ─────────────────────────────────────────────── */}
+      <section id="pricing" className="px-6 py-20 max-w-4xl mx-auto">
+        <div className="text-center mb-12">
+          <p className="card-num mb-3">/ PRICING</p>
+          <h2 className="h-section">Un prix simple. Tout inclus.</h2>
+        </div>
+
+        <div className="flex items-center justify-center mb-10">
+          <div className="inline-flex p-1 rounded-full bg-secondary">
+            <button onClick={() => setYearly(false)}
+              className={`h-10 px-5 text-[12px] font-medium tracking-tight rounded-full transition-colors uppercase ${!yearly ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Mensuel
+            </button>
+            <button onClick={() => setYearly(true)}
+              className={`h-10 px-5 text-[12px] font-medium tracking-tight rounded-full transition-colors uppercase relative ${yearly ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Annuel
+              <span className="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-semibold">
+                -{Math.round(savings)}%
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="soft-card p-10 max-w-md mx-auto text-center">
+          <p className="card-num mb-3">{yearly ? '/ ANNUEL' : '/ MENSUEL'}</p>
+          <h3 className="text-lg font-semibold mb-1">Bloom Pro</h3>
+          <p className="text-sm text-muted-foreground mb-7">Tout, sans limite, sans engagement.</p>
+          <div className="kpi-display">
+            {(yearly ? annual : monthly).toFixed(2).replace('.', ',')} €
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">{yearly ? 'par an' : 'par mois'}</p>
+          {yearly && (
+            <p className="text-xs text-emerald-600 mt-1">Soit {(annual / 12).toFixed(2).replace('.', ',')} € / mois — économie {(monthly * 12 - annual).toFixed(2).replace('.', ',')} €</p>
+          )}
+          <Link
+            href="/onboard"
+            className="block mt-8 pill pill-dark text-sm py-3.5"
+          >
+            Commencer maintenant
+          </Link>
+        </div>
+        <div className="text-center mt-6">
+          <Link href="/pricing" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            Comparer les détails →
+          </Link>
+        </div>
+      </section>
+
+      {/* ── Final CTA ──────────────────────────────────────────── */}
+      <section className="px-6 py-20 max-w-4xl mx-auto text-center">
+        <h2 className="h-section mb-6">Prêt à arrêter de jongler entre 8 outils ?</h2>
+        <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto">
+          14 jours d&apos;essai gratuit. Annule en 1 clic. Tes données restent à toi.
+        </p>
+        <Link href="/onboard" className="pill pill-dark text-base py-4 px-8 inline-flex">
+          Démarrer mon essai
+        </Link>
+      </section>
+
+      {/* ── Footer ─────────────────────────────────────────────── */}
+      <footer className="border-t border-border py-10 px-6 mt-10">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Image src="/bloom-logo.png" alt="Bloom" width={20} height={20} className="rounded" />
+            <span>Bloom · ton cockpit</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Confidentialité</Link>
+            <Link href="/cookies" className="hover:text-foreground transition-colors">Cookies</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">CGU</Link>
+            <Link href="/login" className="hover:text-foreground transition-colors">Se connecter</Link>
+          </div>
+        </div>
+      </footer>
     </div>
-  )
-  if (href) return <Link href={href} className="block group">{inner}</Link>
-  return inner
-}
-
-// ── Icons ───────────────────────────────────────────────────────
-
-function IconCheck() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 6.5l2 2 4-4" />
-      <path d="M4 13.5l2 2 4-4" />
-      <path d="M14 7h4" />
-      <path d="M14 14h4" />
-    </svg>
-  )
-}
-
-function IconClock() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="7.5" />
-      <path d="M10 5v5l3 2" />
-    </svg>
-  )
-}
-
-function IconUsers() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="7" r="3" />
-      <path d="M3.5 17c0-3 2.9-5.5 6.5-5.5s6.5 2.5 6.5 5.5" />
-    </svg>
-  )
-}
-
-function IconList() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 5h2M3 10h2M3 15h2" />
-      <path d="M8 5h9M8 10h9M8 15h9" />
-    </svg>
   )
 }
