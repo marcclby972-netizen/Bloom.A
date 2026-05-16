@@ -233,7 +233,13 @@ function StatsView({ posts }: { posts: Post[] }) {
   const postsByMonth = useMemo(() => {
     const map: Record<string, number> = {}
     for (const post of posts) {
-      const month = post.publishedAt.slice(0, 7)
+      // publishedAt may be ISO string, ms number, or Date — coerce to YYYY-MM
+      const raw = (post as unknown as { publishedAt: unknown }).publishedAt
+      let month = ''
+      if (typeof raw === 'string') month = raw.slice(0, 7)
+      else if (typeof raw === 'number' && Number.isFinite(raw)) month = new Date(raw).toISOString().slice(0, 7)
+      else if (raw instanceof Date) month = raw.toISOString().slice(0, 7)
+      if (!month) continue
       map[month] = (map[month] || 0) + 1
     }
     return Object.entries(map)

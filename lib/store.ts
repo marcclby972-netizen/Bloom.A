@@ -313,8 +313,27 @@ function deleteInteraction(id: string) {
 
 // ── Posts ──
 
+/**
+ * Coerce publishedAt to a comparable number (ms since epoch) regardless of
+ * whether it's stored as ISO string, ms number, Date, or junk. Falls back to
+ * 0 so we never crash sort() on invalid data.
+ */
+function postPublishedAtMs(p: Post): number {
+  const v = (p as unknown as { publishedAt: unknown }).publishedAt
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string') {
+    const t = new Date(v).getTime()
+    return Number.isNaN(t) ? 0 : t
+  }
+  if (v instanceof Date) {
+    const t = v.getTime()
+    return Number.isNaN(t) ? 0 : t
+  }
+  return 0
+}
+
 function getPosts(): Post[] {
-  return read<Post>(KEYS.posts).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+  return read<Post>(KEYS.posts).sort((a, b) => postPublishedAtMs(b) - postPublishedAtMs(a))
 }
 
 function createPost(data: Omit<Post, 'id'>): Post {
@@ -340,7 +359,25 @@ function deletePost(id: string) {
 }
 
 function getPostStats(startDate: string, endDate: string) {
-  const posts = getPosts().filter((p) => p.publishedAt >= startDate && p.publishedAt <= endDate)
+  // Coerce publishedAt to YYYY-MM-DD string for date-range comparison.
+  // Tolerates string, number (ms), and Date inputs.
+  const toIsoDate = (v: unknown): string => {
+    if (typeof v === 'string') {
+      // Already a date-ish string — slice to YYYY-MM-DD
+      return v.slice(0, 10)
+    }
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      return new Date(v).toISOString().slice(0, 10)
+    }
+    if (v instanceof Date) {
+      return v.toISOString().slice(0, 10)
+    }
+    return ''
+  }
+  const posts = getPosts().filter((p) => {
+    const d = toIsoDate((p as unknown as { publishedAt: unknown }).publishedAt)
+    return d >= startDate && d <= endDate
+  })
   const byPlatform: Record<string, { count: number; metrics: PostMetrics }> = {}
 
   for (const post of posts) {
