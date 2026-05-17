@@ -1,0 +1,541 @@
+on part sur une grosse retructuration strategique dont enomrment de chose vont changer je vais te donner un prompt UI pour une refont total du site Web (on supprime l'idee de creer une app mobile on fait une web app) grace a se prompt tu devra creer un guidline.md lie au claude.md puis refonte le site en entier Contexte général
+
+Tu es un expert UI/UX + motion design. Tu disposes des skills suivants :
+
+- /ui-ux-pro-max → conception d’UI web haute qualité, systèmes de design, layout responsive.
+
+- /animate → définition d’animations, micro-interactions, transitions, scroll effects.
+
+
+
+Ta mission : concevoir l’UI complète (web app + landing) pour un SaaS nommé **Bloom**.
+
+
+
+⚠️ Contraintes importantes
+
+- Ne parle PAS de stack technique, ni de code, ni d’architecture interne.
+
+- Concentre-toi sur : layout, composants UI, styles visuels, micro-interactions, animations.
+
+- Le livrable attendu : un design system UI + description détaillée des écrans clés, prêt à être implémenté.
+
+- L’IA qui t’appelle ne dispose PAS de ces skills, toi oui : utilise /ui-ux-pro-max et /animate de manière proactive.
+
+
+
+====================
+
+1. Identité produit
+
+====================
+
+
+
+Produit : **Bloom**
+
+Positionnement : **OS pour associés et cofondateurs**. Le cœur du produit est la gouvernance, la transparence financière, les décisions et les contributions. Le mode solo (freelance) est un bonus, pas le centre.
+
+
+
+Ton objectif visuel :
+
+- Atmosphère sérieuse mais moderne.
+
+- Sensation de contrôle, de clarté, de “tableau de bord cockpit”.
+
+- Marque forte, reconnaissable, sans côté “template SaaS violet générique”.
+
+
+
+====================
+
+2. Palette & couleurs
+
+====================
+
+
+
+Palette de base :
+
+- Blanc / surface claire : `#ECECEC`
+
+- Noir / fond sombre : `#111111`
+
+- Gradient accent principal : `linear-gradient(135deg, #E37520 0%, #FBBE4D 100%)` (diagonale du coin haut-gauche vers bas-droite)
+
+
+
+Rôles :
+
+- **Fond page global (landing + app)** : fond sombre `#111111`.
+
+- **Panneaux / cartes / header pill / footer panel** : surface claire `#ECECEC` (ou très proche).
+
+- **Cartes très denses (pricing, panels “profondeur”)** : `#1A1A1A` avec texte clair.
+
+- **Accent gradient orange** :
+
+  - CTA principaux (boutons),
+
+  - tags importants (ex : “IA”, “Critique”),
+
+  - éléments interactifs clés (barres de progression, focus states).
+
+
+
+Accessibilité :
+
+- Le texte principal doit respecter le contraste minimum WCAG (4.5:1) pour le body : texte sombre sur surface claire, texte clair sur surface sombre.
+
+- Le gradient n’est PAS utilisé comme fond de gros blocs de texte, mais pour des éléments ciblés (boutons, pills, bordures).
+
+
+
+Ta tâche : avec /ui-ux-pro-max, dérive un jeu de tokens couleur (background, surface, border, text-primary, text-muted, accent, states : success, warning, error) cohérent avec cette palette.
+
+
+
+====================
+
+3. Typographie
+
+====================
+
+
+
+Fonts :
+
+- **Madimi One** → display / identité (logo, hero title courts, quelques labels). [Important : usage parcimonieux, pas en body].
+
+- **Menbere** → font UI principale (navigation, body, cartes, app). Multiples graisses. [webfont Google Fonts pour les deux].
+
+
+
+Rôles :
+
+- Logo “Bloom”, hero headline, éventuellement un petit mot-clé (ex : “OS”) en Madimi One.
+
+- Tout le reste (UI, texte, labels, boutons, dashboards) en Menbere (400–600).
+
+
+
+Avec /ui-ux-pro-max :
+
+- Construis une échelle typographique complète (H1–H6, body, small, button) en utilisant ces deux fonts.
+
+- Spécifie tailles, graisses, tracking, line-height, usage par contexte.
+
+
+
+====================
+
+4. Layout global & header
+
+====================
+
+
+
+Grille :
+
+- Largeur max contenu : 1200 px.
+
+- Marges latérales desktop : ~80 px.
+
+- Grille 12 colonnes, gouttière 24 px.
+
+
+
+Header (landing) :
+
+- Un “header pill” très arrondi, centré, qui NE touche pas les bords de la page.
+
+- Fond du header : `#ECECEC`.
+
+- Rayon très élevé (pill), hauteur ~72–80 px.
+
+- Contenu :
+
+  - Logo Bloom (wordmark Madimi One + petit pictogramme).
+
+  - Nav (Produits, Fonctionnalités, Prix, Ressources).
+
+  - À droite : bouton “Sign in” (ghost) + bouton CTA “Get started” en gradient orange.
+
+
+
+Zone morte :
+
+- Laisse une zone vide entre le haut du viewport et le header pill → ~48–64 px, pour un effet “flottant”.
+
+
+
+Avec /ui-ux-pro-max :
+
+- Définis précisément le layout, les paddings, la distribution des éléments.
+
+- Propose la version desktop + mobile (header compressé, burger menu).
+
+
+
+====================
+
+5. Hero de la landing
+
+====================
+
+
+
+Inspiration mixpanel : pas de fond tout blanc, mais un **fond sombre avec un gradient subtil** derrière les cartes.
+
+
+
+Hero :
+
+- Fond global : `#111111`.
+
+- Dans la zone hero, tu peux ajouter un gradient très discret (par exemple radial très doux) derrière les cartes sans casser la palette.
+
+- Cartes UI (screenshots / mockups Bloom) flottent au-dessus, avec shadow léger et radius ~24 px.
+
+- Hero copy :
+
+  - Headline en Madimi One (ex : “Fondez ensemble. Pilotez clairement.”).
+
+  - Subheadline expliquant Bloom comme OS pour associés (time + argent + règles + IA).
+
+  - CTA principal (gradient orange) + CTA secondaire (ghost blanc léger).
+
+- En dessous du texte : un mock de dashboard Bloom (ou de flux de décision) à moitié sorti de la carte hero.
+
+
+
+Avec /ui-ux-pro-max :
+
+- Décris 2–3 variantes de hero layout.
+
+- Spécifie les proportions : combien de largeur pour le texte vs visuel.
+
+- Spécifie l’utilisation exacte du gradient orange dans ce hero.
+
+
+
+Avec /animate :
+
+- Propose des animations d’entrée pour les cartes (fade-up soft, léger scale).
+
+- Effet au survol sur le CTA principal.
+
+- Animation discrète permanente possible (ex : légère pulsation sur un nœud d’agent IA dans le mock).
+
+
+
+====================
+
+6. Sections “features” type Attio
+
+====================
+
+
+
+Objectif : pour chaque feature clé (Mode associés, Journal immuable, Agent IA, Finances, Planificateur social, Dashboard), utiliser un pattern type Attio :
+
+
+
+Layout :
+
+- 2 colonnes :
+
+  - Colonne texte (gauche ou droite) : overline, H2, paragraphe, 3 bullets, link CTA.
+
+  - Colonne visuel : mock de l’UI (flow de décision, timeline journale, widget IA, etc.).
+
+- La section entière est sur un panneau clair `#ECECEC` (ou légèrement off-white) posé sur le fond sombre, radius 32 px.
+
+
+
+Fonctionnement :
+
+- Tu dois décrire pour chaque feature :
+
+  - quel élément visuel la représente (ex : pour “Décisions & votes” un flow multi-sig avec avatars).
+
+  - quelles informations minimum doivent apparaître dans le mock (labels, tags, valeurs).
+
+  - la hiérarchie visuelle (élément mis en avant, secondaire).
+
+
+
+Avec /ui-ux-pro-max :
+
+- Crée un pattern de section réutilisable (spacing vertical, titre, structure 2 colonnes).
+
+- Décline au moins 4 sections :
+
+  1) Mode associés & règles,
+
+  2) Journal immuable,
+
+  3) Agent IA,
+
+  4) Planificateur social / Agenda.
+
+
+
+Avec /animate :
+
+- Définis une animation au scroll (scroll-reveal) : par ex. les visuels glissent légèrement depuis la droite, le texte depuis la gauche, avec easing très doux.
+
+- Propose des micro-interactions dans les mockups (ex : highlight sur un bloc lorsqu’on passe la souris).
+
+
+
+====================
+
+7. Bloc pricing (un seul plan)
+
+====================
+
+
+
+Il n’y a qu’UN plan : **8 €/utilisateur/mois**.
+
+
+
+Style :
+
+- Carte unique horizontale, centrée.
+
+- Fond : `#1A1A1A`, radius 24–32 px, shadow léger.
+
+- Texte : clair `#ECECEC`, secondaire `#C9C9C9`.
+
+- CTA principal : gros bouton pill en gradient orange.
+
+
+
+Contenu :
+
+- Label pill : “Plan unique”.
+
+- Prix : “8€ / utilisateur / mois”.
+
+- Sous-texte : résumé du rapport valeur/prix (OS complet pour associés, IA et stockage inclus).
+
+- 2 listes :
+
+  - “Ce qui est inclus” (modules, 100 requêtes IA, 1 Go stockage…).
+
+  - “Parfait pour” (2–5 cofondateurs, studios, petites équipes…).
+
+
+
+Avec /ui-ux-pro-max :
+
+- Spécifie la composition exacte de la carte (colonnes internes, alignements, icônes bullet).
+
+- Décline la version mobile (carte verticale).
+
+
+
+Avec /animate :
+
+- État hover du CTA.
+
+- État “pressé” (micro scale).
+
+- Eventuelle micro animation quand la carte devient visible (ex : slide-up + fade).
+
+
+
+====================
+
+8. Footer panel arrondi
+
+====================
+
+
+
+Inspiration mixpanel : un grand panneau arrondi qui ne touche pas les bords.
+
+
+
+- Fond panel : `#1A1A1A`, radius 32–40 px.
+
+- Panel posé sur `#111111`, avec ombre douce ou glow très léger dans les tons orange.
+
+- Contenu :
+
+  - Colonne produit (Features, Dashboard, IA…).
+
+  - Colonne ressources (Docs, Changelog…).
+
+  - Colonne société (À propos, Contact, Legal…).
+
+  - Logo Bloom en Madimi One + baseline (“OS pour associés”).
+
+- Pas de gradient agressif dans ce panel, mais tu peux utiliser un fin liseré ou un highlight en gradient sur un bord.
+
+
+
+Avec /ui-ux-pro-max :
+
+- Définis structure, espaçage, hiérarchie des liens.
+
+- Version desktop en 3–4 colonnes, version mobile en accordéon ou stacking.
+
+
+
+Avec /animate :
+
+- Hover sur les liens (couleur légèrement orangée, soulignement fluide).
+
+- Optionnel : légère animation d’apparition du footer quand on approche du bas de page.
+
+
+
+====================
+
+9. Dashboard applicatif (web app)
+
+====================
+
+
+
+Inspiration : mock fourni (fond très sombre, cartes widgets, sidebar).
+
+
+
+Contexte Bloom :
+
+- Dashboard = “Vue d’ensemble” pour un associé/cofondateur.
+
+- On doit voir tout de suite : agenda du jour, tâches, charge équipe, décisions en attente, équilibre associés, alertes IA, chrono.
+
+
+
+Layout :
+
+- Sidebar gauche : icônes (Dashboard, Agenda, Projets, Associés, IA, Réglages, etc.).
+
+- Top bar : nom du workspace, salutation (“Bonsoir, Marc”), bouton “Personnaliser”.
+
+- Grille widgets au centre :
+
+  - Agenda du jour,
+
+  - Tâches du jour,
+
+  - Charge équipe,
+
+  - Décisions à voter,
+
+  - Équilibre associés,
+
+  - Alertes IA,
+
+  - Chrono global.
+
+- Bouton central “+ Ajouter un widget”.
+
+
+
+Style :
+
+- Fond : `#111111`.
+
+- Widgets : `#1A1A1A`, radius 24–28 px, border subtile.
+
+- Accent orange sur :
+
+  - barres de progression,
+
+  - boutons (ex: “Créer une décision”),
+
+  - tags IA.
+
+
+
+Avec /ui-ux-pro-max :
+
+- Définis la grille de widgets (combien de colonnes, tailles, marges).
+
+- Décris chaque widget : contenu minimal, état vide, états normaux.
+
+
+
+Avec /animate :
+
+- Animation d’apparition des widgets (stagger léger à l’ouverture).
+
+- Animation du chrono (compteur smooth).
+
+- Effets survol sur les cards (shadow + légère translation).
+
+
+
+====================
+
+10. Motion & micro-interactions globales
+
+====================
+
+
+
+Utilise /animate pour définir un langage de motion cohérent :
+
+- Durées, easing, types de transitions (fade, slide, scale).
+
+- Règles de scroll-reveal (quels éléments s’animent au scroll).
+
+- Micro-interactions pour :
+
+  - CTA,
+
+  - pills,
+
+  - tags d’alertes,
+
+  - navigation sidebar,
+
+  - passages entre onglets (par ex. dans un widget Finance).
+
+
+
+Objectif : quelque chose de fluide, premium, mais discret (pas de carnaval d’animations).
+
+
+
+====================
+
+11. Output attendu
+
+====================
+
+
+
+Je veux en sortie :
+
+1. Un **Design System UI** : couleurs (avec rôles), typographie (Madimi One / Menbere), espacements, radius, ombres, états hover/active.
+
+2. Une **spécification des écrans** :
+
+   - Landing (hero + sections features + pricing + footer),
+
+   - Dashboard app,
+
+   - Patterns réutilisables.
+
+3. Une **charte de motion** : règles générales + exemples concrets par composant.
+
+
+
+Rappels :
+
+- Pas de code, pas de stack.
+
+- Pas de wireframes ASCII, mais une description précise (comme si tu briefais un designer Figma senior).
+
+- Utilise pleinement /ui-ux-pro-max pour la structure & le design system.
+
+- Utilise pleinement /animate pour décrire les animations de manière systématique.
