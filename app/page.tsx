@@ -63,7 +63,7 @@ function HeaderPill() {
     >
       {/* Logo + wordmark */}
       <Link href="/" className="flex items-center gap-2.5 mr-2">
-        <Image src="/bloom-logo.png" alt="Bloom" width={28} height={28} className="rounded-md" />
+        <Image src="/bloom-logo-noir.png" alt="Bloom" width={28} height={28} className="rounded-md" />
         <span
           className="text-[22px] leading-none"
           style={{ fontFamily: 'var(--font-display)', color: 'var(--ink-on-light-primary)' }}
@@ -670,7 +670,7 @@ function FooterPanel() {
           {/* Brand col */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2.5 mb-4">
-              <Image src="/bloom-logo.png" alt="Bloom" width={32} height={32} className="rounded-md" />
+              <Image src="/bloom-logo-blanc.png" alt="Bloom" width={32} height={32} className="rounded-md" />
               <span
                 className="text-2xl"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--ink-on-dark-primary)' }}

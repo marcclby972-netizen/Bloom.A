@@ -168,7 +168,7 @@ export function Sidebar() {
       {/* Header: logo only (no "Bloom" wordmark) */}
       <div className={cn('flex items-center mb-4 px-3', expanded ? 'justify-between' : 'md:justify-center justify-between')}>
         <div className="flex items-center gap-2.5 min-w-0">
-          <Image src="/bloom-logo.png" alt="Bloom" width={28} height={28} className="rounded-md shrink-0" />
+          <Image src="/bloom-logo-blanc.png" alt="Bloom" width={28} height={28} className="rounded-md shrink-0" />
         </div>
         <button
           onClick={() => setExpanded(!expanded)}

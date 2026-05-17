@@ -29,7 +29,7 @@ function MobileHeader() {
         </svg>
       </button>
       <div className="flex items-center">
-        <Image src="/bloom-logo.png" alt="Bloom" width={22} height={22} className="rounded-md" />
+        <Image src="/bloom-logo-blanc.png" alt="Bloom" width={22} height={22} className="rounded-md" />
       </div>
       <div className="flex items-center gap-1">
         <NotificationBell />

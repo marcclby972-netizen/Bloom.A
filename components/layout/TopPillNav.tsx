@@ -154,7 +154,7 @@ export function TopPillNav() {
           aria-label="Bloom — dashboard"
           className="h-9 w-9 ml-0.5 flex items-center justify-center rounded-full hover:bg-secondary transition-colors"
         >
-          <Image src="/bloom-logo.png" alt="Bloom" width={20} height={20} className="rounded" />
+          <Image src="/bloom-logo-blanc.png" alt="Bloom" width={20} height={20} className="rounded" />
         </Link>
 
         <span className="h-5 w-px bg-border mx-1" />

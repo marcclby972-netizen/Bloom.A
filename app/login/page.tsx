@@ -192,7 +192,7 @@ export default function LoginPage() {
         {/* Logo + branding */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-4">
-            <Image src="/bloom-logo.png" alt="Bloom" width={52} height={52} className="rounded-2xl shadow-lg" />
+            <Image src="/bloom-logo-noir.png" alt="Bloom" width={52} height={52} className="rounded-2xl shadow-lg" />
           </div>
           <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Bloom</h1>
           <p className="text-stone-400 text-sm mt-1">Propulsé par {AI_NAME}</p>
