@@ -4,364 +4,284 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─────────────────────────────────────────────────────────────────
+   BLOOM DESIGN SYSTEM v2 (mai 2026)
+   See /guideline.md for the full spec.
+
+   Architecture:
+   - Section A: shadcn token bridge (keeps shadcn components working)
+   - Section B: Bloom design tokens (semantic names — prefer these)
+   - Section C: Motion tokens
+   - Section D: Reusable utility classes (h-display, btn-cta, …)
+   - Section E: Global resets, scrollbar
+   ───────────────────────────────────────────────────────────────── */
+
 @theme inline {
+  /* shadcn bridge */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Fonts */
+  --font-sans: var(--font-menbere), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-madimi), var(--font-menbere), serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+
+  /* Radius (Bloom scale — généreux) */
+  --radius: 1rem;                          /* base 16px */
+  --radius-xs: 0.5rem;                     /* 8 */
+  --radius-sm: 0.75rem;                    /* 12 */
+  --radius-md: 1rem;                       /* 16 */
+  --radius-lg: 1.25rem;                    /* 20 */
+  --radius-xl: 1.5rem;                     /* 24 */
+  --radius-2xl: 2rem;                      /* 32 */
+  --radius-3xl: 2.5rem;                    /* 40 */
+  --radius-pill: 9999px;
 }
 
+/* ─── A · shadcn bridge values ─── */
 :root {
-  /* Editorial cream palette — warm off-white background, deep ink foreground */
-  --background: oklch(0.975 0.005 85);          /* warm cream */
-  --foreground: oklch(0.18 0.01 80);             /* near-black, slight warm */
-  --card: oklch(0.99 0.003 85);                  /* soft white card */
-  --card-foreground: oklch(0.18 0.01 80);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.01 80);
-  --primary: oklch(0.18 0.01 80);                /* black-ink primary (CTAs en pill noire) */
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.94 0.005 85);             /* light gray cream */
-  --secondary-foreground: oklch(0.18 0.01 80);
-  --muted: oklch(0.95 0.005 85);
-  --muted-foreground: oklch(0.45 0.01 80);
-  --accent: oklch(0.55 0.17 50);                 /* Bloom orange — accent ponctuel uniquement */
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.88 0.008 85);
-  --input: oklch(0.92 0.008 85);
-  --ring: oklch(0.55 0.17 50);
-  --chart-1: oklch(0.55 0.17 50);
-  --chart-2: oklch(0.65 0.15 130);
-  --chart-3: oklch(0.55 0.18 220);
-  --chart-4: oklch(0.5 0.18 320);
-  --chart-5: oklch(0.6 0.12 60);
-  --radius: 1rem;                                /* rounded généreux comme Teplin */
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.18 0.01 80);
-  --sidebar-primary: oklch(0.18 0.01 80);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.94 0.005 85);
-  --sidebar-accent-foreground: oklch(0.18 0.01 80);
-  --sidebar-border: oklch(0.88 0.008 85);
-  --sidebar-ring: oklch(0.55 0.17 50);
+  /* Map to Bloom dark theme (the only theme — pas de light global) */
+  --background: #111111;
+  --foreground: #ECECEC;
+  --card: #1A1A1A;
+  --card-foreground: #ECECEC;
+  --popover: #1A1A1A;
+  --popover-foreground: #ECECEC;
+
+  --primary: #F1962D;                      /* accent solid (gradient via utility) */
+  --primary-foreground: #111111;
+
+  --secondary: #1F1F26;
+  --secondary-foreground: #ECECEC;
+  --muted: #16161B;
+  --muted-foreground: #C9C9C9;
+  --accent: #F1962D;
+  --accent-foreground: #111111;
+  --destructive: #EF4444;
+
+  --border: #26262B;
+  --input: #2D2D33;
+  --ring: #F1962D;
+
+  --chart-1: #E37520;
+  --chart-2: #FBBE4D;
+  --chart-3: #22C55E;
+  --chart-4: #3B82F6;
+  --chart-5: #C9C9C9;
+
+  --sidebar: #16161B;
+  --sidebar-foreground: #ECECEC;
+  --sidebar-primary: #F1962D;
+  --sidebar-primary-foreground: #111111;
+  --sidebar-accent: #1F1F26;
+  --sidebar-accent-foreground: #ECECEC;
+  --sidebar-border: #26262B;
+  --sidebar-ring: #F1962D;
+
+  /* ─── B · Bloom design tokens ─── */
+
+  /* Surfaces */
+  --bg-page: #111111;
+  --bg-panel-light: #ECECEC;
+  --bg-panel-deep: #1A1A1A;
+  --bg-surface-subtle: #16161B;
+  --bg-surface-elev: #1F1F26;
+
+  /* Ink */
+  --ink-on-dark-primary: #ECECEC;
+  --ink-on-dark-muted: #C9C9C9;
+  --ink-on-dark-subtle: #8A8A8F;
+  --ink-on-light-primary: #111111;
+  --ink-on-light-muted: #4B4B4B;
+  --ink-on-light-subtle: #6B6B6B;
+
+  /* Accent */
+  --accent-start: #E37520;
+  --accent-end: #FBBE4D;
+  --accent-solid: #F1962D;
+  --accent-soft: rgba(227, 117, 32, 0.12);
+  --accent-glow: rgba(227, 117, 32, 0.32);
+  --accent-gradient: linear-gradient(135deg, #E37520 0%, #FBBE4D 100%);
+
+  /* Borders */
+  --border-on-dark-subtle: #26262B;
+  --border-on-dark-deep: #2D2D33;
+  --border-on-light-subtle: #D4D4D4;
+
+  /* Semantic */
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --info: #3B82F6;
+
+  /* Shadows */
+  --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-elev: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-accent-glow: 0 0 24px var(--accent-glow);
+  --shadow-pill: 0 8px 24px rgba(0, 0, 0, 0.25);
+
+  /* ─── C · Motion tokens ─── */
+  --dur-instant: 100ms;
+  --dur-fast: 180ms;
+  --dur-base: 240ms;
+  --dur-slow: 320ms;
+  --dur-page: 400ms;
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
 }
 
-.dark {
-  --background: oklch(0.16 0.005 80);            /* warm near-black */
-  --foreground: oklch(0.96 0.005 80);
-  --card: oklch(0.2 0.005 80);
-  --card-foreground: oklch(0.96 0.005 80);
-  --popover: oklch(0.2 0.005 80);
-  --popover-foreground: oklch(0.96 0.005 80);
-  --primary: oklch(0.95 0.005 80);                /* light primary in dark = inverted CTA */
-  --primary-foreground: oklch(0.16 0.005 80);
-  --secondary: oklch(0.24 0.005 80);
-  --secondary-foreground: oklch(0.96 0.005 80);
-  --muted: oklch(0.24 0.005 80);
-  --muted-foreground: oklch(0.65 0.005 80);
-  --accent: oklch(0.65 0.18 50);
-  --accent-foreground: oklch(0.16 0.005 80);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.65 0.18 50);
-  --chart-1: oklch(0.65 0.18 50);
-  --chart-2: oklch(0.7 0.15 130);
-  --chart-3: oklch(0.6 0.18 220);
-  --chart-4: oklch(0.55 0.18 320);
-  --chart-5: oklch(0.65 0.12 60);
-  --sidebar: oklch(0.13 0.005 80);
-  --sidebar-foreground: oklch(0.96 0.005 80);
-  --sidebar-primary: oklch(0.95 0.005 80);
-  --sidebar-primary-foreground: oklch(0.16 0.005 80);
-  --sidebar-accent: oklch(0.24 0.005 80);
-  --sidebar-accent-foreground: oklch(0.96 0.005 80);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.5 0 0);
+/* Light theme override — kept for cookies/privacy/terms pages that may
+   render on a light surface. We don't toggle .dark on root anymore. */
+.light {
+  --background: #ECECEC;
+  --foreground: #111111;
+  --card: #FFFFFF;
+  --card-foreground: #111111;
+  --popover: #FFFFFF;
+  --popover-foreground: #111111;
+  --secondary: #DFDFDF;
+  --secondary-foreground: #111111;
+  --muted: #E5E5E5;
+  --muted-foreground: #4B4B4B;
+  --border: #D4D4D4;
+  --input: #C9C9C9;
 }
 
-/* Adjust soft-card for dark mode */
-.dark .soft-card {
-  background: var(--card);
-  border-color: oklch(1 0 0 / 6%);
-  box-shadow: 0 1px 3px oklch(0 0 0 / 20%), 0 8px 30px oklch(0 0 0 / 30%);
-}
-.dark .soft-card-hover:hover {
-  border-color: oklch(1 0 0 / 12%);
-  box-shadow: 0 1px 3px oklch(0 0 0 / 20%), 0 12px 40px oklch(0 0 0 / 40%);
-}
-.dark .icon-square {
-  background: linear-gradient(180deg, oklch(0.92 0.005 80) 0%, oklch(0.85 0.005 80) 100%);
-  color: oklch(0.16 0.005 80);
-}
-.dark .h-accent::after,
-.dark .h-circle::before {
-  opacity: 0.7;
-}
-
+/* ─── E · Base ─── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    background: var(--bg-page);
+    color: var(--ink-on-dark-primary);
+  }
+  body {
+    background: var(--bg-page);
+    color: var(--ink-on-dark-primary);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+  }
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--ink-on-dark-primary);
   }
 }
 
-/* ── Tech gradient effects ── */
+/* ─── D · Utilities ─── */
 
-.gradient-mesh {
-  background:
-    radial-gradient(ellipse at 0% 0%, oklch(0.65 0.18 50 / 8%) 0%, transparent 50%),
-    radial-gradient(ellipse at 100% 0%, oklch(0.55 0.15 280 / 6%) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 100%, oklch(0.5 0.12 200 / 5%) 0%, transparent 50%);
-}
-
-.dark .gradient-mesh {
-  background:
-    radial-gradient(ellipse at 0% 0%, oklch(0.65 0.18 50 / 12%) 0%, transparent 50%),
-    radial-gradient(ellipse at 100% 0%, oklch(0.45 0.2 280 / 10%) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 100%, oklch(0.4 0.15 200 / 8%) 0%, transparent 50%);
-}
-
-.gradient-card {
-  background: linear-gradient(135deg, oklch(0.65 0.18 50 / 5%) 0%, transparent 60%);
-}
-
-.dark .gradient-card {
-  background: linear-gradient(135deg, oklch(0.65 0.18 50 / 10%) 0%, oklch(0.45 0.2 280 / 5%) 100%);
-}
-
-/* gradient-sidebar — desktop only (md+). On mobile drawer we keep solid bg. */
-@media (min-width: 768px) {
-  .gradient-sidebar {
-    background: linear-gradient(180deg, oklch(0.65 0.18 50 / 3%) 0%, transparent 40%, oklch(0.5 0.15 280 / 3%) 100%);
-  }
-  .dark .gradient-sidebar {
-    background: linear-gradient(180deg, oklch(0.65 0.18 50 / 8%) 0%, transparent 40%, oklch(0.45 0.2 280 / 6%) 100%);
-  }
-}
-
-.glow-dot {
-  box-shadow: 0 0 12px 2px oklch(0.65 0.18 50 / 30%);
-}
-
-.dark .glow-dot {
-  box-shadow: 0 0 16px 4px oklch(0.65 0.18 50 / 40%);
-}
-
-/* ── Noise texture overlay for tech look ── */
-.noise::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0.015;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
-}
-
-.dark .noise::after {
-  opacity: 0.03;
-}
-
-/* ── Accent line gradient ── */
-.gradient-line {
-  background: linear-gradient(90deg, oklch(0.65 0.18 50), oklch(0.55 0.15 280), oklch(0.5 0.12 200));
-}
-
-/* ── Editorial utilities (Teplin-like) ───────────────────────── */
-
-/* Hero — XL bold display */
+/* Display + section headings */
 .h-display {
-  font-size: clamp(2.4rem, 6vw, 4.5rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.02;
-  color: var(--foreground);
-}
-
-/* Section — large semibold */
-.h-section {
-  font-size: clamp(1.6rem, 3vw, 2.4rem);
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.75rem, 7vw, 5rem);
+  line-height: 1.05;
   letter-spacing: -0.02em;
+  color: var(--ink-on-dark-primary);
+}
+.h-display-lg {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.25rem, 5vw, 4rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+.h-display-md {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2rem, 4vw, 3rem);
   line-height: 1.1;
-  color: var(--foreground);
-}
-
-/* Highlighted accent — same color as the parent heading (no wavy underline,
-   no gray fade). Kept as a class for legacy markup; renders as plain text. */
-.h-accent {
-  color: inherit;
-  font-style: normal;
-}
-
-/* Same logic for the old circle accent */
-.h-circle {
-  color: inherit;
-  padding: 0;
-}
-
-/* Soft card — rounded XL with very light border + soft shadow */
-.soft-card {
-  background: var(--card);
-  border: 1px solid oklch(0.92 0.005 85);
-  border-radius: 1.4rem;
-  box-shadow: 0 1px 3px oklch(0.18 0.01 80 / 3%), 0 8px 30px oklch(0.18 0.01 80 / 4%);
-  transition: border-color 200ms, box-shadow 200ms, transform 200ms;
-}
-.soft-card-hover:hover {
-  border-color: oklch(0.85 0.008 85);
-  box-shadow: 0 1px 3px oklch(0.18 0.01 80 / 3%), 0 12px 40px oklch(0.18 0.01 80 / 8%);
-}
-
-/* Numbered card label — "/01" "/02" etc. */
-.card-num {
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: oklch(0.6 0.01 80);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-}
-
-/* Soft icon square (dark bg, white icon, rounded with subtle shadow) */
-.icon-square {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.7rem;
-  background: linear-gradient(180deg, oklch(0.25 0.01 80) 0%, oklch(0.18 0.01 80) 100%);
-  color: oklch(0.97 0 0);
-  box-shadow: 0 1px 0 oklch(0 0 0 / 20%) inset, 0 4px 14px oklch(0.18 0.01 80 / 12%);
-}
-
-/* Pill — rounded full button/badge */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  background: var(--secondary);
-  color: var(--foreground);
-  transition: background-color 150ms;
-}
-.pill:hover { background: oklch(0.9 0.005 85); }
-.dark .pill:hover { background: oklch(0.25 0.015 260); }
-
-.pill-dark {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-.pill-dark:hover { background: oklch(0.25 0.015 80); }
-
-/* Big KPI display (e.g. 700+ / 90% / 48h) */
-.kpi-display {
-  font-size: clamp(2.2rem, 4vw, 3.2rem);
-  font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--foreground);
 }
-.kpi-display-label {
-  font-size: 0.85rem;
-  font-weight: 400;
-  color: oklch(0.5 0.01 80);
-  margin-top: 0.5rem;
-  line-height: 1.4;
+.h-section {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
-
-/* Tag pill (for project status, categories) */
-.tag-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.65rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 500;
-  background: var(--secondary);
-  color: var(--foreground);
-  border: 1px solid oklch(0.9 0.005 85);
+.h-subsection {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+.body-lg {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--ink-on-dark-muted);
 }
 
-/* ── Soft mood utilities (Linear-like dark + accents) ── */
-
-/* Hairline divider — replaces card borders for separating list items */
-.hairline {
-  border-color: oklch(1 0 0 / 6%);
-}
-.dark .hairline {
-  border-color: oklch(1 0 0 / 6%);
-}
-
-/* Section title — large, light, with discreet accent dot */
-.section-title {
-  font-size: 0.7rem;
-  font-weight: 500;
+/* Overline / micro labels */
+.overline {
+  font-size: 0.6875rem;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted-foreground);
+  color: var(--ink-on-dark-subtle);
+}
+
+/* Legacy aliases (kept for older pages — same render as new tokens) */
+.page-title {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.section-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-on-dark-subtle);
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
 }
 .section-title::before {
-  content: '';
+  content: "";
   display: inline-block;
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: var(--primary);
+  background: var(--accent-solid);
   opacity: 0.9;
 }
-
-/* Big inline KPI — no card, just a number + label stacked */
 .kpi-num {
   font-size: clamp(1.75rem, 3.5vw, 2.5rem);
   font-weight: 300;
@@ -372,47 +292,351 @@
 .kpi-label {
   font-size: 0.7rem;
   font-weight: 400;
-  color: var(--muted-foreground);
+  color: var(--ink-on-dark-muted);
   letter-spacing: 0.02em;
 }
-
-/* Page header — oversized soft title */
-.page-title {
-  font-size: clamp(1.6rem, 3vw, 2.2rem);
-  font-weight: 300;
+.kpi-display {
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
-
-/* Hover row — subtle bg shift only, no border movement */
+.kpi-display-label {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--ink-on-dark-muted);
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+.card-num {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ink-on-dark-subtle);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.hairline {
+  border-color: rgba(255, 255, 255, 0.06);
+}
 .row-hover {
-  transition: background-color 120ms ease-out;
+  transition: background-color var(--dur-fast) var(--ease-out-quart);
 }
 .row-hover:hover {
-  background-color: oklch(1 0 0 / 3%);
-}
-.dark .row-hover:hover {
-  background-color: oklch(1 0 0 / 3%);
+  background-color: rgba(255, 255, 255, 0.03);
 }
 
-/* Soft inline pill (used for status, ROI, MRR badges) */
+/* No-op classes (legacy wavy accents — keep markup-compatible) */
+.h-accent { color: inherit; font-style: normal; }
+.h-circle { color: inherit; padding: 0; }
+
+/* ─── Buttons ─── */
+.btn-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 3rem;
+  padding: 0 1.5rem;
+  border-radius: 9999px;
+  background: var(--accent-gradient);
+  color: #111111;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  letter-spacing: -0.005em;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out-expo),
+    box-shadow var(--dur-fast) var(--ease-out-expo);
+}
+.btn-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-accent-glow);
+}
+.btn-cta:active {
+  transform: scale(0.98);
+  transition: transform var(--dur-instant) var(--ease-out-quart);
+}
+.btn-cta-lg {
+  height: 3.5rem;
+  padding: 0 2rem;
+  font-size: 1rem;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 3rem;
+  padding: 0 1.5rem;
+  border-radius: 9999px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--ink-on-dark-primary);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out-quart);
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.btn-ghost-on-light {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--ink-on-light-primary);
+}
+.btn-ghost-on-light:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* ─── Pills (tags) ─── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--secondary);
+  color: var(--ink-on-dark-primary);
+  transition: background-color var(--dur-fast) var(--ease-out-quart);
+}
+.pill-dark {
+  background: var(--ink-on-dark-primary);
+  color: var(--ink-on-light-primary);
+}
+.pill-dark:hover {
+  opacity: 0.9;
+}
+.pill-accent {
+  background: var(--accent-gradient);
+  color: #111111;
+  font-weight: 600;
+}
+.tag-micro {
+  display: inline-flex;
+  align-items: center;
+  height: 1.75rem;
+  padding: 0 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink-on-dark-muted);
+}
+.tag-micro-accent {
+  background: var(--accent-gradient);
+  color: #111111;
+}
+
+/* ─── Cards & panels ─── */
+.card-deep {
+  background: var(--bg-panel-deep);
+  border: 1px solid var(--border-on-dark-deep);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+.card-deep-hover {
+  transition:
+    transform var(--dur-base) var(--ease-out-quart),
+    box-shadow var(--dur-base) var(--ease-out-quart),
+    background-color var(--dur-base) var(--ease-out-quart);
+}
+.card-deep-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elev);
+  background-color: var(--bg-surface-elev);
+}
+.panel-light {
+  background: var(--bg-panel-light);
+  color: var(--ink-on-light-primary);
+  border-radius: var(--radius-2xl);
+}
+.panel-deep {
+  background: var(--bg-panel-deep);
+  color: var(--ink-on-dark-primary);
+  border-radius: var(--radius-2xl);
+}
+
+/* Legacy aliases */
+.soft-card {
+  background: var(--bg-panel-deep);
+  border: 1px solid var(--border-on-dark-deep);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-soft);
+  transition: border-color var(--dur-base), box-shadow var(--dur-base), transform var(--dur-base);
+}
+.soft-card-hover:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: var(--shadow-elev);
+}
+.icon-square {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.7rem;
+  background: var(--accent-gradient);
+  color: #111111;
+}
 .soft-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   padding: 0.125rem 0.5rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   font-size: 0.65rem;
   font-weight: 500;
-  letter-spacing: 0.02em;
-  background: oklch(1 0 0 / 4%);
-  color: var(--muted-foreground);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink-on-dark-muted);
 }
-.dark .soft-pill {
-  background: oklch(1 0 0 / 4%);
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink-on-dark-muted);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-/* Smooth scrollbar */
+/* ─── Header pill (landing) ─── */
+.header-pill {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  height: 4.5rem;
+  padding: 0 1.25rem 0 1.5rem;
+  background: var(--bg-panel-light);
+  color: var(--ink-on-light-primary);
+  border-radius: var(--radius-3xl);
+  box-shadow: var(--shadow-pill);
+}
+
+/* ─── Footer panel (landing) ─── */
+.footer-panel {
+  background: var(--bg-panel-deep);
+  border-radius: var(--radius-2xl);
+  position: relative;
+  overflow: hidden;
+}
+.footer-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+}
+
+/* ─── Hero background (gradient discret) ─── */
+.hero-glow {
+  position: relative;
+}
+.hero-glow::before {
+  content: "";
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  width: 60%;
+  height: 60%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, var(--accent-soft) 0%, transparent 60%);
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Gradient text (signature) ─── */
+.text-gradient {
+  background: var(--accent-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─── Gradient border (for highlighted cards) ─── */
+.border-gradient {
+  position: relative;
+  background: var(--bg-panel-deep);
+  border-radius: var(--radius-2xl);
+}
+.border-gradient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  background: var(--accent-gradient);
+  border-radius: inherit;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ─── Iris pulse (signature animation) ─── */
+@keyframes iris-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+.iris-pulse {
+  animation: iris-pulse 2.4s ease-in-out infinite;
+}
+
+/* ─── Scroll-reveal (intersection observer adds .in-view) ─── */
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-24px);
+  transition: opacity var(--dur-slow) ease-out, transform var(--dur-slow) var(--ease-out-quart);
+}
+.reveal-right {
+  opacity: 0;
+  transform: translateX(24px);
+  transition: opacity var(--dur-slow) ease-out 80ms, transform var(--dur-slow) var(--ease-out-quart) 80ms;
+}
+.reveal-up {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity var(--dur-slow) ease-out, transform var(--dur-slow) var(--ease-out-quart);
+}
+.reveal-left.in-view,
+.reveal-right.in-view,
+.reveal-up.in-view {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .iris-pulse {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ─── Scrollbar ─── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -421,15 +645,9 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.7 0 0 / 20%);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.6 0 0 / 30%);
-}
-.dark ::-webkit-scrollbar-thumb {
-  background: oklch(0.4 0 0 / 30%);
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.5 0 0 / 40%);
+  background: rgba(255, 255, 255, 0.16);
 }

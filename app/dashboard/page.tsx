@@ -4,101 +4,46 @@ import { useMemo, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useApp } from '@/lib/context'
 import { store } from '@/lib/store'
-import { CONTACT_STATUSES, PLATFORMS, PROJECT_STATUSES } from '@/lib/types'
+import { CONTACT_STATUSES, PROJECT_STATUSES } from '@/lib/types'
 import { toDateString, formatDateFr, subDays, formatTime } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
-import { GoogleCalendarWidget } from '@/components/dashboard/GoogleCalendarWidget'
 
+/**
+ * Dashboard cockpit — voir /guideline.md §6.
+ *
+ * Layout actuel : top bar (salutation + Personnaliser) + grille 12 cols
+ * de widgets. La vraie sidebar 72px à gauche viendra dans un commit dédié
+ * (refactor AppShell partagé avec toutes les pages app).
+ *
+ * Widgets MVP : Agenda · Tâches · Chrono · Charge équipe · Décisions ·
+ * Équilibre associés · Alertes Iris · + Ajouter un widget.
+ *
+ * Les widgets équipe/décisions/équilibre/alertes utilisent encore des
+ * données mock — la DB Supabase pour les organisations n'est pas wirée
+ * côté web (voir migration 20260517_organizations.sql).
+ */
 export default function DashboardPage() {
-  const { tasks, contacts, posts, projects, categories, todos } = useApp()
+  const { tasks, contacts, projects, todos, categories } = useApp()
   const today = new Date()
 
-  // Mounted gate: localStorage / context data isn't available during SSR.
-  // Without this, every KPI computed from useApp() mismatches between server
-  // (always-empty arrays) and client (real data) and triggers hydration errors.
+  // Mounted gate — useApp() lit localStorage, indispo en SSR.
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
   const todayStr = toDateString(today)
-  const todayTasks = tasks.filter((t) => t.date === todayStr)
-  const doneTasks = todayTasks.filter((t) => t.status === 'done').length
+  const greeting = useMemo(() => {
+    const h = today.getHours()
+    if (h < 6) return 'Bonne nuit'
+    if (h < 13) return 'Bonjour'
+    if (h < 18) return "Bon après-midi"
+    return 'Bonsoir'
+  }, [today])
 
-  const weekStart = toDateString(subDays(today, 6))
-  const weekTimeByCategory = useMemo(
-    () => store.getTotalTimeByCategory(weekStart, todayStr),
-    [weekStart, todayStr]
-  )
-  const totalWeekMinutes = Math.round(
-    Object.values(weekTimeByCategory).reduce((s, v) => s + v, 0) / 60
-  )
-
-  const pipelineStats = useMemo(() => {
-    const stats: Record<string, number> = {}
-    for (const s of CONTACT_STATUSES) {
-      stats[s.value] = contacts.filter((c) => c.status === s.value).length
-    }
-    return stats
-  }, [contacts])
-
-  const totalActiveTodos = todos.filter((t) => !t.done).length
-  const overdueTodos = useMemo(
-    () => todos.filter((t) => !t.done && t.date !== null && t.date < todayStr),
-    [todos, todayStr]
-  )
-
-  const topCategories = useMemo(() => {
-    const catMap = new Map(categories.map((c) => [c.id, c]))
-    return Object.entries(weekTimeByCategory)
-      .map(([catId, seconds]) => ({ cat: catMap.get(catId), minutes: Math.round(seconds / 60) }))
-      .filter((d) => d.cat)
-      .sort((a, b) => b.minutes - a.minutes)
-      .slice(0, 5)
-  }, [weekTimeByCategory, categories])
-
-  // ── Revenue stats ──
-  const revenueStats = useMemo(() => {
-    const totalRevenue = projects.reduce((sum, p) => sum + (p.revenue || 0), 0)
-    const totalAdSpend = posts.reduce((sum, p) => sum + (p.metrics.spend || 0), 0)
-    const netProfit = totalRevenue - totalAdSpend
-    const byProject = projects
-      .map((p) => ({ project: p, revenue: p.revenue || 0 }))
-      .filter((r) => r.revenue > 0)
-      .sort((a, b) => b.revenue - a.revenue)
-
-    let totalMRR = 0
-    for (const p of projects) {
-      const t = p.revenueType
-      if (!t || t === 'one-time') continue
-      const mrr = t === 'monthly' ? (p.revenue || 0)
-        : t === 'quarterly' ? (p.revenue || 0) / 3
-        : t === 'annual' ? (p.revenue || 0) / 12
-        : 0
-      if (mrr > 0) totalMRR += mrr
-    }
-
-    return { totalRevenue, totalAdSpend, netProfit, byProject, totalMRR, totalARR: totalMRR * 12 }
-  }, [projects, posts])
-
-  const maxProjectRevenue = revenueStats.byProject[0]?.revenue || 1
-
-  // Skeleton during SSR / before localStorage hydrates — keeps the layout
-  // stable and identical between server & client so no hydration warning.
   if (!mounted) {
     return (
       <div className="flex flex-col h-full overflow-auto">
-        <div className="px-6 sm:px-10 lg:px-16 pt-6 pb-20 max-w-7xl mx-auto w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="soft-card p-6 h-[160px] animate-pulse">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="h-3 w-10 bg-muted rounded" />
-                  <div className="h-10 w-10 bg-muted rounded-lg" />
-                </div>
-                <div className="h-3 w-20 bg-muted rounded mb-3" />
-                <div className="h-8 w-24 bg-muted rounded" />
-              </div>
-            ))}
-          </div>
+        <div className="px-6 sm:px-10 lg:px-14 pt-6 pb-20 max-w-[1400px] mx-auto w-full">
+          <DashboardSkeleton />
         </div>
       </div>
     )
@@ -106,334 +51,559 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col h-full overflow-auto">
-      <div className="px-6 sm:px-10 lg:px-16 pt-6 pb-20 max-w-7xl mx-auto w-full animate-in fade-in duration-500">
-
-        {/* Overdue inline banner (only shown if relevant) */}
-        {overdueTodos.length > 0 && (
-          <Link
-            href="/todos"
-            className="inline-flex items-center gap-2 mb-6 pill bg-amber-100 text-amber-900 hover:bg-amber-200"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            {overdueTodos.length} tâche{overdueTodos.length > 1 ? 's' : ''} en retard →
-          </Link>
-        )}
-
-        {/* ── Numbered KPI grid (Teplin style) ─────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-          <NumberedCard num="/01" href="/calendrier" icon={<IconCheck />} title="Tâches" kpi={String(todayTasks.length)}>
-            {doneTasks} fait{doneTasks > 1 ? 's' : ''} · {todayTasks.length - doneTasks} restant
-          </NumberedCard>
-          <NumberedCard num="/02" href="/stats" icon={<IconClock />} title="Cette semaine" kpi={formatTime(totalWeekMinutes * 60)}>
-            {Math.round(totalWeekMinutes / 7)} min/jour en moyenne
-          </NumberedCard>
-          <NumberedCard num="/03" href="/contacts" icon={<IconUsers />} title="Contacts" kpi={String(contacts.length)}>
-            {pipelineStats['client'] || 0} clients · {pipelineStats['prospect'] || 0} prospects
-          </NumberedCard>
-          <NumberedCard num="/04" href="/todos" icon={<IconList />} title="To-Do actifs" kpi={String(totalActiveTodos)}>
-            {overdueTodos.length > 0
-              ? <span className="text-amber-600 font-medium">{overdueTodos.length} en retard</span>
-              : 'À jour'}
-          </NumberedCard>
-        </div>
-
-        {/* ── Revenus — section éditoriale ──────────────────────── */}
-        <section className="mb-16">
-          <div className="flex items-end justify-between mb-8 flex-wrap gap-4">
-            <h2 className="h-section">Tes revenus ce mois</h2>
-            <Link href="/projects" className="pill text-xs">
-              Voir tous les projets →
-            </Link>
+      <div className="px-6 sm:px-10 lg:px-14 pt-6 pb-20 max-w-[1400px] mx-auto w-full animate-in fade-in duration-500">
+        {/* Top bar */}
+        <header className="flex items-center justify-between gap-4 flex-wrap mb-8">
+          <div>
+            <div className="overline">BloomCo · vue d&apos;ensemble</div>
+            <h1 className="h-section mt-1.5">
+              {greeting}, Marc
+            </h1>
+            <p className="text-sm mt-1" style={{ color: 'var(--ink-on-dark-muted)' }}>
+              {formatDateFr(today, 'EEEE d MMMM yyyy')}
+            </p>
           </div>
+          <button className="btn-ghost" style={{ height: '2.5rem', padding: '0 1rem', fontSize: '0.8125rem' }}>
+            + Personnaliser
+          </button>
+        </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Total revenue — featured card with subtle accent */}
-            <div className="soft-card p-7 lg:col-span-2">
-              <p className="card-num mb-4">/ TOTAL</p>
-              <div className="flex items-end gap-3 mb-2">
-                <div className="kpi-display">{revenueStats.totalRevenue.toLocaleString('fr-FR')} €</div>
-                {revenueStats.netProfit !== 0 && (
-                  <span className={cn(
-                    'mb-2 text-sm font-medium tabular-nums',
-                    revenueStats.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'
-                  )}>
-                    {revenueStats.netProfit >= 0 ? '+' : ''}{revenueStats.netProfit.toLocaleString('fr-FR')} € net
+        {/* Widget grid — 12 cols on lg */}
+        <div className="grid grid-cols-12 gap-4 lg:gap-5 auto-rows-min stagger-children">
+          <WidgetAgenda tasks={tasks} categories={categories} />
+          <WidgetTasks tasks={tasks} todos={todos} todayStr={todayStr} />
+          <WidgetChrono />
+
+          <WidgetTeamLoad />
+          <WidgetDecisions />
+
+          <WidgetEquityBalance />
+          <WidgetIris />
+
+          <WidgetContacts contacts={contacts} />
+          <WidgetProjects projects={projects} />
+
+          <AddWidgetButton />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Skeleton
+// ─────────────────────────────────────────────────────────────
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="h-16 w-72 rounded-md animate-pulse" style={{ background: 'var(--bg-surface-elev)' }} />
+      <div className="grid grid-cols-12 gap-4">
+        {[4, 4, 4, 6, 6, 6, 6, 12].map((cols, i) => (
+          <div
+            key={i}
+            className="card-deep h-[200px] animate-pulse"
+            style={{ gridColumn: `span ${cols} / span ${cols}` }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Widget shell
+// ─────────────────────────────────────────────────────────────
+
+function Widget({
+  title, badge, cols, children, footer,
+}: {
+  title: string
+  badge?: React.ReactNode
+  cols: number  // 1..12
+  children: React.ReactNode
+  footer?: React.ReactNode
+}) {
+  return (
+    <section
+      className="card-deep card-deep-hover p-5 flex flex-col"
+      style={{ gridColumn: `span ${cols} / span ${cols}` }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <h2 className="h-subsection text-base font-semibold">{title}</h2>
+          {badge}
+        </div>
+        <button
+          aria-label="Options"
+          className="w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-white/5"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" style={{ color: 'var(--ink-on-dark-subtle)' }}>
+            <circle cx="3" cy="7" r="1" />
+            <circle cx="7" cy="7" r="1" />
+            <circle cx="11" cy="7" r="1" />
+          </svg>
+        </button>
+      </div>
+      <div className="flex-1 min-h-0">{children}</div>
+      {footer && (
+        <div className="mt-4 pt-3 border-t text-xs" style={{ borderColor: 'var(--border-on-dark-deep)' }}>
+          {footer}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Personal widgets (wired to useApp)
+// ─────────────────────────────────────────────────────────────
+
+type Task = ReturnType<typeof useApp>['tasks'][number]
+type TodoItem = ReturnType<typeof useApp>['todos'][number]
+type Category = ReturnType<typeof useApp>['categories'][number]
+type Contact = ReturnType<typeof useApp>['contacts'][number]
+type Project = ReturnType<typeof useApp>['projects'][number]
+
+function WidgetAgenda({ tasks, categories }: { tasks: Task[]; categories: Category[] }) {
+  const todayStr = toDateString(new Date())
+  const dayTasks = tasks
+    .filter((t) => t.date === todayStr)
+    .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
+    .slice(0, 5)
+  const catMap = new Map(categories.map((c) => [c.id, c]))
+  return (
+    <Widget
+      title="Agenda du jour"
+      cols={4}
+      footer={
+        <Link href="/calendrier" className="hover:opacity-80" style={{ color: 'var(--ink-on-dark-muted)' }}>
+          Voir le calendrier →
+        </Link>
+      }
+    >
+      {dayTasks.length === 0 ? (
+        <EmptyState icon="📅" label="Aucun créneau" />
+      ) : (
+        <ul className="space-y-2.5">
+          {dayTasks.map((t) => {
+            const cat = catMap.get(t.categoryId)
+            return (
+              <li key={t.id} className="flex items-center gap-3 text-sm">
+                <span className="text-xs tabular-nums shrink-0 w-12" style={{ color: 'var(--ink-on-dark-subtle)' }}>
+                  {t.startTime || '—'}
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: cat?.color || 'var(--accent-solid)' }} />
+                <span className="truncate flex-1" style={{ color: 'var(--ink-on-dark-primary)' }}>
+                  {t.title}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Widget>
+  )
+}
+
+function WidgetTasks({ tasks, todos, todayStr }: { tasks: Task[]; todos: TodoItem[]; todayStr: string }) {
+  const todayTasks = tasks.filter((t) => t.date === todayStr)
+  const done = todayTasks.filter((t) => t.status === 'done').length
+  const activeTodos = todos.filter((t) => !t.done).length
+
+  return (
+    <Widget
+      title="Tâches du jour"
+      cols={4}
+      footer={
+        <Link href="/todos" className="hover:opacity-80" style={{ color: 'var(--ink-on-dark-muted)' }}>
+          Voir la to-do →
+        </Link>
+      }
+    >
+      <div className="flex items-baseline gap-2">
+        <span className="kpi-display" style={{ color: 'var(--ink-on-dark-primary)' }}>
+          {done}<span style={{ color: 'var(--ink-on-dark-subtle)' }}>/{todayTasks.length}</span>
+        </span>
+      </div>
+      <p className="text-sm mt-2" style={{ color: 'var(--ink-on-dark-muted)' }}>
+        {done === todayTasks.length && todayTasks.length > 0 ? 'Tout est fait ✓' : `${todayTasks.length - done} restantes`}
+      </p>
+      <div className="mt-4 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: todayTasks.length > 0 ? `${(done / todayTasks.length) * 100}%` : '0%',
+            background: 'var(--accent-gradient)',
+          }}
+        />
+      </div>
+      <p className="text-xs mt-3" style={{ color: 'var(--ink-on-dark-subtle)' }}>
+        + {activeTodos} todo{activeTodos > 1 ? 's' : ''} actif{activeTodos > 1 ? 's' : ''}
+      </p>
+    </Widget>
+  )
+}
+
+function WidgetChrono() {
+  const [seconds, setSeconds] = useState(0)
+  const [running, setRunning] = useState(false)
+  useEffect(() => {
+    if (!running) return
+    const id = setInterval(() => setSeconds((s) => s + 1), 1000)
+    return () => clearInterval(id)
+  }, [running])
+
+  const fmt = (s: number) => {
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    const sec = s % 60
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+  }
+
+  return (
+    <Widget title="Chrono global" cols={4}>
+      <div className="flex flex-col items-center justify-center py-2">
+        <div
+          className="kpi-display tabular-nums"
+          style={{ color: running ? 'var(--accent-solid)' : 'var(--ink-on-dark-primary)' }}
+        >
+          {fmt(seconds)}
+        </div>
+        <div className="flex gap-2 mt-4">
+          {!running ? (
+            <button onClick={() => setRunning(true)} className="btn-cta" style={{ height: '2.25rem', padding: '0 1rem', fontSize: '0.8125rem' }}>
+              ▶ Démarrer
+            </button>
+          ) : (
+            <>
+              <button onClick={() => setRunning(false)} className="btn-ghost" style={{ height: '2.25rem', padding: '0 1rem', fontSize: '0.8125rem' }}>
+                ⏸ Pause
+              </button>
+              <button
+                onClick={() => { setRunning(false); setSeconds(0) }}
+                className="btn-ghost"
+                style={{ height: '2.25rem', padding: '0 1rem', fontSize: '0.8125rem' }}
+              >
+                ◼ Stop
+              </button>
+            </>
+          )}
+        </div>
+        {!running && seconds === 0 && (
+          <p className="text-xs mt-3" style={{ color: 'var(--ink-on-dark-subtle)' }}>
+            Aucun projet sélectionné
+          </p>
+        )}
+      </div>
+    </Widget>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Team widgets (mock until orgs are wired)
+// ─────────────────────────────────────────────────────────────
+
+function WidgetTeamLoad() {
+  const members = [
+    { name: 'Marc', hours: 34, color: '#E37520' },
+    { name: 'Alex', hours: 18, color: '#FBBE4D' },
+  ]
+  const total = members.reduce((s, m) => s + m.hours, 0)
+  return (
+    <Widget
+      title="Charge équipe"
+      badge={<span className="tag-micro" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--ink-on-dark-muted)' }}>7 jours</span>}
+      cols={6}
+    >
+      <div className="space-y-3">
+        {members.map((m) => (
+          <div key={m.name}>
+            <div className="flex items-center justify-between text-sm mb-1.5">
+              <span style={{ color: 'var(--ink-on-dark-primary)' }}>{m.name}</span>
+              <span className="tabular-nums" style={{ color: 'var(--ink-on-dark-muted)' }}>
+                {m.hours} h <span style={{ color: 'var(--ink-on-dark-subtle)' }}>· {Math.round((m.hours / total) * 100)}%</span>
+              </span>
+            </div>
+            <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div className="h-full rounded-full" style={{ width: `${(m.hours / total) * 100}%`, background: m.color }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 text-xs" style={{ color: 'var(--ink-on-dark-subtle)' }}>
+        Données mock — connecte l&apos;organisation pour le réel.
+      </div>
+    </Widget>
+  )
+}
+
+function WidgetDecisions() {
+  const decisions = [
+    { title: 'Achat Macbook Pro', amount: '2 400 €', tag: 'critique', votes: '1/2' },
+    { title: 'Distribution mensuelle', amount: '—', tag: 'règle', votes: '0/2' },
+    { title: 'Notion Team upgrade', amount: '180 €', tag: 'normal', votes: '2/2' },
+  ]
+  return (
+    <Widget
+      title="Décisions à voter"
+      badge={
+        <span className="tag-micro tag-micro-accent" style={{ height: '1.25rem', padding: '0 0.5rem', fontSize: '0.625rem' }}>
+          3
+        </span>
+      }
+      cols={6}
+      footer={<span style={{ color: 'var(--ink-on-dark-muted)' }}>Voir toutes les décisions →</span>}
+    >
+      <ul className="space-y-2.5">
+        {decisions.map((d) => (
+          <li key={d.title} className="flex items-center justify-between gap-3 text-sm py-1.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="truncate" style={{ color: 'var(--ink-on-dark-primary)' }}>{d.title}</span>
+                {d.tag === 'critique' && (
+                  <span className="tag-micro tag-micro-accent shrink-0" style={{ height: '1.125rem', padding: '0 0.4rem', fontSize: '0.5625rem' }}>
+                    CRITIQUE
                   </span>
                 )}
               </div>
-              <p className="kpi-display-label">
-                {revenueStats.byProject.length} projet{revenueStats.byProject.length > 1 ? 's' : ''} actif{revenueStats.byProject.length > 1 ? 's' : ''}
-                {revenueStats.totalAdSpend > 0 && ` · ${revenueStats.totalAdSpend.toFixed(0)} € dépensés en ads`}
-              </p>
-
-              {/* Top projects bars */}
-              {revenueStats.byProject.length > 0 && (
-                <div className="mt-7 space-y-3">
-                  {revenueStats.byProject.slice(0, 4).map(({ project, revenue }) => {
-                    const pct = (revenue / maxProjectRevenue) * 100
-                    return (
-                      <div key={project.id} className="space-y-1.5">
-                        <div className="flex items-center gap-3 text-sm">
-                          {project.color && (
-                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />
-                          )}
-                          <span className="truncate flex-1 font-medium">{project.name}</span>
-                          <span className="font-semibold tabular-nums shrink-0 text-foreground">
-                            {revenue.toLocaleString('fr-FR')} €
-                          </span>
-                        </div>
-                        <div className="h-1 bg-secondary rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${pct}%`, backgroundColor: project.color || 'currentColor' }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              <div className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--ink-on-dark-subtle)' }}>
+                {d.amount} · {d.votes} votes
+              </div>
             </div>
-
-            {/* MRR card */}
-            <div className="soft-card p-7 flex flex-col">
-              <p className="card-num mb-4">/ MRR</p>
-              <div className="kpi-display">{revenueStats.totalMRR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</div>
-              <p className="kpi-display-label">
-                {revenueStats.totalMRR > 0
-                  ? <>ARR <strong className="text-foreground tabular-nums">{revenueStats.totalARR.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</strong></>
-                  : 'Aucun revenu récurrent encore'}
-              </p>
-
-              {revenueStats.totalMRR > 0 && (
-                <div className="mt-auto pt-6 text-xs text-muted-foreground">
-                  À MRR constant, projection 12 mois ≈
-                  <div className="text-foreground font-semibold tabular-nums text-base mt-1">
-                    {(revenueStats.totalMRR * 12).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* ── 3 colonnes Pipeline · Temps · Tâches ──────────────── */}
-        <section className="mb-16">
-          <h2 className="h-section mb-8">Vue d&apos;ensemble</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <SoftListCard num="/01" title="Pipeline" href="/pipeline">
-              {CONTACT_STATUSES.filter((s) => s.value !== 'inactive').map((s) => (
-                <li key={s.value} className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.color }} />
-                    <span className="text-muted-foreground">{s.label}</span>
-                  </span>
-                  <span className="tabular-nums font-semibold text-foreground">{pipelineStats[s.value] || 0}</span>
-                </li>
-              ))}
-            </SoftListCard>
-
-            <SoftListCard num="/02" title="Temps · 7 jours" href="/stats">
-              {topCategories.length > 0 ? (
-                topCategories.map((d) => (
-                  <li key={d.cat!.id} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 truncate">
-                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: d.cat!.color }} />
-                        <span className="truncate">{d.cat!.name}</span>
-                      </span>
-                      <span className="tabular-nums text-xs font-medium">{d.minutes} min</span>
-                    </div>
-                    <div className="h-[2px] bg-secondary rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${Math.min((d.minutes / (topCategories[0]?.minutes || 1)) * 100, 100)}%`,
-                          backgroundColor: d.cat!.color,
-                        }}
-                      />
-                    </div>
-                  </li>
-                ))
-              ) : (
-                <li className="text-xs text-muted-foreground italic">Aucun temps enregistré</li>
-              )}
-            </SoftListCard>
-
-            <SoftListCard num="/03" title="Tâches du jour" href="/calendrier">
-              {todayTasks.length > 0 ? (
-                todayTasks.slice(0, 5).map((task) => (
-                  <li key={task.id} className="flex items-center gap-2 text-sm">
-                    <span className={cn(
-                      'h-1.5 w-1.5 rounded-full shrink-0',
-                      task.status === 'done' ? 'bg-emerald-500'
-                      : task.status === 'in_progress' ? 'bg-accent'
-                      : 'bg-muted-foreground/40'
-                    )} />
-                    <span className={cn('truncate flex-1', task.status === 'done' && 'line-through text-muted-foreground')}>
-                      {task.title}
-                    </span>
-                    <span className="text-muted-foreground text-xs tabular-nums shrink-0">{task.startTime}</span>
-                  </li>
-                ))
-              ) : (
-                <li className="text-xs text-muted-foreground italic">Aucune tâche aujourd&apos;hui</li>
-              )}
-            </SoftListCard>
-          </div>
-        </section>
-
-        {/* ── Posts + Projets ───────────────────────────────────── */}
-        <section className="mb-16">
-          <h2 className="h-section mb-8">Activité récente</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SoftListCard num="/01" title="Derniers posts" href="/marketing">
-              {posts.length > 0 ? (
-                posts.slice(0, 4).map((post) => {
-                  const plat = PLATFORMS.find((p) => p.value === post.platform)
-                  const eng = post.metrics.likes + post.metrics.comments + post.metrics.shares
-                  return (
-                    <li key={post.id} className="flex items-center gap-3 text-sm">
-                      <span
-                        className="h-7 w-7 rounded-md text-white text-[9px] font-semibold flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: plat?.color }}
-                      >
-                        {plat?.label.slice(0, 2).toUpperCase()}
-                      </span>
-                      <span className="truncate flex-1">{post.title}</span>
-                      <span className="text-muted-foreground text-xs tabular-nums shrink-0">{eng.toLocaleString()}</span>
-                    </li>
-                  )
-                })
-              ) : (
-                <li className="text-xs text-muted-foreground italic">Aucun post</li>
-              )}
-            </SoftListCard>
-
-            <SoftListCard num="/02" title="Projets" href="/projects">
-              {projects.length > 0 ? (
-                projects.slice(0, 5).map((p) => {
-                  const status = PROJECT_STATUSES.find((s) => s.value === p.status)
-                  return (
-                    <li key={p.id} className="flex items-center gap-3 text-sm">
-                      <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: p.color || status?.color }} />
-                      <span className="truncate flex-1">{p.name}</span>
-                      <span className="tag-pill shrink-0">{status?.label}</span>
-                    </li>
-                  )
-                })
-              ) : (
-                <li className="text-xs text-muted-foreground italic">Aucun projet</li>
-              )}
-            </SoftListCard>
-          </div>
-        </section>
-
-        {/* Optional Google Calendar widget */}
-        <GoogleCalendarWidget />
-      </div>
-    </div>
+          </li>
+        ))}
+      </ul>
+    </Widget>
   )
 }
 
-// ── Subcomponents ────────────────────────────────────────────────
-
-/**
- * Numbered KPI card — Teplin style with /01 number, dark icon square,
- * title, KPI display, and small hint at bottom.
- */
-function NumberedCard({
-  num, icon, title, kpi, children, href,
-}: {
-  num: string
-  icon: React.ReactNode
-  title: string
-  kpi: string
-  children?: React.ReactNode
-  href?: string
-}) {
-  const inner = (
-    <div className="soft-card soft-card-hover p-6 h-full flex flex-col">
-      <div className="flex items-start justify-between mb-4">
-        <span className="card-num">{num}</span>
-        <span className="icon-square" aria-hidden>{icon}</span>
+function WidgetEquityBalance() {
+  const members = [
+    { name: 'Marc', pct: 70, color: '#E37520' },
+    { name: 'Alex', pct: 30, color: '#FBBE4D' },
+  ]
+  const imbalance = Math.abs(members[0].pct - members[1].pct) > 20
+  return (
+    <Widget
+      title="Équilibre associés"
+      cols={6}
+      footer={
+        <span style={{ color: 'var(--ink-on-dark-muted)' }}>
+          Contributions ce mois ·{' '}
+          <span className="iris-pulse inline-block w-1.5 h-1.5 rounded-full mr-1" style={{ background: 'var(--accent-solid)' }} />
+          Iris suit
+        </span>
+      }
+    >
+      {/* Stacked bar */}
+      <div className="flex h-10 rounded-md overflow-hidden mb-4">
+        {members.map((m) => (
+          <div
+            key={m.name}
+            className="flex items-center justify-center text-xs font-semibold"
+            style={{
+              width: `${m.pct}%`,
+              background: m.color,
+              color: '#111',
+            }}
+          >
+            {m.pct}%
+          </div>
+        ))}
       </div>
-      <p className="text-sm font-medium text-muted-foreground mb-1.5">{title}</p>
-      <div className="kpi-display">{kpi}</div>
-      {children && <p className="kpi-display-label mt-auto pt-3">{children}</p>}
-    </div>
-  )
-  if (href) return <Link href={href} className="block group">{inner}</Link>
-  return inner
-}
 
-/**
- * Soft card containing a list — used for Pipeline, Temps, Posts, Projets.
- */
-function SoftListCard({
-  num, title, href, children,
-}: {
-  num: string
-  title: string
-  href?: string
-  children: React.ReactNode
-}) {
-  const inner = (
-    <div className="soft-card soft-card-hover p-6 h-full">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <p className="card-num">{num}</p>
-          <h3 className="text-base font-semibold mt-0.5">{title}</h3>
+      {/* Member rows */}
+      <div className="space-y-2">
+        {members.map((m) => (
+          <div key={m.name} className="flex items-center gap-2 text-sm">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: m.color }} />
+            <span style={{ color: 'var(--ink-on-dark-primary)' }}>{m.name}</span>
+            <span className="ml-auto tabular-nums" style={{ color: 'var(--ink-on-dark-muted)' }}>
+              {m.pct === 70 ? '98 h' : '42 h'}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {imbalance && (
+        <div
+          className="mt-4 p-3 rounded-lg flex items-start gap-2.5"
+          style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)' }}
+        >
+          <span className="text-[#FCD34D] text-sm shrink-0">⚠</span>
+          <div>
+            <div className="text-sm font-semibold" style={{ color: '#FCD34D' }}>
+              Déséquilibre &gt; 20%
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--ink-on-dark-muted)' }}>
+              Pensez à organiser un point d&apos;équipe.
+            </div>
+          </div>
         </div>
-        {href && (
-          <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-            →
-          </span>
-        )}
+      )}
+    </Widget>
+  )
+}
+
+function WidgetIris() {
+  return (
+    <Widget
+      title="Alertes Iris"
+      badge={<span className="iris-pulse w-2 h-2 rounded-full" style={{ background: 'var(--accent-solid)' }} />}
+      cols={6}
+      footer={<span style={{ color: 'var(--ink-on-dark-muted)' }}>Ouvrir Iris →</span>}
+    >
+      <div className="space-y-3">
+        <AlertItem
+          severity="warning"
+          text="Marc a fait 70% des heures sur 4 semaines."
+          when="il y a 2 h"
+        />
+        <AlertItem
+          severity="info"
+          text="3 décisions en attente depuis plus de 48 h."
+          when="hier"
+        />
+        <AlertItem
+          severity="info"
+          text="Résumé hebdo prêt — 12 contributions analysées."
+          when="lundi"
+        />
       </div>
-      <ul className="space-y-3">{children}</ul>
+    </Widget>
+  )
+}
+
+function AlertItem({ severity, text, when }: { severity: 'info' | 'warning' | 'critical'; text: string; when: string }) {
+  const colors = {
+    info: { bg: 'rgba(59,130,246,0.12)', text: '#93C5FD' },
+    warning: { bg: 'rgba(245,158,11,0.12)', text: '#FCD34D' },
+    critical: { bg: 'rgba(239,68,68,0.12)', text: '#FCA5A5' },
+  } as const
+  const c = colors[severity]
+  return (
+    <div className="flex items-start gap-2.5 text-sm">
+      <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: c.text }} />
+      <div className="flex-1 min-w-0">
+        <p style={{ color: 'var(--ink-on-dark-primary)' }}>{text}</p>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--ink-on-dark-subtle)' }}>{when}</p>
+      </div>
+      <span
+        className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0"
+        style={{ background: c.bg, color: c.text }}
+      >
+        {severity === 'critical' ? 'crit' : severity}
+      </span>
     </div>
   )
-  if (href) return <Link href={href} className="block group">{inner}</Link>
-  return inner
 }
 
-// ── Icons ───────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// Bonus widgets (existing data wired)
+// ─────────────────────────────────────────────────────────────
 
-function IconCheck() {
+function WidgetContacts({ contacts }: { contacts: Contact[] }) {
+  const stats: Record<string, number> = {}
+  for (const s of CONTACT_STATUSES) {
+    stats[s.value] = contacts.filter((c) => c.status === s.value).length
+  }
   return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 6.5l2 2 4-4" />
-      <path d="M4 13.5l2 2 4-4" />
-      <path d="M14 7h4" />
-      <path d="M14 14h4" />
-    </svg>
+    <Widget
+      title="Pipeline"
+      cols={6}
+      footer={
+        <Link href="/pipeline" className="hover:opacity-80" style={{ color: 'var(--ink-on-dark-muted)' }}>
+          Voir le pipeline →
+        </Link>
+      }
+    >
+      <div className="grid grid-cols-2 gap-3">
+        {CONTACT_STATUSES.filter((s) => s.value !== 'inactive').map((s) => (
+          <div
+            key={s.value}
+            className="p-3 rounded-lg"
+            style={{ background: 'rgba(255,255,255,0.03)' }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
+              <span className="text-xs" style={{ color: 'var(--ink-on-dark-muted)' }}>{s.label}</span>
+            </div>
+            <div className="text-xl font-semibold tabular-nums" style={{ color: 'var(--ink-on-dark-primary)' }}>
+              {stats[s.value] || 0}
+            </div>
+          </div>
+        ))}
+      </div>
+    </Widget>
   )
 }
 
-function IconClock() {
+function WidgetProjects({ projects }: { projects: Project[] }) {
+  const items = projects.slice(0, 5)
   return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="7.5" />
-      <path d="M10 5v5l3 2" />
-    </svg>
+    <Widget
+      title="Projets"
+      cols={6}
+      footer={
+        <Link href="/projects" className="hover:opacity-80" style={{ color: 'var(--ink-on-dark-muted)' }}>
+          Voir les projets →
+        </Link>
+      }
+    >
+      {items.length === 0 ? (
+        <EmptyState icon="📦" label="Aucun projet" />
+      ) : (
+        <ul className="divide-y" style={{ borderColor: 'var(--border-on-dark-deep)' }}>
+          {items.map((p) => {
+            const status = PROJECT_STATUSES.find((s) => s.value === p.status)
+            return (
+              <li key={p.id} className="flex items-center gap-3 py-2.5 text-sm">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: p.color || status?.color || 'var(--accent-solid)' }} />
+                <span className="truncate flex-1" style={{ color: 'var(--ink-on-dark-primary)' }}>{p.name}</span>
+                <span className="text-xs" style={{ color: 'var(--ink-on-dark-subtle)' }}>{status?.label || p.status}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Widget>
   )
 }
 
-function IconUsers() {
+// ─────────────────────────────────────────────────────────────
+// Add widget tile
+// ─────────────────────────────────────────────────────────────
+
+function AddWidgetButton() {
   return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="7" r="3" />
-      <path d="M3.5 17c0-3 2.9-5.5 6.5-5.5s6.5 2.5 6.5 5.5" />
-    </svg>
+    <button
+      className={cn(
+        'col-span-12 lg:col-span-12 rounded-[var(--radius-lg)]',
+        'flex items-center justify-center gap-2 h-16 text-sm font-medium transition-all',
+      )}
+      style={{
+        border: '1px dashed var(--border-on-dark-deep)',
+        color: 'var(--ink-on-dark-muted)',
+        background: 'transparent',
+      }}
+    >
+      <span style={{ color: 'var(--accent-solid)' }}>+</span>
+      Ajouter un widget
+    </button>
   )
 }
 
-function IconList() {
+// ─────────────────────────────────────────────────────────────
+// Empty state
+// ─────────────────────────────────────────────────────────────
+
+function EmptyState({ icon, label }: { icon: string; label: string }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 5h2M3 10h2M3 15h2" />
-      <path d="M8 5h9M8 10h9M8 15h9" />
-    </svg>
+    <div className="flex flex-col items-center justify-center py-8 text-center">
+      <div className="text-3xl mb-2 opacity-50">{icon}</div>
+      <p className="text-sm" style={{ color: 'var(--ink-on-dark-subtle)' }}>{label}</p>
+    </div>
   )
 }
