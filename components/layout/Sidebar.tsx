@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/supabase/use-auth'
 import { AI_NAME } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
+// Bloom v3 navigation — see REFONTE_PLAN.md (legacy entries archived)
 const NAV_ITEMS = [
   {
     href: '/dashboard',
@@ -23,8 +24,17 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/todos',
-    label: 'To-Do',
+    href: '/projects',
+    label: 'Projets',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2.5 5.5a2 2 0 0 1 2-2h3l2 2h5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2v-9Z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/tasks',
+    label: 'Tâches',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 6.5l2 2 4-4" />
@@ -35,13 +45,24 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/pipeline',
-    label: 'Pipeline',
+    href: '/chrono',
+    label: 'Chrono',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" width="4.5" height="14" rx="1.5" />
-        <rect x="7.75" y="3" width="4.5" height="10" rx="1.5" />
-        <rect x="13.5" y="3" width="4.5" height="6" rx="1.5" />
+        <circle cx="10" cy="11" r="7" />
+        <path d="M10 11V7" />
+        <path d="M8 2.5h4" />
+      </svg>
+    ),
+  },
+  {
+    href: '/decisions',
+    label: 'Décisions',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9h14M3 9l2-5h10l2 5" />
+        <path d="M3 9v8a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 17 17V9" />
+        <path d="M7 13l1.8 1.8L13 10.5" />
       </svg>
     ),
   },
@@ -54,73 +75,6 @@ const NAV_ITEMS = [
         <path d="M2.5 8h15" />
         <path d="M6.5 1.5v3" />
         <path d="M13.5 1.5v3" />
-        <circle cx="7" cy="12" r="1" fill="currentColor" stroke="none" />
-        <circle cx="10" cy="12" r="1" fill="currentColor" stroke="none" />
-        <circle cx="13" cy="12" r="1" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
-    href: '/projects',
-    label: 'Projets',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2.5 5.5a2 2 0 0 1 2-2h3l2 2h5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2v-9Z" />
-      </svg>
-    ),
-  },
-  {
-    href: '/contacts',
-    label: 'Contacts',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="10" cy="7" r="3.5" />
-        <path d="M3 17.5c0-3.5 3-6.5 7-6.5s7 3 7 6.5" />
-      </svg>
-    ),
-  },
-  {
-    href: '/marketing',
-    label: 'Marketing',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M5 10l3-7 4 14 3-7h3" />
-        <circle cx="2.5" cy="10" r="1" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
-    href: '/vocal',
-    label: 'Vocal',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="7" y="2" width="6" height="10" rx="3" />
-        <path d="M4 10a6 6 0 0 0 12 0" />
-        <path d="M10 16v2" />
-        <path d="M7 18h6" />
-      </svg>
-    ),
-  },
-  {
-    href: '/stats',
-    label: 'Stats',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 17V11" />
-        <path d="M7 17V7" />
-        <path d="M11 17V9" />
-        <path d="M15 17V4" />
-      </svg>
-    ),
-  },
-  {
-    href: '/vault',
-    label: 'Coffre-fort',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="8" width="14" height="10" rx="2" />
-        <path d="M6 8V6a4 4 0 0 1 8 0v2" />
-        <circle cx="10" cy="13" r="1" fill="currentColor" stroke="none" />
       </svg>
     ),
   },

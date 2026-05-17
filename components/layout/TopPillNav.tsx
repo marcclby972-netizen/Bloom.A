@@ -10,21 +10,17 @@ import { isAdmin } from '@/lib/admin'
 import { AI_NAME } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
+// Bloom v3 navigation — see REFONTE_PLAN.md (legacy entries archived)
 const PRIMARY_NAV = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/projects', label: 'Projets' },
-  { href: '/todos', label: 'To-Do' },
-  { href: '/calendrier', label: 'Calendrier' },
-  { href: '/marketing', label: 'Marketing' },
+  { href: '/tasks', label: 'Tâches' },
+  { href: '/chrono', label: 'Chrono' },
+  { href: '/decisions', label: 'Décisions' },
 ] as const
 
 const SECONDARY_NAV = [
-  { href: '/pipeline', label: 'Pipeline', adminOnly: false },
-  { href: '/contacts', label: 'Contacts', adminOnly: false },
-  { href: '/vocal', label: 'Vocal', adminOnly: false },
-  { href: '/stats', label: 'Stats', adminOnly: false },
-  { href: '/chrono', label: 'Chrono', adminOnly: false },
-  { href: '/vault', label: 'Coffre-fort', adminOnly: false },
+  { href: '/calendrier', label: 'Calendrier', adminOnly: false },
   { href: '/integrations-guide', label: 'Guide intégrations', adminOnly: true },
   { href: '/settings', label: 'Paramètres', adminOnly: false },
 ] as const

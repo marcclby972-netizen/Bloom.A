@@ -1,5 +1,7 @@
 # Code archivé (Bloom v2)
 
+**Date d'archivage** : 18 mai 2026 (commit Bloc 5 refonte v3).
+
 Code fonctionnel mais **hors scope du modèle v3** (OS pour cofondateurs).
 Conservé ici pour pouvoir le ressortir si besoin, mais **pas exécuté**
 par l'app.
