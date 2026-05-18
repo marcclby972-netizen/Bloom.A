@@ -1,115 +1,476 @@
 'use client'
 
 /**
- * Chrono v3 — minimaliste.
- * - useTimer pour state + tick + actions
- * - useProjects pour le select projet
- * - getTimeEntriesAction au mount pour la liste de la semaine
+ * Chrono — affichage grand format du timer en cours + sélection projet/tâche
+ * pour démarrer + historique des entries de la semaine groupées par jour.
+ *
+ * useTimer fait le tick (1s) côté client ; start/stop appellent les server
+ * actions correspondantes avec rollback optimiste.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  useTimer, useProjects, useCurrentTeam, formatElapsed,
-} from '@/hooks'
+  DashboardShell,
+  PageHeader,
+} from '../dashboard/_components/DashboardShell'
+import { useCurrentTeam, useProjects, useTasks, useTimer } from '@/hooks'
 import { getTimeEntriesAction } from '@/lib/actions/time'
-import type { TimeEntry } from '@/lib/v3-types'
+import type { Project, Task, TimeEntry } from '@/lib/v3-types'
+
+function pad(n: number): string {
+  return n < 10 ? '0' + n : String(n)
+}
+
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h${pad(m)}`
+}
+
+function isoDay(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
+function startOfWeek(d = new Date()): Date {
+  const w = new Date(d)
+  const day = w.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  w.setDate(w.getDate() + diff)
+  w.setHours(0, 0, 0, 0)
+  return w
+}
+
+const DAY_LABEL = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'] as const
 
 export default function ChronoPage() {
-  const team = useCurrentTeam()
-  const projects = useProjects({ teamId: team.teamId ?? null })
-  const timer = useTimer()
+  return (
+    <DashboardShell screenLabel="Chrono">
+      <ChronoContent />
+    </DashboardShell>
+  )
+}
 
-  const [projectId, setProjectId] = useState<string>('')
+function ChronoContent() {
+  const { teamId } = useCurrentTeam()
+  const { activeEntry, isRunning, elapsedSeconds, start, stop, loading } =
+    useTimer()
+  const { data: projects } = useProjects({ teamId })
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
+  const { data: tasks } = useTasks(
+    selectedProjectId ? { projectId: selectedProjectId } : {}
+  )
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('')
   const [note, setNote] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const projectsById = useMemo(
+    () => new Map(projects.map((p) => [p.id, p])),
+    [projects]
+  )
+
+  // Week history
   const [weekEntries, setWeekEntries] = useState<TimeEntry[]>([])
-  const [loadingEntries, setLoadingEntries] = useState(true)
+  const [historyLoading, setHistoryLoading] = useState(true)
 
-  // Fetch this week's entries on mount + when timer changes
-  useEffect(() => {
-    const load = async () => {
-      const from = new Date()
-      from.setDate(from.getDate() - 7)
-      const r = await getTimeEntriesAction({ from: from.toISOString() })
-      if (r.ok) setWeekEntries(r.data)
-      setLoadingEntries(false)
-    }
-    void load()
-  }, [timer.activeEntry?.id])
-
-  const handleStart = async () => {
-    await timer.start({
-      projectId: projectId || null,
-      note: note.trim() || undefined,
-    })
-    setNote('')
+  const reloadHistory = async () => {
+    setHistoryLoading(true)
+    const from = isoDay(startOfWeek())
+    const r = await getTimeEntriesAction({ from })
+    if (r.ok) setWeekEntries(r.data)
+    setHistoryLoading(false)
   }
 
+  useEffect(() => {
+    void reloadHistory()
+  }, [])
+
+  const activeProject = activeEntry?.projectId
+    ? projectsById.get(activeEntry.projectId)
+    : null
+
+  const handleStart = async () => {
+    if (isRunning) return
+    setBusy(true)
+    setError(null)
+    try {
+      await start({
+        projectId: selectedProjectId || undefined,
+        taskId: selectedTaskId || undefined,
+        note: note.trim() || undefined,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Impossible de démarrer')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleStop = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await stop()
+      await reloadHistory()
+      setNote('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Impossible d’arrêter')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Group week entries by day
+  const grouped = useMemo(() => {
+    const m = new Map<string, TimeEntry[]>()
+    for (const e of weekEntries) {
+      const k = isoDay(new Date(e.startedAt))
+      const arr = m.get(k) ?? []
+      arr.push(e)
+      m.set(k, arr)
+    }
+    const start = startOfWeek()
+    const days: Array<{ iso: string; label: string; entries: TimeEntry[]; totalSec: number }> =
+      []
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start)
+      d.setDate(d.getDate() + i)
+      const iso = isoDay(d)
+      const entries = m.get(iso) ?? []
+      const totalSec = entries.reduce(
+        (sum, e) => sum + (e.durationSeconds ?? 0),
+        0
+      )
+      days.push({
+        iso,
+        label: `${DAY_LABEL[d.getDay()]} ${d.getDate()}`,
+        entries,
+        totalSec,
+      })
+    }
+    return days.reverse() // most recent first
+  }, [weekEntries])
+
+  const h = Math.floor(elapsedSeconds / 3600)
+  const m = Math.floor((elapsedSeconds % 3600) / 60)
+  const s = elapsedSeconds % 60
+
   return (
-    <main style={{ padding: 24, maxWidth: 700, margin: '0 auto' }}>
-      <h1>Chrono</h1>
+    <>
+      <PageHeader
+        eyebrow="Suivi du temps"
+        title="Chrono"
+        right={
+          <span
+            className="tag"
+            style={
+              isRunning
+                ? { background: 'rgba(34,197,94,0.14)', color: '#15803D' }
+                : { background: 'rgba(255,255,255,0.08)', color: 'rgba(236,236,236,0.55)' }
+            }
+          >
+            {loading ? 'Chargement' : isRunning ? 'En cours' : 'Arrêté'}
+          </span>
+        }
+      />
 
-      {/* Active display */}
-      <section style={{ marginTop: 16 }}>
-        {timer.loading && <p>…</p>}
-        {!timer.loading && timer.isRunning && (
-          <div>
-            <p style={{ fontSize: 48, fontFamily: 'monospace' }}>
-              {formatElapsed(timer.elapsedSeconds)}
-            </p>
-            <button onClick={() => void timer.stop()}>Stop</button>
+      {/* Hero chrono */}
+      <div
+        className="widget"
+        style={{
+          padding: '40px 36px',
+          marginBottom: 20,
+          background: isRunning
+            ? 'linear-gradient(135deg, rgba(227,117,32,0.12) 0%, rgba(251,190,77,0.05) 100%)'
+            : 'var(--surface)',
+          border: '1px solid var(--border)',
+        }}
+      >
+        <div
+          className="chrono-display"
+          style={{ fontSize: 'clamp(48px, 8vw, 96px)', textAlign: 'center', marginBottom: 14 }}
+        >
+          <span>{pad(h)}</span>:<span>{pad(m)}</span>:
+          <span className="sec">{pad(s)}</span>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            color: 'rgba(236,236,236,0.65)',
+            fontSize: 14,
+            marginBottom: 28,
+          }}
+        >
+          {isRunning ? (
+            <>
+              <span className="dot" />
+              <span>
+                {activeProject?.name ?? 'Travail libre'}
+                {activeEntry?.note ? ` · ${activeEntry.note}` : ''}
+              </span>
+            </>
+          ) : (
+            <span>Choisis un projet (optionnel) et démarre le chrono.</span>
+          )}
+        </div>
+
+        {!isRunning && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 10,
+              maxWidth: 720,
+              margin: '0 auto 16px',
+            }}
+          >
+            <select
+              value={selectedProjectId}
+              onChange={(e) => {
+                setSelectedProjectId(e.target.value)
+                setSelectedTaskId('')
+              }}
+              style={{
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                color: 'var(--ink)',
+                padding: '12px 14px',
+                fontSize: 14,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="">— Sans projet —</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedTaskId}
+              onChange={(e) => setSelectedTaskId(e.target.value)}
+              disabled={!selectedProjectId || tasks.length === 0}
+              style={{
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                color: 'var(--ink)',
+                padding: '12px 14px',
+                fontSize: 14,
+                fontFamily: 'inherit',
+                cursor: selectedProjectId ? 'pointer' : 'not-allowed',
+                opacity: selectedProjectId ? 1 : 0.5,
+              }}
+            >
+              <option value="">— Sans tâche —</option>
+              {tasks.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="Note (optionnel)"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={200}
+              style={{
+                gridColumn: '1 / -1',
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                color: 'var(--ink)',
+                padding: '12px 14px',
+                fontSize: 14,
+                fontFamily: 'inherit',
+                outline: 'none',
+              }}
+            />
           </div>
         )}
-        {!timer.loading && !timer.isRunning && (
-          <div>
-            <p>Aucun timer actif.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 400 }}>
-              <label>
-                Projet (optionnel) :{' '}
-                <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-                  <option value="">— aucun —</option>
-                  {projects.data
-                    .filter((p) => p.status === 'active')
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                </select>
-              </label>
-              <input
-                placeholder="note (optionnelle)"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-              <button onClick={() => void handleStart()}>Démarrer</button>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+          {isRunning ? (
+            <button
+              type="button"
+              className="chrono-stop"
+              onClick={handleStop}
+              disabled={busy}
+              style={{ minWidth: 240, justifyContent: 'center' }}
+            >
+              <span className="stop-ico" />
+              {busy ? 'Arrêt…' : 'Arrêter le chrono'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleStart}
+              disabled={busy}
+              style={{ minWidth: 240, justifyContent: 'center' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 11 11" fill="currentColor">
+                <path d="M2 1v9l7-4.5L2 1z" />
+              </svg>
+              {busy ? 'Démarrage…' : 'Démarrer le chrono'}
+            </button>
+          )}
+        </div>
+
+        {error && (
+          <p
+            role="alert"
+            style={{
+              marginTop: 14,
+              textAlign: 'center',
+              fontSize: 13,
+              color: '#FCA5A5',
+            }}
+          >
+            {error}
+          </p>
+        )}
+      </div>
+
+      {/* Historique semaine */}
+      <h2
+        style={{
+          fontFamily: 'var(--font-display), system-ui, sans-serif',
+          fontSize: 18,
+          fontWeight: 700,
+          color: 'var(--ink)',
+          marginBottom: 14,
+        }}
+      >
+        Cette semaine
+      </h2>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {historyLoading && weekEntries.length === 0 && (
+          <p style={{ color: 'rgba(236,236,236,0.55)', fontSize: 13 }}>
+            Chargement de l&apos;historique…
+          </p>
+        )}
+        {!historyLoading && weekEntries.length === 0 && (
+          <p style={{ color: 'rgba(236,236,236,0.55)', fontSize: 13 }}>
+            Aucune entrée cette semaine. Démarre ton premier chrono ↑
+          </p>
+        )}
+
+        {grouped.map((day) => {
+          if (day.entries.length === 0) return null
+          return (
+            <DayBlock
+              key={day.iso}
+              label={day.label}
+              totalSec={day.totalSec}
+              entries={day.entries}
+              projectsById={projectsById}
+              tasks={tasks}
+            />
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function DayBlock({
+  label,
+  totalSec,
+  entries,
+  projectsById,
+}: {
+  label: string
+  totalSec: number
+  entries: TimeEntry[]
+  projectsById: Map<string, Project>
+  tasks: Task[]
+}) {
+  return (
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-card)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          background: 'rgba(255,255,255,0.02)',
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
+        <strong style={{ fontSize: 13, color: 'var(--ink)' }}>{label}</strong>
+        <span className="w-meta">{formatDuration(totalSec)}</span>
+      </div>
+      <div>
+        {entries.map((e) => {
+          const proj = e.projectId ? projectsById.get(e.projectId) : null
+          const start = new Date(e.startedAt)
+          const end = e.endedAt ? new Date(e.endedAt) : null
+          const time = `${pad(start.getHours())}:${pad(start.getMinutes())}${end ? ` → ${pad(end.getHours())}:${pad(end.getMinutes())}` : ' …'}`
+          return (
+            <div
+              key={e.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '10px 16px',
+                borderTop: '1px solid var(--border)',
+                fontSize: 13,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono), monospace',
+                  fontSize: 12,
+                  color: 'rgba(236,236,236,0.55)',
+                  minWidth: 110,
+                }}
+              >
+                {time}
+              </span>
+              <span style={{ flex: 1, color: 'var(--ink)' }}>
+                {proj?.name ?? 'Travail libre'}
+                {e.note && (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      color: 'rgba(236,236,236,0.55)',
+                    }}
+                  >
+                    · {e.note}
+                  </span>
+                )}
+              </span>
+              <span
+                className="w-meta"
+                style={{ fontSize: 12, color: 'rgba(236,236,236,0.75)' }}
+              >
+                {e.durationSeconds != null
+                  ? formatDuration(e.durationSeconds)
+                  : 'en cours'}
+              </span>
             </div>
-          </div>
-        )}
-        {timer.error && <p style={{ color: 'crimson' }}>{timer.error.message}</p>}
-      </section>
-
-      {/* Week entries */}
-      <section style={{ marginTop: 32 }}>
-        <h2>7 derniers jours</h2>
-        {loadingEntries && <p>…</p>}
-        {!loadingEntries && weekEntries.length === 0 && <p>Aucune entrée.</p>}
-        <ul>
-          {weekEntries.map((e) => {
-            const project = projects.data.find((p) => p.id === e.projectId)
-            const duration = e.durationSeconds
-              ? formatElapsed(e.durationSeconds)
-              : '(en cours)'
-            return (
-              <li key={e.id}>
-                <code>{e.startedAt.slice(0, 16).replace('T', ' ')}</code>
-                {' · '}
-                {duration}
-                {' · '}
-                {project?.name ?? '(sans projet)'}
-                {e.note && ` · ${e.note}`}
-              </li>
-            )
-          })}
-        </ul>
-      </section>
-    </main>
+          )
+        })}
+      </div>
+    </div>
   )
 }

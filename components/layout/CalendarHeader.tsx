@@ -4,7 +4,9 @@ import { useApp } from '@/lib/context'
 import { formatDateFr, parseISO, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, toDateString } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import type { CalendarView } from '@/app/calendrier/page'
+// Inline type — formerly exported from app/calendrier/page (now a placeholder).
+// Kept here so legacy CalendarHeader compiles.
+type CalendarView = 'jour' | 'semaine' | 'mois'
 
 const VIEWS: { value: CalendarView; label: string }[] = [
   { value: 'jour', label: 'Jour' },

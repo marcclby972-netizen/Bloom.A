@@ -15,8 +15,18 @@ const PUBLIC_ROUTES = ['/', '/login', '/onboard']
 // Routes légales — full-width sans sidebar mais doivent garder la bannière cookies
 const LEGAL_ROUTES = ['/privacy', '/terms', '/cookies', '/pricing']
 // Full-bleed routes — la page apporte son propre chrome (sidebar/topbar)
-// depuis le HTML reference. AppShell se contente de rendre children + bandeau.
-const FULL_BLEED_ROUTES = ['/dashboard', '/settings']
+// via `DashboardShell` (cf. app/dashboard/_components/DashboardShell.tsx).
+// AppShell se contente de rendre children + bandeau cookies.
+const FULL_BLEED_ROUTES = [
+  '/dashboard',
+  '/settings',
+  '/projects',
+  '/tasks',
+  '/chrono',
+  '/calendrier',
+  '/decisions',
+]
+const FULL_BLEED_PREFIXES = ['/projects/', '/decisions/']
 
 function MobileHeader() {
   const { setMobileMenuOpen, chatOpen, setChatOpen } = useApp()
@@ -99,9 +109,12 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Full-bleed pages (dashboard, settings) — la page rend son propre chrome
-  // depuis le HTML reference. On garde uniquement la bannière cookies.
-  if (FULL_BLEED_ROUTES.includes(pathname)) {
+  // Full-bleed pages — la page rend son propre chrome via DashboardShell.
+  // On garde uniquement la bannière cookies.
+  const isFullBleed =
+    FULL_BLEED_ROUTES.includes(pathname) ||
+    FULL_BLEED_PREFIXES.some((p) => pathname.startsWith(p))
+  if (isFullBleed) {
     return (
       <>
         {children}

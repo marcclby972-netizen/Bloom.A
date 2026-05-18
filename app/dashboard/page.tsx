@@ -1,45 +1,30 @@
 'use client'
 
 /**
- * Dashboard v3 — UI pixel-perfect du HTML reference, *toutes les features
- * câblées aux hooks/actions v3*.
+ * Dashboard v3 — page d'accueil de l'app.
  *
- * Architecture :
- *  - Hooks (useCurrentUser, useCurrentTeam, useProjects, useTasks, useTimer,
- *    useDecisions, useNotifications) sont consommés au niveau de cette page
- *    et redistribués aux widgets via props (sauf useTimer/useDecisions qui
- *    sont consommés dans le widget concerné pour ne pas re-render le reste).
- *  - Sous-composants dans `_components/` — chacun re-construit son markup
- *    exact d'après `app/dashboard.css`.
- *  - Widgets non encore branchés (agenda calendrier, équité associés,
- *    revenus, trésorerie/MRR, contributions, charge équipe, chrono global
- *    équipe, dépenses, journal immuable, posts sociaux) restent comme
- *    *stubs visuels* avec tag "Bientôt" et un commentaire TODO. L'UI est
- *    identique à la référence — les valeurs sont placeholders.
+ * Utilise `<DashboardShell />` partagé avec les autres pages connectées
+ * (/projects, /tasks, /chrono, /decisions, /calendrier) — voir
+ * `_components/DashboardShell.tsx`.
  *
- * Le mode toggle Solo ↔ Équipe pilote la classe `.mode-team` de #app, ce
- * qui révèle/cache les widgets `.team-only`/`.solo-only` via CSS (rules
- * définies dans `app/dashboard.css`).
+ * Cette page ajoute :
+ *  - ModeToggle Solo ↔ Équipe
+ *  - GreetRow "Bonjour {prénom}"
+ *  - Grille de widgets (.widgets) — chaque widget consomme ses propres
+ *    hooks/actions v3 ; placeholders "Bientôt" pour les domaines sans
+ *    encore de modèle de données (équité, finances, agenda, journal…).
  */
 
-import { useEffect, useMemo, useState } from 'react'
-import '../dashboard.css'
+import { useMemo } from 'react'
 import {
   useCurrentUser,
   useCurrentTeam,
   useProjects,
   useTasks,
-  useNotifications,
 } from '@/hooks'
-import {
-  getNotificationsAction,
-  markNotificationAsReadAction,
-  markAllNotificationsAsReadAction,
-} from '@/lib/actions/notifications'
 import type { Project, Task } from '@/lib/v3-types'
 
-import { Sidebar } from './_components/Sidebar'
-import { Topbar } from './_components/Topbar'
+import { DashboardShell, useDashboardShell } from './_components/DashboardShell'
 import { ModeToggle } from './_components/ModeToggle'
 import { GreetRow } from './_components/GreetRow'
 import { TasksWidget } from './_components/TasksWidget'
@@ -54,14 +39,20 @@ import { TeamMembersWidget } from './_components/TeamMembersWidget'
 import { GovernanceRulesWidget } from './_components/GovernanceRulesWidget'
 
 export default function DashboardPage() {
-  // ─── Hooks ───
-  const { data: user } = useCurrentUser()
-  const { teams, currentTeam, teamId, isSolo, setCurrentTeam } = useCurrentTeam()
+  return (
+    <DashboardShell screenLabel="Dashboard">
+      <DashboardContent />
+    </DashboardShell>
+  )
+}
+
+function DashboardContent() {
+  const { user, teamId, isSolo, notifications, unreadCount, markRead, markAllRead } =
+    useDashboardShell()
+  const { teams, setCurrentTeam } = useCurrentTeam()
+  void useCurrentUser() // déjà chargé dans le shell — déclencher refetch si besoin
   const { data: projects, loading: projectsLoading } = useProjects({ teamId })
   const { data: tasks } = useTasks()
-  const { data: notifications, refetch: refetchNotifications } = useNotifications({
-    pollMs: 30_000,
-  })
 
   // ─── Maps + dérivés ───
   const projectsById = useMemo<Map<string, Project>>(
@@ -82,118 +73,60 @@ export default function DashboardPage() {
     return m
   }, [tasks])
 
-  const openTasksCount = tasks.filter((t) => t.status !== 'done').length
-
-  // ─── Notifications (badge + handlers) ───
-  const [pendingDecisionsCount, setPendingDecisionsCount] = useState(0)
-  useEffect(() => {
-    // Compte d'attente : on lit les notifications de type new_decision non-lues
-    setPendingDecisionsCount(
-      notifications.filter(
-        (n) => n.type === 'new_decision' && n.readAt === null
-      ).length
-    )
-  }, [notifications])
-
-  const unreadCount = notifications.filter((n) => n.readAt === null).length
-
-  const handleMarkRead = async (id: string) => {
-    const r = await markNotificationAsReadAction(id)
-    if (r.ok) await refetchNotifications()
-  }
-  const handleMarkAllRead = async () => {
-    const r = await markAllNotificationsAsReadAction()
-    if (r.ok) await refetchNotifications()
-  }
-
   return (
-    <div className="app" id="app" data-screen-label="Dashboard">
-      <Sidebar
-        tasksBadge={openTasksCount}
-        decisionsBadge={pendingDecisionsCount}
-      />
+    <>
+      <ModeToggle isSolo={isSolo} teams={teams} onSelectTeam={setCurrentTeam} />
+      <GreetRow userName={user?.name ?? null} />
 
-      <main className="main">
-        <Topbar
-          user={user ? { name: user.name, email: user.email } : null}
-          teams={teams}
-          currentTeam={currentTeam}
-          isSolo={isSolo}
-          unreadCount={unreadCount}
-          onSelectTeam={setCurrentTeam}
+      <div className="widgets">
+        <AgendaPlaceholder />
+        <TasksWidget />
+        <ChronoWidget projectsById={projectsById} tasksById={tasksById} />
+
+        {teamId && <DecisionsWidget teamId={teamId} />}
+        {teamId && <EquityScorePlaceholder />}
+
+        <ProjectsWidget
+          projects={projects}
+          tasksByProjectId={tasksByProjectId}
+          loading={projectsLoading}
         />
 
-        <div className="content">
-          <ModeToggle
-            isSolo={isSolo}
-            teams={teams}
-            onSelectTeam={setCurrentTeam}
-          />
+        <TimeWeekWidget />
 
-          <GreetRow userName={user?.name ?? null} />
+        <RevenuePlaceholder />
+        {teamId && <TreasuryPlaceholder />}
 
-          {/* ════════ WIDGETS GRID ════════ */}
-          <div className="widgets">
-            {/* ROW 1 — solo + team partagés */}
+        <NotificationsWidget
+          notifications={notifications}
+          unreadCount={unreadCount}
+          markRead={markRead}
+          markAllRead={markAllRead}
+        />
 
-            {/* TODO v3 : agenda viendra avec la calendar integration */}
-            <AgendaPlaceholder />
+        {teamId && <TeamMembersWidget teamId={teamId} />}
+        {teamId && <ContributionsPlaceholder />}
+        {teamId && <WorkloadPlaceholder />}
 
-            <TasksWidget />
+        <TimeBreakdownWidget projectsById={projectsById} />
 
-            <ChronoWidget projectsById={projectsById} tasksById={tasksById} />
+        {teamId && <GovernanceRulesWidget teamId={teamId} />}
+        {teamId && <GlobalChronoPlaceholder />}
 
-            {/* TEAM-ONLY */}
-            {teamId && <DecisionsWidget teamId={teamId} />}
-            {teamId && <EquityScorePlaceholder />}
+        <DeadlinesWidget tasks={tasks} projectsById={projectsById} />
 
-            <ProjectsWidget
-              projects={projects}
-              tasksByProjectId={tasksByProjectId}
-              loading={projectsLoading}
-            />
+        {teamId && <ExpensesPlaceholder />}
+        {teamId && <JournalPlaceholder />}
+        {teamId && <SocialPostsPlaceholder />}
 
-            <TimeWeekWidget />
-
-            {/* SOLO : Revenus / TEAM : Trésorerie + MRR */}
-            <RevenuePlaceholder />
-            {teamId && <TreasuryPlaceholder />}
-
-            <NotificationsWidget
-              notifications={notifications}
-              unreadCount={unreadCount}
-              markRead={handleMarkRead}
-              markAllRead={handleMarkAllRead}
-            />
-
-            {/* TEAM-ONLY */}
-            {teamId && <TeamMembersWidget teamId={teamId} />}
-            {teamId && <ContributionsPlaceholder />}
-            {teamId && <WorkloadPlaceholder />}
-
-            <TimeBreakdownWidget projectsById={projectsById} />
-
-            {teamId && <GovernanceRulesWidget teamId={teamId} />}
-            {teamId && <GlobalChronoPlaceholder />}
-
-            <DeadlinesWidget tasks={tasks} projectsById={projectsById} />
-
-            {teamId && <ExpensesPlaceholder />}
-            {teamId && <JournalPlaceholder />}
-            {teamId && <SocialPostsPlaceholder />}
-
-            <AddWidgetButton />
-          </div>
-        </div>
-      </main>
-    </div>
+        <AddWidgetButton />
+      </div>
+    </>
   )
 }
 
 // ─────────────────────────────────────────────────────────────
-// Placeholder widgets — UI identique au reference HTML, tag "Bientôt".
-// Ces widgets ne disposent pas encore de modèle de données v3 ;
-// ils seront re-câblés en cohérence avec leur backend respectif.
+// Placeholders (UI identique à la reference HTML, tag "Bientôt")
 // ─────────────────────────────────────────────────────────────
 
 function PlaceholderTag() {
@@ -215,12 +148,7 @@ function AgendaPlaceholder() {
           <span className="ico">
             <svg viewBox="0 0 14 14" fill="none">
               <rect x="1.8" y="3" width="10.4" height="9" rx="1.2" stroke="currentColor" strokeWidth="1.5" />
-              <path
-                d="M1.8 5.5h10.4M5 1.8v2.4M9 1.8v2.4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
+              <path d="M1.8 5.5h10.4M5 1.8v2.4M9 1.8v2.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </span>
           Agenda du jour
@@ -228,7 +156,7 @@ function AgendaPlaceholder() {
         <PlaceholderTag />
       </div>
       <p style={{ fontSize: 13, color: 'rgba(236,236,236,0.55)', marginTop: 8 }}>
-        L&apos;intégration calendrier (Google Calendar) arrive bientôt.
+        L&apos;intégration calendrier arrive bientôt.
       </p>
     </div>
   )
@@ -241,13 +169,7 @@ function EquityScorePlaceholder() {
         <div className="w-title">
           <span className="ico">
             <svg viewBox="0 0 14 14" fill="none">
-              <path
-                d="M7 2v10M3 4h8M2 11l1.5-7L5 11M9 11l1.5-7L12 11"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M7 2v10M3 4h8M2 11l1.5-7L5 11M9 11l1.5-7L12 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </span>
           Équilibre associés
@@ -255,8 +177,7 @@ function EquityScorePlaceholder() {
         <PlaceholderTag />
       </div>
       <p style={{ fontSize: 13, color: 'rgba(236,236,236,0.55)', marginTop: 8 }}>
-        Le score d&apos;équité contribution vs parts sera disponible quand le
-        modèle de finance/temps team-wide sera complet.
+        Le score d&apos;équité contribution vs parts arrive bientôt.
       </p>
     </div>
   )
@@ -269,13 +190,7 @@ function RevenuePlaceholder() {
         <div className="w-title">
           <span className="ico">
             <svg viewBox="0 0 14 14" fill="none">
-              <path
-                d="M3 3v8h8M5.5 8.5L7.5 7l1.5 1L11 5.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M3 3v8h8M5.5 8.5L7.5 7l1.5 1L11 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </span>
           Revenus ce mois
@@ -341,13 +256,7 @@ function WorkloadPlaceholder() {
         <div className="w-title">
           <span className="ico">
             <svg viewBox="0 0 14 14" fill="none">
-              <path
-                d="M2 11h10M3 9.5L5 6l2 2 4-5.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M2 11h10M3 9.5L5 6l2 2 4-5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </span>
           Charge équipe
@@ -454,12 +363,7 @@ function AddWidgetButton() {
     <button className="widget add w-span-4" type="button">
       <span className="plus">
         <svg viewBox="0 0 20 20" fill="none">
-          <path
-            d="M10 4v12M4 10h12"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
+          <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       </span>
       <span className="lab">Ajouter un widget</span>
