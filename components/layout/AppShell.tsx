@@ -14,6 +14,9 @@ import { CookieBanner } from '@/components/cookies/CookieBanner'
 const PUBLIC_ROUTES = ['/', '/login', '/onboard']
 // Routes légales — full-width sans sidebar mais doivent garder la bannière cookies
 const LEGAL_ROUTES = ['/privacy', '/terms', '/cookies', '/pricing']
+// Full-bleed routes — la page apporte son propre chrome (sidebar/topbar)
+// depuis le HTML reference. AppShell se contente de rendre children + bandeau.
+const FULL_BLEED_ROUTES = ['/dashboard', '/settings']
 
 function MobileHeader() {
   const { setMobileMenuOpen, chatOpen, setChatOpen } = useApp()
@@ -88,6 +91,17 @@ function ShellInner({ children }: { children: React.ReactNode }) {
 
   // Legal routes render full-width (no sidebar/timer/chat) but keep the banner.
   if (LEGAL_ROUTES.includes(pathname)) {
+    return (
+      <>
+        {children}
+        <CookieBanner />
+      </>
+    )
+  }
+
+  // Full-bleed pages (dashboard, settings) — la page rend son propre chrome
+  // depuis le HTML reference. On garde uniquement la bannière cookies.
+  if (FULL_BLEED_ROUTES.includes(pathname)) {
     return (
       <>
         {children}
