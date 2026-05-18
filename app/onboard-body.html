@@ -1,0 +1,433 @@
+
+<div class="shell" data-screen-label="Onboarding">
+
+  <!-- Top -->
+  <div class="top">
+    <a href="/" class="brand">
+      <svg viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="bg" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#E37520"/><stop offset="1" stop-color="#FBBE4D"/>
+          </linearGradient>
+        </defs>
+        <path d="M14 2C16.5 5 16.5 8 14 11C11.5 8 11.5 5 14 2Z" fill="url(#bg)"/>
+        <path d="M26 14C23 16.5 20 16.5 17 14C20 11.5 23 11.5 26 14Z" fill="url(#bg)"/>
+        <path d="M14 26C11.5 23 11.5 20 14 17C16.5 20 16.5 23 14 26Z" fill="url(#bg)"/>
+        <path d="M2 14C5 11.5 8 11.5 11 14C8 16.5 5 16.5 2 14Z" fill="url(#bg)"/>
+        <circle cx="14" cy="14" r="2.4" fill="#ECECEC"/>
+      </svg>
+      Bloom
+    </a>
+    <div class="progress" id="progress" aria-hidden="true">
+      <span class="dot on"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </div>
+    <div class="right">
+      Déjà un compte ? <a href="/login">Se connecter</a>
+    </div>
+  </div>
+
+  <!-- Stage -->
+  <div class="stage">
+
+    <!-- ──────── STEP 0 : Signup ──────── -->
+    <div class="card step active" data-step="signup">
+      <div class="eyebrow">Étape 1 sur 5</div>
+      <h1 class="step-title">Créez votre compte <span class="accent">Bloom.</span></h1>
+      <p class="subtitle">Configurez votre espace en moins de 3 minutes. Aucune carte bancaire requise.</p>
+
+      <div class="signup-grid">
+        <button type="button" class="oauth-btn">
+          <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M17.6 9.2c0-.6-.05-1.2-.14-1.7H9v3.2h4.8c-.2 1.1-.8 2-1.7 2.6v2.2h2.7c1.6-1.4 2.5-3.6 2.5-6.3z" fill="#4285F4"/>
+            <path d="M9 18c2.3 0 4.2-.8 5.6-2.1l-2.7-2.1c-.7.5-1.7.9-2.9.9-2.2 0-4.1-1.5-4.8-3.5H1.4v2.2C2.8 16.2 5.7 18 9 18z" fill="#34A853"/>
+            <path d="M4.2 11.2C4 10.7 3.9 10.1 3.9 9.5s.1-1.2.3-1.7V5.6H1.4C.8 6.8.4 8.1.4 9.5s.4 2.7 1 3.9l2.8-2.2z" fill="#FBBC04"/>
+            <path d="M9 3.6c1.3 0 2.4.4 3.3 1.3l2.4-2.4C13.2.9 11.3 0 9 0 5.7 0 2.8 1.8 1.4 4.6l2.8 2.2C5 4.6 6.8 3.6 9 3.6z" fill="#EA4335"/>
+          </svg>
+          Continuer avec Google
+        </button>
+        <button type="button" class="oauth-btn">
+          <svg viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><path d="M14.6 13.7c-.3.6-.6 1.2-1.1 1.8-.6.8-1.2 1.4-1.7 1.6-.6.3-1.3.3-2 0-.5-.2-1-.3-1.5-.3s-1 .1-1.5.3c-.7.3-1.3.3-2 0-.5-.3-1.1-.8-1.7-1.6-.6-.8-1.1-1.8-1.5-2.9C1 11.4.8 10.2.8 9c0-1.4.3-2.6.9-3.5.5-.8 1.1-1.4 1.9-1.8.8-.4 1.6-.7 2.5-.7.5 0 1.1.1 1.7.3.6.2 1 .3 1.2.3.1 0 .5-.1 1.3-.3.7-.2 1.4-.3 1.9-.3 1.5.1 2.6.7 3.4 1.7-1.3.8-2 2-2 3.6 0 1.2.4 2.2 1.3 3 .4.4.8.7 1.3.9-.1.3-.2.6-.3.9zm-3.4-12c0 1-.4 1.9-1.1 2.7-.9 1-2 1.5-3.2 1.4 0-1 .4-1.9 1.1-2.7C8.7 2.5 9.5 2 10.4 1.8c.4-.1.6-.1.8-.1z"/></svg>
+          Continuer avec Apple
+        </button>
+
+        <div class="divider">ou avec un email</div>
+
+        <div class="field" style="margin: 0;">
+          <input type="email" class="input" id="signup-email" placeholder="vous@email.com" autocomplete="email" />
+        </div>
+        <div class="field" style="margin: 0;">
+          <input type="password" class="input" id="signup-pw" placeholder="Mot de passe (min. 8 caractères)" autocomplete="new-password" />
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-lg" style="width: 100%; margin-top: 18px;" onclick="goNext()">
+        Créer mon compte
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+
+      <p class="terms">
+        En continuant, vous acceptez les <a href="#">CGU</a> et la <a href="#">politique de confidentialité</a>.
+      </p>
+    </div>
+
+    <!-- ──────── STEP 1 : Solo vs Équipe ──────── -->
+    <div class="card wide step" data-step="choice">
+      <div class="eyebrow">Étape 2 sur 5</div>
+      <h1 class="step-title">Comment utilisez-vous <span class="accent">Bloom</span> ?</h1>
+      <p class="subtitle">On adapte votre espace à votre façon de bosser. Vous pourrez basculer plus tard.</p>
+
+      <div class="choice-grid">
+        <button type="button" class="choice-card" data-mode="solo">
+          <span class="check"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5l2.5 2.5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <div class="ico">
+            <svg viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="7" r="3.5" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M3.5 19c0-3.5 3.4-6 7.5-6s7.5 2.5 7.5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="tag">Solo</span>
+          <div class="nm">Je travaille seul</div>
+          <div class="desc">Freelance, consultant, créateur. Projets, chrono, tâches, et IA assistante.</div>
+        </button>
+        <button type="button" class="choice-card" data-mode="team">
+          <span class="check"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5l2.5 2.5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <div class="ico">
+            <svg viewBox="0 0 22 22" fill="none">
+              <circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.6"/>
+              <circle cx="15" cy="9" r="2.5" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M2 18c0-2.5 2-4.5 5-4.5s5 2 5 4.5M11 18c0-2 1.5-3.5 4-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="tag">Équipe</span>
+          <div class="nm">Je travaille en équipe</div>
+          <div class="desc">Cofondateurs, studio, startup. Gouvernance, votes, journal immuable, coach IA d'équité.</div>
+        </button>
+      </div>
+
+      <div class="actions">
+        <div class="left">
+          <button class="btn btn-ghost" onclick="goBack()">← Retour</button>
+        </div>
+        <div class="right">
+          <button class="btn btn-primary" id="choice-continue" onclick="goNext()" disabled style="opacity: .4;">Continuer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- ──────── PARCOURS SOLO ──────── -->
+    <!-- ════════════════════════════════════════════ -->
+
+    <!-- SOLO Step A : Projet -->
+    <div class="card step" data-step="solo-project">
+      <div class="eyebrow">Étape 3 sur 5 · Solo</div>
+      <h1 class="step-title">Créons votre <span class="accent">premier projet.</span></h1>
+      <p class="subtitle">Un projet = un conteneur pour vos tâches, votre temps et vos revenus. Vous pourrez en créer autant que vous voulez.</p>
+
+      <div class="field">
+        <label for="proj-name">Nom du projet</label>
+        <input type="text" class="input" id="proj-name" placeholder="ex : Refonte landing Atelier Rive" />
+        <div class="field-help">Indicatif — vous pourrez le renommer à tout moment.</div>
+      </div>
+
+      <div class="field">
+        <label>Couleur <span class="hint">(optionnel)</span></label>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="color-swatch" style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #E37520, #FBBE4D); border: 2px solid var(--orange-2); cursor: pointer;"></button>
+          <button type="button" class="color-swatch" style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #2B4F6F, #5187B5); border: 2px solid transparent; cursor: pointer;"></button>
+          <button type="button" class="color-swatch" style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #3B6E47, #7BB897); border: 2px solid transparent; cursor: pointer;"></button>
+          <button type="button" class="color-swatch" style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6B3FA0, #B888E8); border: 2px solid transparent; cursor: pointer;"></button>
+          <button type="button" class="color-swatch" style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #C13C5C, #E88BA6); border: 2px solid transparent; cursor: pointer;"></button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="left">
+          <button class="btn btn-ghost" onclick="goBack()">← Retour</button>
+        </div>
+        <div class="right">
+          <button class="btn btn-ghost" onclick="skipSolo()">Je le ferai plus tard</button>
+          <button class="btn btn-primary" onclick="goNext()">Créer le projet</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOLO Step B : First task -->
+    <div class="card step" data-step="solo-task">
+      <div class="eyebrow">Étape 4 sur 5 · Solo</div>
+      <h1 class="step-title">Ajoutez une <span class="accent">première tâche.</span></h1>
+      <p class="subtitle" id="task-context">Que voulez-vous accomplir en premier ?</p>
+
+      <div class="field">
+        <label for="task-name">Tâche</label>
+        <input type="text" class="input" id="task-name" placeholder="ex : Maquetter la page d'accueil" />
+      </div>
+
+      <div class="field">
+        <label>Priorité</label>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-secondary btn-sm" style="height: 38px; font-size: 12.5px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #3B82F6;"></span>
+            Basse
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" style="height: 38px; font-size: 12.5px; background: var(--surface-3); border-color: var(--border-strong);">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #F59E0B;"></span>
+            Moyenne
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" style="height: 38px; font-size: 12.5px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #EF4444;"></span>
+            Haute
+          </button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="left">
+          <button class="btn btn-ghost" onclick="goBack()">← Retour</button>
+        </div>
+        <div class="right">
+          <button class="btn btn-ghost" onclick="goNext()">Passer</button>
+          <button class="btn btn-primary" onclick="goNext()">Ajouter la tâche</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOLO Step C : Chrono -->
+    <div class="card step" data-step="solo-chrono">
+      <div class="eyebrow">Étape 5 sur 5 · Solo</div>
+      <h1 class="step-title">Démarrez votre <span class="accent">premier chrono.</span></h1>
+      <p class="subtitle">Chaque heure pointée alimente vos stats. Le chrono se met en pause automatiquement quand vous fermez l'app.</p>
+
+      <div class="chrono-preview">
+        <div class="chrono-display">00:<span>00</span>:<span class="sec">00</span></div>
+        <div class="chrono-meta"><span class="dot"></span>Prêt à pointer · <span id="chrono-proj">votre projet</span></div>
+      </div>
+
+      <div class="coach-toast">
+        <span class="badge">IA</span>
+        <div class="body">
+          <b>Astuce</b> : Bloom détecte automatiquement les tâches sur lesquelles vous travaillez le plus et vous aide à mieux estimer vos prochains projets.
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="left">
+          <button class="btn btn-ghost" onclick="goBack()">← Retour</button>
+        </div>
+        <div class="right">
+          <button class="btn btn-secondary" onclick="goFinal()">Voir mon dashboard</button>
+          <button class="btn btn-primary" onclick="goFinal()">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="currentColor"><path d="M2 1v9l7-4.5L2 1z"/></svg>
+            Démarrer le chrono
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- ──────── PARCOURS ÉQUIPE ──────── -->
+    <!-- ════════════════════════════════════════════ -->
+
+    <!-- TEAM Step A : Config équipe -->
+    <div class="card step" data-step="team-config">
+      <div class="eyebrow">Étape 3 sur 5 · Équipe</div>
+      <h1 class="step-title">Présentez-nous votre <span class="accent">équipe.</span></h1>
+      <p class="subtitle">Le nom de votre société et le nombre d'associés — pour calibrer votre Mode Associés.</p>
+
+      <div class="field">
+        <label for="team-name">Nom de l'équipe</label>
+        <input type="text" class="input" id="team-name" placeholder="ex : Studio Lune" />
+      </div>
+
+      <div class="field">
+        <label>Nombre d'associés (vous compris)</label>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+          <button type="button" class="size-btn btn btn-secondary" data-size="2">2</button>
+          <button type="button" class="size-btn btn btn-secondary" data-size="3">3</button>
+          <button type="button" class="size-btn btn btn-secondary" data-size="4">4</button>
+          <button type="button" class="size-btn btn btn-secondary" data-size="5+">5+</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="left">
+          <button class="btn btn-ghost" onclick="goBack()">← Retour</button>
+        </div>
+        <div class="right">
+          <button class="btn btn-ghost" onclick="goNext()">Passer</button>
+          <button class="btn btn-primary" onclick="goNext()">Continuer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEAM Step B : Profile -->
+    <div class="card step" data-step="team-profile">
+      <div class="eyebrow">Étape 4 sur 5 · Équipe</div>
+      <h1 class="step-title">Votre <span class="accent">profil associé.</span></h1>
+      <p class="subtitle">Définissez votre rôle et vos parts — pour que Bloom puisse suivre l'équité au fil du temps.</p>
+
+      <div class="field">
+        <label for="role">Votre rôle</label>
+        <select class="select" id="role">
+          <option>CEO — Direction générale</option>
+          <option>CTO — Tech / Produit</option>
+          <option>COO — Opérations</option>
+          <option>CMO — Marketing / Croissance</option>
+          <option>CFO — Finance</option>
+          <option>Autre (préciser plus tard)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="parts">Vos parts <span class="hint">(en %, optionnel)</span></label>
+        <div class="input-prefix">
+          <input type="number" id="parts" placeholder="ex : 42" min="0" max="100" />
+          <span class="pref">%</span>
+        </div>
+        <div class="field-help">Vous pourrez ajuster vos parts et celles des autres associés depuis le Mode Associés.</div>
+      </div>
+
+      <div class="actions">
+        <div class="left">
+          <button class="btn btn-ghost" onclick="goBack()">← Retour</button>
+        </div>
+        <div class="right">
+          <button class="btn btn-ghost" onclick="goNext()">Passer</button>
+          <button class="btn btn-primary" onclick="goNext()">Continuer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEAM Step C : Governance -->
+    <div class="card wide step" data-step="team-gov">
+      <div class="eyebrow">Étape 5 sur 6 · Équipe</div>
+      <h1 class="step-title">Posez votre <span class="accent">première règle.</span></h1>
+      <p class="subtitle">Au-delà de quel montant une dépense doit-elle être validée collectivement ? C'est la base de votre gouvernance.</p>
+
+      <div class="field">
+        <label for="threshold">Seuil de dépense</label>
+        <div class="input-prefix">
+          <input type="number" id="threshold" placeholder="500" value="500" min="0" />
+          <span class="pref">€</span>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top: 24px;">
+        <label>Les dépenses au-dessus de ce seuil doivent être :</label>
+        <div class="gov-options" id="gov-options">
+          <div class="gov-option" data-rule="solo">
+            <div class="radio"></div>
+            <div class="body">
+              <div class="nm">Validées par moi seul</div>
+              <div class="desc">Pour les phases très early où la rapidité compte plus que la collégialité.</div>
+            </div>
+          </div>
+          <div class="gov-option selected" data-rule="vote">
+            <div class="radio"></div>
+            <div class="body">
+              <div class="nm">Validées par vote entre associés <span class="recommended">Recommandé</span></div>
+              <div class="desc">Majorité requise (2/3 par défaut). Équilibre entre vitesse et alignement.</div>
+            </div>
+          </div>
+          <div class="gov-option" data-rule="unanimous">
+            <div class="radio"></div>
+            <div class="body">
+              <div class="nm">Validées à l'unanimité</div>
+              <div class="desc">Pour les décisions structurantes — adapté aux petites équipes très alignées.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <div class="left">
+          <button class="btn btn-ghost" onclick="goBack()">← Retour</button>
+        </div>
+        <div class="right">
+          <button class="btn btn-ghost" onclick="goNext()">Passer</button>
+          <button class="btn btn-primary" onclick="goNext()">Créer la règle</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEAM Step D : Invitations -->
+    <div class="card step" data-step="team-invite">
+      <div class="eyebrow">Étape 6 sur 6 · Équipe</div>
+      <h1 class="step-title">Invitez vos <span class="accent">associés.</span></h1>
+      <p class="subtitle">Ils recevront un email pour rejoindre Bloom et compléter leur profil. Vous pourrez en ajouter plus tard.</p>
+
+      <div class="invite-list" id="invite-list">
+        <div class="invite-row">
+          <input type="email" class="input" placeholder="associé1@email.com" />
+        </div>
+        <div class="invite-row">
+          <input type="email" class="input" placeholder="associé2@email.com" />
+        </div>
+      </div>
+
+      <button type="button" class="invite-add" onclick="addInvite()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Ajouter un associé
+      </button>
+
+      <div class="actions">
+        <div class="left">
+          <button class="btn btn-ghost" onclick="goBack()">← Retour</button>
+        </div>
+        <div class="right">
+          <button class="btn btn-ghost" onclick="goFinal()">Je le ferai plus tard</button>
+          <button class="btn btn-primary" onclick="goFinal()">Envoyer les invitations</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ──────── FINAL : Success ──────── -->
+    <div class="card success-card step" data-step="final">
+      <div class="confetti" id="confetti"></div>
+      <div class="success-circle">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M5 12.5l4.5 4.5 10-10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1 class="step-title" style="font-size: clamp(28px, 3.4vw, 42px);">Votre espace <span class="accent">Bloom</span> est prêt.</h1>
+      <p class="subtitle" id="final-sub">Tout est en place. Vous pouvez commencer à piloter.</p>
+
+      <div class="dash-preview">
+        <div class="tile">
+          <div class="l">Projets actifs</div>
+          <div class="v" id="final-projs">1</div>
+        </div>
+        <div class="tile">
+          <div class="l" id="final-side-l">Tâches du jour</div>
+          <div class="v" id="final-side-v">1</div>
+        </div>
+        <div class="tile full">
+          <div class="l">Onboarding</div>
+          <div class="v">100%</div>
+          <div class="bar"><i style="width: 100%"></i></div>
+        </div>
+      </div>
+
+      <div class="coach-toast">
+        <span class="badge">IA</span>
+        <div class="body" id="next-action">
+          <b>Prochaine étape</b> · démarrez votre premier chrono ou ajoutez une autre tâche.
+        </div>
+      </div>
+
+      <div style="margin-top: 24px;">
+        <a href="/dashboard" class="btn btn-primary btn-lg" style="width: 100%;">
+          Ouvrir le dashboard
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+      <p class="foot-hint">Un raccourci se trouve en haut à droite si vous voulez revoir ce flow.</p>
+    </div>
+
+  </div>
+</div>
+
