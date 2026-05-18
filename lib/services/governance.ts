@@ -13,9 +13,11 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireUser, ServiceFailure } from '@/lib/supabase/auth-helpers'
+import { computeDecisionStatusPure } from '@/lib/rules/decision-status'
 import type {
   GovernanceRule, GovernanceRuleType, ValidationMode,
   Decision, DecisionKind, DecisionComputedStatus, Vote, VoteValue,
+  TeamRole,
 } from '@/lib/v3-types'
 import type {
   DbGovernanceRule, DbDecision, DbVote,
@@ -249,16 +251,18 @@ export async function voteOnDecision(
 // faire un updateDecisionStatus si pertinent (pour éviter race conditions).
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Thin wrapper : fetches everything from DB then delegates to the
+ * pure fn in lib/rules/decision-status.ts (unit-tested independently).
+ */
 export async function computeDecisionStatus(
   decisionId: string
 ): Promise<DecisionComputedStatus> {
   await requireUser()
   const supabase = await createClient()
 
-  // 1. Décision + votes
   const { decision, votes } = await getDecision(decisionId)
 
-  // 2. Membres actifs (éligibles) + founders pour single_owner
   const { data: members, error: mErr } = await supabase
     .from('organization_members')
     .select('user_id, role')
@@ -271,112 +275,15 @@ export async function computeDecisionStatus(
       details: { supabaseError: mErr.message },
     })
   }
-  const eligible = members ?? []
-  const founderIds = new Set(eligible.filter((m) => m.role === 'founder').map((m) => m.user_id as string))
+  const eligible = (members ?? []).map((m) => ({
+    userId: m.user_id as string,
+    role: m.role as TeamRole,
+  }))
 
-  // 3. Règles applicables
-  const rules = (await getGovernanceRules(decision.teamId)).filter((r) => r.active)
-  const applicable = selectApplicableRule(rules, decision.kind, decision.amountCents)
+  const rules = await getGovernanceRules(decision.teamId)
 
-  // 4. Tally
-  const tally = { for: 0, against: 0, abstain: 0 }
-  for (const v of votes) tally[v.value]++
-
-  // 5. Decide based on validation mode
-  const totalEligible = eligible.length
-  let validationMode: ValidationMode = applicable?.validationMode ?? 'majority_vote'
-  // Fallback : si pas de règle ET pas de membres → ça ne peut pas passer
-  if (totalEligible === 0) {
-    return makeStatus('rejected', { ...tally, requiredFor: 1, totalEligible: 0 },
-      'Pas de membres actifs habilités à voter.')
-  }
-
-  let requiredFor = 0
-  switch (validationMode) {
-    case 'single_owner':
-      requiredFor = 1
-      break
-    case 'majority_vote':
-      requiredFor = Math.floor(totalEligible / 2) + 1
-      break
-    case 'unanimous':
-      requiredFor = totalEligible
-      break
-  }
-
-  // For single_owner, only count 'for' votes from founders
-  const effectiveFor =
-    validationMode === 'single_owner'
-      ? votes.filter((v) => v.value === 'for' && founderIds.has(v.userId)).length
-      : tally.for
-
-  // Deadline check
-  if (decision.deadline) {
-    const deadlineMs = new Date(decision.deadline).getTime()
-    if (Number.isFinite(deadlineMs) && deadlineMs < Date.now() && decision.status !== 'approved') {
-      return makeStatus('expired',
-        { ...tally, requiredFor, totalEligible },
-        `Deadline dépassée avant l'atteinte du seuil (${effectiveFor}/${requiredFor}).`)
-    }
-  }
-
-  // If rejection is mathematically impossible to overturn → 'approved' early
-  if (effectiveFor >= requiredFor) {
-    return makeStatus('approved',
-      { ...tally, requiredFor, totalEligible },
-      `Seuil atteint (${effectiveFor}/${requiredFor}) en mode ${validationMode}.`)
-  }
-
-  // If remaining "against" votes can no longer be overturned in unanimous mode
-  if (validationMode === 'unanimous' && tally.against > 0) {
-    return makeStatus('rejected',
-      { ...tally, requiredFor, totalEligible },
-      `Unanimité requise mais ${tally.against} vote(s) contre.`)
-  }
-
-  // Pending : pas encore décidé
-  return makeStatus('pending',
-    { ...tally, requiredFor, totalEligible },
-    `${effectiveFor}/${requiredFor} votes "pour" en mode ${validationMode}.`)
+  return computeDecisionStatusPure({ decision, votes, eligible, rules })
 }
 
-// ── helpers internes ───────────────────────────────────────────
-
-/**
- * Choose the most relevant rule for a decision.
- * - For 'expense' with amount → spending_threshold rule whose threshold is closest below the amount
- * - Otherwise → first rule matching the kind, fallback majority_vote
- */
-function selectApplicableRule(
-  rules: GovernanceRule[],
-  kind: DecisionKind,
-  amountCents: number | null
-): GovernanceRule | null {
-  if (rules.length === 0) return null
-
-  if (kind === 'expense' && amountCents != null && amountCents > 0) {
-    const spendRules = rules
-      .filter((r) => r.type === 'spending_threshold' && r.thresholdAmountCents != null)
-      .filter((r) => (r.thresholdAmountCents ?? 0) <= amountCents)
-      .sort((a, b) => (b.thresholdAmountCents ?? 0) - (a.thresholdAmountCents ?? 0))
-    if (spendRules[0]) return spendRules[0]
-  }
-
-  const kindMap: Record<DecisionKind, GovernanceRuleType> = {
-    expense: 'spending_threshold',
-    rule_change: 'other',
-    distribution: 'distribution',
-    equity_change: 'equity_change',
-    other: 'other',
-  }
-  const t = kindMap[kind]
-  return rules.find((r) => r.type === t) ?? rules[0] ?? null
-}
-
-function makeStatus(
-  status: DecisionComputedStatus['status'],
-  tally: DecisionComputedStatus['tally'],
-  reason: string
-): DecisionComputedStatus {
-  return { status, tally, reason }
-}
+// Note : la logique pure de selectApplicableRule + makeStatus vit dans
+// `@/lib/rules/decision-status.ts` (testable sans Supabase).

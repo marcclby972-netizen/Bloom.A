@@ -10,6 +10,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireUser, ServiceFailure } from '@/lib/supabase/auth-helpers'
+import { canStartTimer } from '@/lib/rules/timer-constraint'
 import type { TimeEntry, TimePeriod, TimeStats } from '@/lib/v3-types'
 import type { DbTimeEntry } from '@/lib/v3-types/db'
 import { fromDbTimeEntry } from './_mappers'
@@ -61,19 +62,13 @@ export async function startTimer(input: {
   const supabase = await createClient()
   const existingActive = await getActiveTimer(sbUser.id)
 
-  // Idempotence : same project + task → return existing
-  if (
-    existingActive &&
-    existingActive.projectId === (input.projectId ?? null) &&
-    existingActive.taskId === (input.taskId ?? null)
-  ) {
-    return existingActive
-  }
-
-  // Stop the previous one (silently — user explicitly started a new one)
-  if (existingActive) {
-    await stopTimer(sbUser.id)
-  }
+  // Pure rule: noop / switch / start
+  const decision = canStartTimer(existingActive, {
+    projectId: input.projectId,
+    taskId: input.taskId,
+  })
+  if (decision === 'noop' && existingActive) return existingActive
+  if (decision === 'switch') await stopTimer(sbUser.id)
 
   const { data, error } = await supabase
     .from('time_entries_v3')
