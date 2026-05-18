@@ -14,3 +14,22 @@ export async function updateUserProfileAction(input: {
 }) {
   return withResult(svc.updateUserProfile(input))
 }
+
+export async function updateUserEmailAction(newEmail: string) {
+  return withResult(svc.updateUserEmail(newEmail))
+}
+
+export async function updateUserPasswordAction(input: {
+  currentPassword: string
+  newPassword: string
+}) {
+  return withResult(svc.updateUserPassword(input))
+}
+
+export async function deleteCurrentAccountAction() {
+  return withResult(svc.deleteCurrentAccount())
+}
+
+export async function exportCurrentUserDataAction() {
+  return withResult(svc.exportCurrentUserData())
+}

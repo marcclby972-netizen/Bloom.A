@@ -23,3 +23,18 @@ export async function inviteMemberAction(input: {
 export async function getTeamMembersAction(teamId: string) {
   return withResult(svc.getTeamMembers(teamId))
 }
+
+export async function updateTeamAction(teamId: string, input: { name: string }) {
+  return withResult(svc.updateTeam(teamId, input))
+}
+
+export async function removeMemberAction(membershipId: string) {
+  return withResult(svc.removeMember(membershipId))
+}
+
+export async function updateMemberRoleAction(
+  membershipId: string,
+  role: TeamRole
+) {
+  return withResult(svc.updateMemberRole(membershipId, role))
+}

@@ -173,3 +173,175 @@ export async function getTeamMembers(teamId: string): Promise<Membership[]> {
   }
   return (data ?? []).map((r) => fromDbMembership(r as DbMembership))
 }
+
+// ─────────────────────────────────────────────────────────────
+// Team mutations (update, member role, remove)
+// ─────────────────────────────────────────────────────────────
+
+async function assertFounder(teamId: string, userId: string): Promise<void> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('organization_members')
+    .select('role, status')
+    .eq('organization_id', teamId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) {
+    throw new ServiceFailure({
+      code: 'unknown',
+      message: 'Vérification des droits échouée',
+      details: { supabaseError: error.message },
+    })
+  }
+  if (!data || data.status !== 'active' || data.role !== 'founder') {
+    throw new ServiceFailure({
+      code: 'forbidden',
+      message: 'Action réservée aux fondateurs de l’équipe',
+    })
+  }
+}
+
+/** Renomme une équipe — réservé aux fondateurs. */
+export async function updateTeam(
+  teamId: string,
+  input: { name: string }
+): Promise<Team> {
+  const sbUser = await requireUser()
+  await assertFounder(teamId, sbUser.id)
+
+  const trimmed = input.name.trim()
+  if (!trimmed) {
+    throw new ServiceFailure({
+      code: 'validation',
+      message: 'Le nom ne peut pas être vide',
+    })
+  }
+  if (trimmed.length > 80) {
+    throw new ServiceFailure({
+      code: 'validation',
+      message: 'Le nom est trop long (80 caractères max)',
+    })
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('organizations')
+    .update({ name: trimmed, updated_at: new Date().toISOString() })
+    .eq('id', teamId)
+    .select('*')
+    .single()
+
+  if (error || !data) {
+    throw new ServiceFailure({
+      code: 'unknown',
+      message: 'Mise à jour de l’équipe échouée',
+      details: { supabaseError: error?.message },
+    })
+  }
+  return fromDbTeam(data as DbTeam)
+}
+
+/** Retire un membre (soft : passage en status 'inactive'). Founders only. */
+export async function removeMember(membershipId: string): Promise<void> {
+  const sbUser = await requireUser()
+  const supabase = await createClient()
+
+  // Find target membership to assert team
+  const { data: target, error: findErr } = await supabase
+    .from('organization_members')
+    .select('id, organization_id, user_id, role')
+    .eq('id', membershipId)
+    .maybeSingle()
+  if (findErr || !target) {
+    throw new ServiceFailure({
+      code: 'not_found',
+      message: 'Membre introuvable',
+      details: { supabaseError: findErr?.message },
+    })
+  }
+
+  await assertFounder(target.organization_id as string, sbUser.id)
+
+  // Prevent removing the last founder
+  if (target.role === 'founder') {
+    const { count } = await supabase
+      .from('organization_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', target.organization_id)
+      .eq('status', 'active')
+      .eq('role', 'founder')
+    if ((count ?? 0) <= 1) {
+      throw new ServiceFailure({
+        code: 'validation',
+        message: 'Impossible de retirer le dernier fondateur',
+      })
+    }
+  }
+
+  const { error } = await supabase
+    .from('organization_members')
+    .update({ status: 'inactive' })
+    .eq('id', membershipId)
+  if (error) {
+    throw new ServiceFailure({
+      code: 'unknown',
+      message: 'Retrait du membre échoué',
+      details: { supabaseError: error.message },
+    })
+  }
+}
+
+/** Change le rôle d'un membre. Founders only. */
+export async function updateMemberRole(
+  membershipId: string,
+  role: TeamRole
+): Promise<Membership> {
+  const sbUser = await requireUser()
+  const supabase = await createClient()
+
+  const { data: target, error: findErr } = await supabase
+    .from('organization_members')
+    .select('id, organization_id, role')
+    .eq('id', membershipId)
+    .maybeSingle()
+  if (findErr || !target) {
+    throw new ServiceFailure({
+      code: 'not_found',
+      message: 'Membre introuvable',
+      details: { supabaseError: findErr?.message },
+    })
+  }
+
+  await assertFounder(target.organization_id as string, sbUser.id)
+
+  // Prevent removing the last founder via demotion
+  if (target.role === 'founder' && role !== 'founder') {
+    const { count } = await supabase
+      .from('organization_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', target.organization_id)
+      .eq('status', 'active')
+      .eq('role', 'founder')
+    if ((count ?? 0) <= 1) {
+      throw new ServiceFailure({
+        code: 'validation',
+        message: 'Impossible de rétrograder le dernier fondateur',
+      })
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('organization_members')
+    .update({ role })
+    .eq('id', membershipId)
+    .select('*')
+    .single()
+  if (error || !data) {
+    throw new ServiceFailure({
+      code: 'unknown',
+      message: 'Changement de rôle échoué',
+      details: { supabaseError: error?.message },
+    })
+  }
+  return fromDbMembership(data as DbMembership)
+}
