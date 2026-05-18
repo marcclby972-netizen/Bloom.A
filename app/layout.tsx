@@ -1,32 +1,52 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Madimi_One, Montserrat } from "next/font/google";
+import {
+  Geist_Mono, Madimi_One, Montserrat, Bricolage_Grotesque,
+} from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
-// Display font — usage parcimonieux (logo, hero headlines, prix)
+// Display font — headlines, hero, section titles (per brandguidline.md §2.2)
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  display: "swap",
+});
+
+// Body / UI font — primary product font
+const montserrat = Montserrat({
+  variable: "--font-body",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+// Brand mark — logo "Bloom" only (extremely parcimonious)
 const madimiOne = Madimi_One({
-  variable: "--font-madimi",
+  variable: "--font-brand",
   subsets: ["latin"],
   weight: ["400"],
   display: "swap",
 });
 
-// Body / UI font — Montserrat is the primary product font.
-// CSS variable name kept as --font-menbere to honour the original guideline
-// convention; the actual face is Montserrat under the hood.
-const menbere = Montserrat({
-  variable: "--font-menbere",
+const geistMono = Geist_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap",
-});
+// Legacy aliases kept so existing `--font-madimi` / `--font-menbere`
+// usages in components keep rendering. New code should use the canonical
+// `--font-display`, `--font-body`, `--font-brand` instead.
+const fontVars = [
+  bricolage.variable,
+  montserrat.variable,
+  madimiOne.variable,
+  geistMono.variable,
+  `[--font-madimi:var(--font-brand)]`,
+  `[--font-menbere:var(--font-body)]`,
+].join(" ")
 
 export const metadata: Metadata = {
   title: "Bloom — OS pour associés et cofondateurs",
@@ -38,7 +58,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#111111",
+  themeColor: "#0E0E10",
 };
 
 export default function RootLayout({
@@ -49,7 +69,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${madimiOne.variable} ${menbere.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fontVars} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

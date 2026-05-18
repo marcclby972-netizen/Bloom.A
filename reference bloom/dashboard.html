@@ -1,0 +1,1893 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bloom — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Madimi+One&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+<style>
+:root {
+  --bg: #111111;
+  --surface-dark: #1A1A1A;
+  --surface-dark-2: #232328;
+  --surface: #ECECEC;
+  --surface-2: #F5F4F0;
+  --ink: #111111;
+  --ink-2: #2A2A2A;
+  --muted-dark: rgba(236,236,236,0.62);
+  --faint-dark: rgba(236,236,236,0.38);
+  --muted-light: #6B6B6B;
+  --faint-light: #9A9A9A;
+  --border-dark: rgba(255,255,255,0.07);
+  --border-dark-strong: rgba(255,255,255,0.14);
+  --border-light: rgba(17,17,17,0.08);
+
+  --orange: #E37520;
+  --orange-2: #FBBE4D;
+  --gradient: linear-gradient(135deg, #E37520 0%, #FBBE4D 100%);
+  --gradient-soft: linear-gradient(135deg, rgba(227,117,32,0.10) 0%, rgba(251,190,77,0.05) 100%);
+
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --error:   #EF4444;
+  --info:    #3B82F6;
+
+  --font: 'Montserrat', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Montserrat', system-ui, sans-serif;
+
+  --r-widget: 22px;
+  --r-card:   14px;
+  --r-btn:    12px;
+  --r-pill:   999px;
+
+  --sidebar-w: 244px;
+  --sidebar-w-collapsed: 72px;
+  --topbar-h: 64px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: #ECECEC;
+  font-family: var(--font);
+  font-size: 14.5px;
+  line-height: 1.5;
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+img, svg { display: block; }
+ul { list-style: none; }
+input { font-family: inherit; }
+
+/* ╔════════════ SHELL ════════════╗ */
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  min-height: 100vh;
+}
+.app.collapsed { grid-template-columns: var(--sidebar-w-collapsed) 1fr; }
+
+/* ╔════════════ SIDEBAR ════════════╗ */
+.sidebar {
+  background: var(--surface-dark);
+  border-right: 1px solid var(--border-dark);
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+.sb-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 8px 14px;
+}
+.sb-brand {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Madimi One', system-ui, sans-serif;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  color: #ECECEC;
+}
+.sb-brand-mark { width: 26px; height: 26px; display: grid; place-items: center; }
+.sb-collapse {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  color: var(--muted-dark);
+  background: transparent;
+  transition: background .15s, color .15s;
+}
+.sb-collapse:hover { background: rgba(255,255,255,0.06); color: #ECECEC; }
+.sb-collapse svg { width: 14px; height: 14px; transition: transform .25s; }
+.app.collapsed .sb-collapse svg { transform: rotate(180deg); }
+
+.sb-section { padding: 12px 8px 4px; font-size: 10.5px; font-weight: 700; color: var(--faint-dark); letter-spacing: 0.14em; text-transform: uppercase; }
+.app.collapsed .sb-section { opacity: 0; height: 0; padding: 0; pointer-events: none; }
+
+.sb-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(236,236,236,0.78);
+  transition: background .15s, color .15s;
+  position: relative;
+  white-space: nowrap;
+}
+.sb-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: .85; }
+.sb-item .label { flex: 1; }
+.sb-item .badge {
+  margin-left: auto;
+  font-size: 10px; font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--gradient);
+  color: #fff;
+  letter-spacing: 0.04em;
+}
+.sb-item:hover { background: rgba(255,255,255,0.04); color: #ECECEC; }
+.sb-item.active {
+  background: linear-gradient(135deg, rgba(227,117,32,0.16), rgba(251,190,77,0.06));
+  color: #ECECEC;
+}
+.sb-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 6px; bottom: 6px;
+  width: 3px;
+  background: var(--gradient);
+  border-radius: 0 3px 3px 0;
+}
+.app.collapsed .sb-item { justify-content: center; padding: 11px; }
+.app.collapsed .sb-item .label, .app.collapsed .sb-item .badge { display: none; }
+.sb-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-dark); display: flex; flex-direction: column; gap: 4px; }
+
+/* ╔════════════ MAIN ════════════╗ */
+.main { display: flex; flex-direction: column; min-width: 0; }
+
+/* ── Topbar ── */
+.topbar {
+  height: var(--topbar-h);
+  display: flex; align-items: center;
+  padding: 0 28px;
+  background: var(--surface-dark);
+  border-bottom: 1px solid var(--border-dark);
+  gap: 16px;
+  position: sticky; top: 0;
+  z-index: 50;
+}
+.workspace {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-dark);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ECECEC;
+  transition: background .15s;
+}
+.workspace:hover { background: rgba(255,255,255,0.08); }
+.ws-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--gradient);
+  color: #fff; font-weight: 800; font-size: 11px;
+}
+.workspace .chev { width: 12px; height: 12px; color: var(--muted-dark); }
+.search {
+  flex: 1;
+  max-width: 420px;
+  height: 40px;
+  margin-left: 8px;
+  padding: 0 14px;
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-dark);
+  border-radius: 12px;
+  color: var(--muted-dark);
+  font-size: 13px;
+  font-weight: 500;
+}
+.search svg { width: 14px; height: 14px; }
+.search kbd {
+  margin-left: auto;
+  font-family: var(--font);
+  font-size: 11px; font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(236,236,236,0.65);
+}
+.tb-spacer { flex: 1; }
+.tb-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.tb-icon {
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-dark);
+  position: relative;
+  transition: background .15s, color .15s;
+}
+.tb-icon:hover { background: rgba(255,255,255,0.06); color: #ECECEC; }
+.tb-icon .dot {
+  position: absolute; top: 8px; right: 8px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gradient);
+  border: 2px solid var(--surface-dark);
+}
+.tb-user {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 6px 12px 6px 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-dark);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background .15s;
+}
+.tb-user:hover { background: rgba(255,255,255,0.08); }
+.tb-user .av {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, #2B4F6F, #5187B5);
+  color: #fff; font-weight: 800; font-size: 11px;
+  display: grid; place-items: center;
+}
+
+/* ╔════════════ CONTENT ════════════╗ */
+.content { padding: 28px 36px 64px; max-width: 1600px; width: 100%; margin: 0 auto; }
+
+/* Mode toggle (Solo / Équipe) */
+.mode-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px;
+  background: var(--surface-dark);
+  border: 1px solid var(--border-dark);
+  border-radius: 999px;
+  margin-bottom: 24px;
+  position: relative;
+}
+.mode-toggle button {
+  position: relative; z-index: 1;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 13px; font-weight: 700;
+  color: var(--muted-dark);
+  transition: color .25s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.mode-toggle button.on { color: #fff; }
+.mode-toggle .slider {
+  position: absolute;
+  top: 4px; bottom: 4px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(227,117,32,0.95), rgba(251,190,77,0.85));
+  transition: left .3s cubic-bezier(0.22, 1, 0.36, 1), width .3s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 0;
+  box-shadow: 0 4px 12px -2px rgba(227,117,32,0.40);
+}
+
+/* Greeting */
+.greet-row {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.greet h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  color: #ECECEC;
+}
+.greet h1 .wave { display: inline-block; transform-origin: 70% 70%; animation: wave 2.5s ease-in-out infinite; }
+@keyframes wave {
+  0%, 70%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(14deg); }
+  20% { transform: rotate(-8deg); }
+  30% { transform: rotate(14deg); }
+  40% { transform: rotate(-4deg); }
+  50% { transform: rotate(10deg); }
+  60% { transform: rotate(0deg); }
+}
+.greet .date {
+  margin-top: 8px;
+  font-size: 13.5px;
+  color: var(--muted-dark);
+  font-weight: 500;
+  display: inline-flex; align-items: center; gap: 12px;
+}
+.greet .date .meteo { display: inline-flex; align-items: center; gap: 6px; }
+.greet .date .meteo svg { width: 14px; height: 14px; color: var(--orange-2); }
+
+.quick-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 42px;
+  padding: 0 18px;
+  border-radius: var(--r-btn);
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform .15s, background .15s, box-shadow .15s, color .15s;
+}
+.btn-primary { background: var(--gradient); color: #fff; box-shadow: 0 10px 24px -8px rgba(227,117,32,0.45), inset 0 1px 0 rgba(255,255,255,0.20); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 14px 28px -8px rgba(227,117,32,0.55), inset 0 1px 0 rgba(255,255,255,0.30); }
+.btn-ghost-dark { color: #ECECEC; background: rgba(255,255,255,0.04); border: 1px solid var(--border-dark); }
+.btn-ghost-dark:hover { background: rgba(255,255,255,0.08); }
+.btn-light { background: var(--ink); color: #fff; }
+.btn-light:hover { background: #000; transform: translateY(-1px); }
+.btn-sm { height: 34px; padding: 0 14px; font-size: 12.5px; }
+.btn-xs { height: 28px; padding: 0 12px; font-size: 12px; border-radius: 8px; }
+
+/* ╔════════════ WIDGETS GRID ════════════╗ */
+.widgets {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+}
+.w-span-3  { grid-column: span 3; }
+.w-span-4  { grid-column: span 4; }
+.w-span-5  { grid-column: span 5; }
+.w-span-6  { grid-column: span 6; }
+.w-span-8  { grid-column: span 8; }
+.w-span-12 { grid-column: span 12; }
+
+/* Solo / Team visibility */
+.app.mode-team .solo-only { display: none; }
+.app:not(.mode-team) .team-only { display: none; }
+
+.widget {
+  background: #16161A;
+  color: #ECECEC;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--r-widget);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  min-height: 0;
+}
+.widget:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.12); box-shadow: 0 18px 40px -20px rgba(0,0,0,0.6); }
+.widget.ai {
+  background: linear-gradient(135deg, rgba(227,117,32,0.10), rgba(22,22,26,1) 70%);
+  border-color: rgba(227,117,32,0.22);
+  position: relative;
+  overflow: hidden;
+}
+.widget.ai::before {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 240px; height: 240px;
+  background: radial-gradient(closest-side, rgba(227,117,32,0.18), transparent 70%);
+  pointer-events: none;
+}
+
+.w-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.w-title {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ECECEC;
+  letter-spacing: -0.005em;
+}
+.w-title .ico {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,0.06);
+  color: #ECECEC;
+}
+.widget.ai .w-title .ico { background: var(--gradient); color: #fff; }
+.w-title .ico svg { width: 14px; height: 14px; }
+.w-meta { font-size: 12px; color: var(--muted-dark); font-weight: 600; }
+
+.w-link {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ECECEC;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+  transition: border-color .15s, color .15s;
+}
+.w-link:hover { border-color: currentColor; color: var(--orange-2); }
+
+/* ─── Widget atoms ─── */
+.list { display: flex; flex-direction: column; gap: 2px; margin: 0 -8px; }
+.row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  transition: background .15s;
+  cursor: pointer;
+}
+.row:hover { background: rgba(255,255,255,0.04); }
+
+.kpi-big {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 36px;
+  letter-spacing: -0.03em;
+  color: #ECECEC;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-trend {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12.5px; font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.kpi-trend.up { background: rgba(34,197,94,0.18); color: #4ADE80; }
+.kpi-trend.down { background: rgba(239,68,68,0.18); color: #F87171; }
+.kpi-trend.flat { background: rgba(255,255,255,0.08); color: var(--muted-dark); }
+
+.av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.av-a { background: linear-gradient(135deg, #E37520, #FBBE4D); }
+.av-b { background: linear-gradient(135deg, #2B4F6F, #5187B5); }
+.av-c { background: linear-gradient(135deg, #3B6E47, #7BB897); }
+.av-d { background: linear-gradient(135deg, #6B3FA0, #B888E8); }
+.av-e { background: linear-gradient(135deg, #C13C5C, #E88BA6); }
+.av-stack { display: inline-flex; }
+.av-stack .av { width: 22px; height: 22px; border: 2px solid #16161A; margin-left: -7px; }
+.av-stack .av:first-child { margin-left: 0; }
+
+.tag {
+  display: inline-flex; align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  color: rgba(236,236,236,0.85);
+  letter-spacing: 0.02em;
+}
+.tag.ai { background: var(--gradient); color: #fff; }
+.tag.warn { background: rgba(245,158,11,0.18); color: #FBBF24; }
+.tag.success { background: rgba(34,197,94,0.18); color: #4ADE80; }
+.tag.danger { background: rgba(239,68,68,0.18); color: #F87171; }
+.tag.info { background: rgba(59,130,246,0.18); color: #60A5FA; }
+
+.dot-prio { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-prio.h { background: var(--error); }
+.dot-prio.m { background: var(--warning); }
+.dot-prio.l { background: var(--info); }
+
+.checkbox {
+  width: 18px; height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(255,255,255,0.30);
+  background: transparent;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.checkbox.done { background: #ECECEC; border-color: #ECECEC; }
+.checkbox.done::after {
+  content: ''; width: 9px; height: 5px;
+  border-left: 1.6px solid var(--ink); border-bottom: 1.6px solid var(--ink);
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.row.done .name { color: var(--faint-dark); text-decoration: line-through; }
+
+.bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar i {
+  display: block; height: 100%;
+  border-radius: 999px;
+  background: var(--gradient);
+}
+
+/* Empty / hint cards */
+.empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 32px 12px;
+  color: var(--muted-dark);
+}
+.empty .icon {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  display: grid; place-items: center;
+  color: var(--muted-dark);
+}
+.empty p { font-size: 13.5px; font-weight: 600; color: #ECECEC; }
+
+/* ╔══ Specific widget styles ══╗ */
+
+/* Agenda */
+.event {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.event:hover { background: rgba(255,255,255,0.04); }
+.event .time {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(236,236,236,0.92);
+  display: flex; flex-direction: column;
+  font-variant-numeric: tabular-nums;
+}
+.event .time .end { color: var(--muted-dark); font-weight: 500; font-size: 11px; margin-top: 2px; }
+.event .bd {
+  border-left: 3px solid var(--orange);
+  padding-left: 12px;
+}
+.event .bd .name { font-size: 13.5px; font-weight: 700; color: #ECECEC; margin-bottom: 2px; }
+.event .bd .sub { font-size: 12px; color: var(--muted-dark); font-weight: 500; }
+.event.c-blue .bd { border-color: #60A5FA; }
+.event.c-green .bd { border-color: #4ADE80; }
+.event.c-purple .bd { border-color: #A78BFA; }
+
+/* Tasks */
+.task-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.task-row:hover { background: rgba(255,255,255,0.04); }
+.task-row .name { font-size: 13.5px; font-weight: 600; color: rgba(236,236,236,0.92); flex: 1; min-width: 0; }
+.task-row .name span.proj { color: var(--muted-dark); font-weight: 500; font-size: 12px; margin-left: 6px; }
+.task-row.done .name { color: var(--faint-dark); text-decoration: line-through; }
+.task-row.done .name span.proj { text-decoration: line-through; }
+
+/* Chrono */
+.chrono-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 48px;
+  letter-spacing: -0.04em;
+  color: #ECECEC;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  padding: 12px 0 4px;
+}
+.chrono-display .sec { color: var(--orange-2); }
+.chrono-status {
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted-dark);
+  margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.chrono-status .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--orange);
+  animation: blink 1s ease-in-out infinite;
+}
+@keyframes blink { 50% { opacity: .3; } }
+.chrono-stop {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 42px;
+  border-radius: var(--r-btn);
+  background: var(--gradient);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+  width: 100%;
+  box-shadow: 0 8px 20px -8px rgba(227,117,32,0.40);
+}
+.chrono-stop:hover { transform: translateY(-1px); box-shadow: 0 12px 24px -8px rgba(227,117,32,0.55); }
+.chrono-stop .stop-ico { width: 10px; height: 10px; background: #fff; border-radius: 2px; }
+
+/* Projects */
+.proj-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.proj-card:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.10); }
+.proj-card .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.proj-card .name { font-size: 13px; font-weight: 700; color: #ECECEC; }
+.proj-card .tasks { font-size: 11.5px; color: var(--muted-dark); font-weight: 600; font-variant-numeric: tabular-nums; }
+.proj-card .row-end { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.proj-card .pct { font-size: 11.5px; font-weight: 700; color: #ECECEC; font-variant-numeric: tabular-nums; }
+
+/* Time chart bars (vertical) */
+.time-chart {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  height: 140px;
+  align-items: end;
+}
+.time-bar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.time-bar {
+  width: 100%;
+  background: var(--gradient);
+  border-radius: 6px 6px 0 0;
+  position: relative;
+  transition: opacity .15s;
+}
+.time-bar:hover { opacity: 0.8; }
+.time-bar.today { box-shadow: 0 0 0 2px rgba(251,190,77,0.40); }
+.time-bar-col .lbl { font-size: 10.5px; font-weight: 700; color: var(--muted-dark); text-transform: uppercase; letter-spacing: 0.04em; }
+.time-bar-col .h { font-size: 10.5px; font-weight: 700; color: rgba(236,236,236,0.85); font-variant-numeric: tabular-nums; }
+
+/* Donut + revenue sparkline */
+.donut-wrap { display: flex; align-items: center; gap: 18px; }
+.donut {
+  width: 110px; height: 110px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+  background: conic-gradient(#E37520 0% 32%, #FBBE4D 32% 56%, #60A5FA 56% 74%, #A78BFA 74% 88%, #F472B6 88% 100%);
+}
+.donut::after {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  background: #16161A;
+  border-radius: 50%;
+}
+.donut-leg { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.donut-leg .item { display: flex; align-items: center; gap: 8px; font-weight: 600; color: rgba(236,236,236,0.85); }
+.donut-leg .item .sw { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.donut-leg .pct { color: var(--muted-dark); font-variant-numeric: tabular-nums; margin-left: auto; }
+
+/* Equity bar (team) */
+.equity-score-block {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+}
+.equity-score-block .lbl { font-size: 11.5px; font-weight: 700; color: var(--muted-dark); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.equity-score-block .val { font-family: var(--font-display); font-weight: 700; font-size: 32px; letter-spacing: -0.025em; color: #ECECEC; line-height: 1; font-variant-numeric: tabular-nums; }
+.equity-score-block .val em { font-style: normal; color: var(--muted-dark); font-size: 16px; font-weight: 500; margin-left: 4px; }
+.equity-ring { width: 56px; height: 56px; }
+
+.equity-rows { display: flex; flex-direction: column; gap: 12px; }
+.equity-row { display: grid; grid-template-columns: 110px 1fr 60px; gap: 12px; align-items: center; font-size: 12.5px; }
+.equity-row .who { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #ECECEC; min-width: 0; }
+.equity-row .who span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.equity-row .stack-bar { position: relative; height: 14px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+.equity-row .stack-bar i {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: var(--gradient);
+  border-radius: 4px;
+}
+.equity-row .stack-bar .parts {
+  position: absolute;
+  top: -2px; bottom: -2px;
+  border-left: 2px dashed #ECECEC;
+}
+.equity-row .vals { font-size: 11.5px; font-weight: 700; color: rgba(236,236,236,0.85); text-align: right; font-variant-numeric: tabular-nums; }
+
+.legend-row { display: flex; gap: 16px; font-size: 11.5px; font-weight: 600; color: var(--muted-dark); margin-top: 4px; }
+.legend-row span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-row .sw { width: 10px; height: 6px; border-radius: 3px; background: var(--gradient); }
+.legend-row .dash { width: 12px; height: 0; border-top: 2px dashed #ECECEC; }
+
+.ai-msg {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 12px 14px;
+  background: rgba(245,158,11,0.10);
+  border: 1px solid rgba(245,158,11,0.30);
+  border-radius: 12px;
+  margin-top: 12px;
+}
+.ai-msg .badge {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 7px;
+  background: var(--gradient);
+  color: #fff;
+  font-size: 9px; font-weight: 800;
+  display: grid; place-items: center;
+  letter-spacing: 0.04em;
+}
+.ai-msg .txt { font-size: 12.5px; line-height: 1.5; color: rgba(236,236,236,0.85); font-weight: 500; }
+.ai-msg .txt b { font-weight: 700; color: #ECECEC; }
+
+/* Sparkline */
+.spark { width: 100%; height: 50px; }
+
+/* Decision card (vote) */
+.decision {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.decision .dh { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.decision .dh .title { font-size: 14px; font-weight: 700; color: #ECECEC; line-height: 1.35; }
+.decision .meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--muted-dark); font-weight: 600; align-items: center; }
+.decision .actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.decision .vote-btn {
+  height: 34px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  color: #ECECEC;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.decision .vote-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.20); }
+.decision .vote-btn.yes:hover { background: rgba(34,197,94,0.16); border-color: rgba(34,197,94,0.45); color: #4ADE80; }
+.decision .vote-btn.no:hover { background: rgba(239,68,68,0.16); border-color: rgba(239,68,68,0.45); color: #F87171; }
+
+/* Members list */
+.member-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.member-row:hover { background: rgba(255,255,255,0.04); }
+.member-row .info { min-width: 0; }
+.member-row .nm { font-size: 13.5px; font-weight: 700; color: #ECECEC; }
+.member-row .role { font-size: 11.5px; color: var(--muted-dark); font-weight: 500; }
+.status-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--muted-dark); }
+.status-dot::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+.status-dot.away::before { background: var(--faint-dark); }
+.status-dot.leave::before { background: var(--warning); }
+
+/* Journal timeline */
+.j-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 6px;
+  font-size: 13px;
+}
+.j-row .ico {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  display: grid; place-items: center;
+  color: rgba(236,236,236,0.85);
+  flex-shrink: 0;
+}
+.j-row .ico.v { background: rgba(34,197,94,0.18); color: #4ADE80; }
+.j-row .ico.d { background: rgba(227,117,32,0.20); color: #FBBE4D; }
+.j-row .ico.r { background: rgba(59,130,246,0.18); color: #60A5FA; }
+.j-row .ico svg { width: 11px; height: 11px; }
+.j-row .txt { color: rgba(236,236,236,0.85); font-weight: 500; line-height: 1.45; }
+.j-row .txt b { font-weight: 700; color: #ECECEC; }
+.j-row .when { font-size: 11px; color: var(--faint-dark); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Expense row */
+.exp-row {
+  display: grid;
+  grid-template-columns: 56px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.exp-row:hover { background: rgba(255,255,255,0.04); }
+.exp-row .d { font-size: 11.5px; color: var(--muted-dark); font-weight: 600; font-variant-numeric: tabular-nums; }
+.exp-row .nm { font-size: 13px; font-weight: 600; color: #ECECEC; }
+.exp-row .nm small { display: block; font-size: 11px; color: var(--muted-dark); font-weight: 500; margin-top: 1px; }
+.exp-row .amt { font-size: 13.5px; font-weight: 700; color: #ECECEC; font-variant-numeric: tabular-nums; }
+
+/* Rules card */
+.rule-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 8px;
+  border-radius: 10px;
+}
+.rule-row .ico {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  display: grid; place-items: center;
+  color: #ECECEC;
+  flex-shrink: 0;
+}
+.rule-row .nm { font-size: 13px; font-weight: 700; color: #ECECEC; margin-bottom: 2px; }
+.rule-row .desc { font-size: 12px; color: var(--muted-dark); font-weight: 500; }
+.rule-row .stamp {
+  margin-left: auto;
+  font-size: 10px; font-weight: 800;
+  padding: 3px 8px; border-radius: 999px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.stamp.solo { background: rgba(255,255,255,0.10); color: #ECECEC; }
+.stamp.vote { background: rgba(227,117,32,0.20); color: #FBBE4D; }
+.stamp.unanimous { background: rgba(59,130,246,0.18); color: #93C5FD; }
+
+/* Workload bars */
+.wl-row { display: grid; grid-template-columns: 90px 1fr 56px; gap: 12px; align-items: center; padding: 6px 0; font-size: 12.5px; }
+.wl-row .who { font-weight: 700; color: #ECECEC; }
+.wl-row .bar-wl { height: 14px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; position: relative; }
+.wl-row .bar-wl i { display: block; height: 100%; border-radius: 4px; }
+.wl-row .bar-wl i.ok { background: linear-gradient(90deg, #22C55E, #4ADE80); }
+.wl-row .bar-wl i.busy { background: linear-gradient(90deg, #F59E0B, #FBBE4D); }
+.wl-row .bar-wl i.over { background: linear-gradient(90deg, #EF4444, #FB7185); }
+.wl-row .vals { font-size: 12px; font-weight: 700; color: rgba(236,236,236,0.85); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* MRR sparkline + numbers */
+.mrr-row { display: flex; align-items: flex-end; gap: 20px; }
+.mrr-side { display: flex; flex-direction: column; gap: 4px; }
+.mrr-side .lbl { font-size: 11.5px; color: var(--muted-dark); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.mrr-side .v { font-family: var(--font-display); font-weight: 700; font-size: 22px; color: #ECECEC; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+
+/* Chrono global rows */
+.cg-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 10px;
+}
+.cg-row:hover { background: rgba(255,255,255,0.04); }
+.cg-row .info .nm { font-size: 13px; font-weight: 700; color: #ECECEC; }
+.cg-row .info .proj { font-size: 11.5px; color: var(--muted-dark); font-weight: 500; }
+.cg-row .timer-val {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--orange-2);
+  font-variant-numeric: tabular-nums;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.cg-row .timer-val::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--orange); animation: blink 1s ease-in-out infinite; }
+
+/* Post performance */
+.post-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.post-stat .tile { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; }
+.post-stat .lbl { font-size: 10.5px; font-weight: 700; color: var(--muted-dark); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.post-stat .v { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: #ECECEC; letter-spacing: -0.02em; line-height: 1; }
+.top-post {
+  display: flex; gap: 12px;
+  padding: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  align-items: center;
+}
+.top-post .thumb {
+  width: 60px; height: 60px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2B4F6F, #5187B5);
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 22px;
+}
+.top-post .nm { font-size: 12.5px; font-weight: 700; color: #ECECEC; margin-bottom: 4px; }
+.top-post .ms { font-size: 11.5px; color: var(--muted-dark); font-weight: 600; }
+
+/* Add widget card */
+.widget.add {
+  background: transparent;
+  border: 1.5px dashed rgba(255,255,255,0.14);
+  color: var(--muted-dark);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s;
+  min-height: 200px;
+}
+.widget.add:hover { border-color: rgba(255,255,255,0.30); color: #ECECEC; background: rgba(255,255,255,0.02); }
+.widget.add .plus {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  display: grid; place-items: center;
+  margin-bottom: 4px;
+}
+.widget.add .plus svg { width: 20px; height: 20px; }
+.widget.add .lab { font-size: 13.5px; font-weight: 700; }
+
+/* ─── Responsive ─── */
+@media (max-width: 1280px) {
+  .app { grid-template-columns: var(--sidebar-w-collapsed) 1fr; }
+  .app .sb-section, .app .sb-item .label, .app .sb-item .badge { display: none; }
+  .app .sb-item { justify-content: center; padding: 11px; }
+  .sb-collapse svg { transform: rotate(180deg); }
+  .content { padding: 24px 24px 56px; }
+  .w-span-8 { grid-column: span 12; }
+}
+@media (max-width: 900px) {
+  .w-span-4, .w-span-5, .w-span-6 { grid-column: span 12; }
+  .greet-row { flex-direction: column; align-items: flex-start; }
+  .search { display: none; }
+}
+@media (max-width: 600px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .content { padding: 18px 14px 48px; }
+  .topbar { padding: 0 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app" id="app" data-screen-label="Dashboard">
+
+  <!-- ════════ SIDEBAR ════════ -->
+  <aside class="sidebar">
+    <div class="sb-head">
+      <a href="#" class="sb-brand">
+        <span class="sb-brand-mark">
+          <svg width="26" height="26" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="bgsb" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#E37520"/><stop offset="1" stop-color="#FBBE4D"/>
+              </linearGradient>
+            </defs>
+            <path d="M14 2C16.5 5 16.5 8 14 11C11.5 8 11.5 5 14 2Z" fill="url(#bgsb)"/>
+            <path d="M26 14C23 16.5 20 16.5 17 14C20 11.5 23 11.5 26 14Z" fill="url(#bgsb)"/>
+            <path d="M14 26C11.5 23 11.5 20 14 17C16.5 20 16.5 23 14 26Z" fill="url(#bgsb)"/>
+            <path d="M2 14C5 11.5 8 11.5 11 14C8 16.5 5 16.5 2 14Z" fill="url(#bgsb)"/>
+            <circle cx="14" cy="14" r="2.4" fill="#ECECEC"/>
+          </svg>
+        </span>
+        Bloom
+      </a>
+      <button class="sb-collapse" id="sb-toggle" aria-label="Collapse sidebar">
+        <svg viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div class="sb-section">Principal</div>
+    <a href="#" class="sb-item active">
+      <svg viewBox="0 0 18 18" fill="none"><path d="M3 8l6-5 6 5v7a1 1 0 01-1 1h-2v-5H6v5H4a1 1 0 01-1-1V8z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="label">Dashboard</span>
+    </a>
+    <a href="#" class="sb-item">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="2.5" y="3" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="10.5" y="3" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="2.5" y="10" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="10.5" y="10" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.6"/></svg>
+      <span class="label">Projets</span>
+    </a>
+    <a href="#" class="sb-item">
+      <svg viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h12M3 13h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="label">Tâches</span>
+      <span class="badge">12</span>
+    </a>
+    <a href="#" class="sb-item">
+      <svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="10" r="6" stroke="currentColor" stroke-width="1.6"/><path d="M9 6.5v3.5l2.2 1.5M9 2v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="label">Chrono</span>
+    </a>
+    <a href="#" class="sb-item">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="2.5" y="4" width="13" height="11" rx="1.6" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 7h13M6 2.5v3M12 2.5v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="label">Agenda</span>
+    </a>
+
+    <div class="sb-section team-only">Équipe</div>
+    <a href="#" class="sb-item team-only">
+      <svg viewBox="0 0 18 18" fill="none"><circle cx="6" cy="7" r="2.5" stroke="currentColor" stroke-width="1.6"/><circle cx="13" cy="8" r="2" stroke="currentColor" stroke-width="1.6"/><path d="M2 15c0-2.2 1.8-4 4-4s4 1.8 4 4M11 15c0-1.7 1.3-3 3-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="label">Mode Associés</span>
+    </a>
+    <a href="#" class="sb-item team-only">
+      <svg viewBox="0 0 18 18" fill="none"><path d="M3 4h12v10H3z" stroke="currentColor" stroke-width="1.6"/><path d="M6 8.5l2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="label">Décisions</span>
+      <span class="badge">3</span>
+    </a>
+    <a href="#" class="sb-item team-only">
+      <svg viewBox="0 0 18 18" fill="none"><path d="M4 3h10v12H4z" stroke="currentColor" stroke-width="1.6"/><path d="M7 6h4M7 9h4M7 12h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="label">Journal</span>
+    </a>
+    <a href="#" class="sb-item team-only">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="2.5" y="4.5" width="13" height="9" rx="1.5" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="9" r="2" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 4.5l3-2M15.5 4.5l-3-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="label">Finances</span>
+    </a>
+
+    <div class="sb-section">Outils</div>
+    <a href="#" class="sb-item">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="3" y="5" width="12" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="7" cy="9.5" r="1" fill="currentColor"/><circle cx="11" cy="9.5" r="1" fill="currentColor"/><path d="M9 3v2M6 12h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="label">Agent IA</span>
+    </a>
+    <a href="#" class="sb-item">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="5" y="2" width="8" height="14" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 13.5h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="label">Planificateur</span>
+    </a>
+    <a href="#" class="sb-item">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="7" y="2.5" width="4" height="8" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 9a4.5 4.5 0 009 0M9 13.5V16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="label">Audio → IA</span>
+    </a>
+
+    <div class="sb-footer">
+      <a href="#" class="sb-item">
+        <svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M9 2v2M9 14v2M2 9h2M14 9h2M4 4l1.5 1.5M13 13l1.5 1.5M4 14l1.5-1.5M13 5l1.5-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span class="label">Paramètres</span>
+      </a>
+      <a href="#" class="sb-item">
+        <svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M7 7.5a2 2 0 014 0c0 1-1 1.5-2 2v.5M9 12.5h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span class="label">Aide</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ════════ MAIN ════════ -->
+  <main class="main">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <button class="workspace" type="button">
+        <span class="ws-avatar">SL</span>
+        <span>Studio Lune</span>
+        <svg class="chev" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="search">
+        <svg viewBox="0 0 14 14" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>Rechercher projet, tâche, décision…</span>
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="tb-right">
+        <button class="tb-icon" aria-label="Notifications">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4.5 13.5h9l-1-1.5V8.5A3.5 3.5 0 009 5a3.5 3.5 0 00-3.5 3.5v3.5l-1 1.5zM7.5 15a1.5 1.5 0 003 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="dot"></span>
+        </button>
+        <button class="tb-icon" aria-label="Aide">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M7 7.5a2 2 0 014 0c0 1-1 1.5-2 2v.5M9 12.5h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+        <button class="tb-user" type="button">
+          <span class="av av-b">MC</span>
+          <span>Marc C.</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- Mode toggle -->
+      <div class="mode-toggle" role="tablist" aria-label="Mode dashboard">
+        <span class="slider" id="mode-slider"></span>
+        <button type="button" class="on" data-mode="solo" role="tab" aria-selected="true">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="4.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M2 11.5c0-2 2-3.5 4.5-3.5s4.5 1.5 4.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Solo
+        </button>
+        <button type="button" data-mode="team" role="tab" aria-selected="false">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="4.5" cy="4.5" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="9.5" cy="5.5" r="1.6" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 11c0-1.7 1.3-3 3-3s3 1.3 3 3M8 11c0-1.3 1-2.4 2.3-2.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Équipe
+        </button>
+      </div>
+
+      <!-- Greeting -->
+      <div class="greet-row">
+        <div class="greet">
+          <h1>Bonjour Marc <span class="wave">👋</span></h1>
+          <div class="date">
+            <span>Dimanche 17 mai 2026</span>
+            <span class="meteo">
+              <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="3" fill="currentColor"/><path d="M7 1v2M7 11v2M1 7h2M11 7h2M3 3l1.5 1.5M9.5 9.5L11 11M3 11l1.5-1.5M9.5 4.5L11 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+              18° · Ensoleillé
+            </span>
+          </div>
+        </div>
+        <div class="quick-actions">
+          <button class="btn btn-ghost-dark">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Nouveau projet
+          </button>
+          <button class="btn btn-ghost-dark">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2v9M2 6.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Nouvelle tâche
+          </button>
+          <button class="btn btn-primary">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="currentColor"><path d="M2 1v9l7-4.5L2 1z"/></svg>
+            Démarrer chrono
+          </button>
+        </div>
+      </div>
+
+      <!-- ════════ WIDGETS GRID ════════ -->
+      <div class="widgets">
+
+        <!-- ─── SOLO + TEAM SHARED ROW 1 ─── -->
+
+        <!-- Agenda du jour -->
+        <div class="widget w-span-4">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><rect x="1.8" y="3" width="10.4" height="9" rx="1.2" stroke="currentColor" stroke-width="1.5"/><path d="M1.8 5.5h10.4M5 1.8v2.4M9 1.8v2.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Agenda du jour</div>
+            <span class="w-meta">5 événements</span>
+          </div>
+          <div class="list" style="margin: -10px -10px 0;">
+            <div class="event">
+              <div class="time">10:00<span class="end">→ 10:30</span></div>
+              <div class="bd">
+                <div class="name">Stand-up équipe</div>
+                <div class="sub">Visio · Studio Lune</div>
+              </div>
+              <span class="av-stack team-only"><span class="av av-a">CL</span><span class="av av-b">NM</span><span class="av av-c">SO</span></span>
+            </div>
+            <div class="event c-blue">
+              <div class="time">11:00<span class="end">→ 12:00</span></div>
+              <div class="bd">
+                <div class="name">Revue Pricing v2</div>
+                <div class="sub">Salle bureau · Plan d'action</div>
+              </div>
+              <span class="av-stack team-only"><span class="av av-a">CL</span><span class="av av-b">NM</span></span>
+            </div>
+            <div class="event c-green">
+              <div class="time">14:30<span class="end">→ 15:30</span></div>
+              <div class="bd">
+                <div class="name">Call client Atelier Rive</div>
+                <div class="sub">Onboarding · Camille L.</div>
+              </div>
+            </div>
+            <div class="event c-purple">
+              <div class="time">17:00<span class="end">→ 17:45</span></div>
+              <div class="bd">
+                <div class="name">Vote · Hire Lead Dev</div>
+                <div class="sub">Décision team · clôture aujourd'hui</div>
+              </div>
+              <span class="av-stack team-only"><span class="av av-a">CL</span><span class="av av-b">NM</span><span class="av av-c">SO</span></span>
+            </div>
+          </div>
+          <a href="#" class="w-link">Voir l'agenda complet →</a>
+        </div>
+
+        <!-- Tâches du jour -->
+        <div class="widget w-span-4">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="2" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Tâches du jour</div>
+            <span class="w-meta">2/5</span>
+          </div>
+          <div class="list" style="margin: -10px -10px 0;">
+            <div class="task-row done">
+              <div class="checkbox done"></div>
+              <div class="name">Préparer slides board Q3 <span class="proj">· Board</span></div>
+              <span class="dot-prio l"></span>
+            </div>
+            <div class="task-row done">
+              <div class="checkbox done"></div>
+              <div class="name">Valider devis stack technique <span class="proj">· Pricing v2</span></div>
+              <span class="dot-prio m"></span>
+            </div>
+            <div class="task-row">
+              <div class="checkbox"></div>
+              <div class="name">Relire pacte v3 avec Nadir <span class="proj">· Gouvernance</span></div>
+              <span class="dot-prio h"></span>
+            </div>
+            <div class="task-row">
+              <div class="checkbox"></div>
+              <div class="name">Préparer rituel équité <span class="proj">· Mode Associés</span></div>
+              <span class="dot-prio m"></span>
+            </div>
+            <div class="task-row">
+              <div class="checkbox"></div>
+              <div class="name">Maquetter étape onboarding <span class="proj">· Atelier Rive</span></div>
+              <span class="dot-prio l"></span>
+            </div>
+          </div>
+          <a href="#" class="w-link">+ Nouvelle tâche</a>
+        </div>
+
+        <!-- Chrono actif -->
+        <div class="widget w-span-4">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="8" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M7 5.5v2.5l1.6 1.2M7 2v1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Chrono actif</div>
+            <span class="tag" style="background: rgba(34,197,94,0.14); color: #15803D;">En cours</span>
+          </div>
+          <div class="chrono-display"><span id="chrono-h">01</span>:<span id="chrono-m">24</span>:<span class="sec" id="chrono-s">36</span></div>
+          <div class="chrono-status">
+            <span class="dot"></span>
+            Onboarding · Atelier Rive · Camille L.
+          </div>
+          <button class="chrono-stop">
+            <span class="stop-ico"></span>
+            Arrêter le chrono
+          </button>
+        </div>
+
+        <!-- ═══════ TEAM-ONLY: Décisions à voter ═══════ -->
+        <div class="widget w-span-8 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="2" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Décisions à voter</div>
+            <span class="w-meta">3 en attente</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="decision">
+              <div class="dh">
+                <div class="title">Embaucher un Lead Dev senior</div>
+                <span class="tag warn">VOTE 2/3</span>
+              </div>
+              <div class="meta">
+                <span>💼 Recrutement</span>
+                <span>· 75 k€/an</span>
+                <span>· Clôture dans 4h</span>
+              </div>
+              <div class="actions">
+                <button class="vote-btn yes">Pour</button>
+                <button class="vote-btn no">Contre</button>
+                <button class="vote-btn">Abstention</button>
+              </div>
+            </div>
+            <div class="decision">
+              <div class="dh">
+                <div class="title">Pricing v2 — passer à 12 €</div>
+                <span class="tag info">VOTE 2/3</span>
+              </div>
+              <div class="meta">
+                <span>💰 Pricing</span>
+                <span>· Impact MRR estimé +18%</span>
+                <span>· Clôture demain</span>
+              </div>
+              <div class="actions">
+                <button class="vote-btn yes">Pour</button>
+                <button class="vote-btn no">Contre</button>
+                <button class="vote-btn">Abstention</button>
+              </div>
+            </div>
+            <div class="decision" style="grid-column: 1 / -1;">
+              <div class="dh">
+                <div class="title">Refinancer la trésorerie — apport 20k€ par associé</div>
+                <span class="tag" style="background: rgba(43,79,111,0.14); color: #2B4F6F;">UNANIME</span>
+              </div>
+              <div class="meta">
+                <span>🏦 Finance</span>
+                <span>· 60 k€ total</span>
+                <span>· Vote ouvert · 1/3 voté (Camille)</span>
+              </div>
+              <div class="actions">
+                <button class="vote-btn yes">Pour</button>
+                <button class="vote-btn no">Contre</button>
+                <button class="vote-btn">Abstention</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ TEAM-ONLY: Équilibre associés ═══════ -->
+        <div class="widget w-span-8 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><path d="M7 2v10M3 4h8M2 11l1.5-7L5 11M9 11l1.5-7L12 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Équilibre associés</div>
+            <a href="#" class="w-link">Ajuster les parts →</a>
+          </div>
+          <div class="equity-score-block">
+            <div>
+              <div class="lbl">Score d'équité</div>
+              <div class="val">85<em>/100</em></div>
+            </div>
+            <svg class="equity-ring" viewBox="0 0 56 56">
+              <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(17,17,17,0.08)" stroke-width="6"/>
+              <circle cx="28" cy="28" r="22" fill="none" stroke="url(#ring-grad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="138.2 161.8" transform="rotate(-90 28 28)"/>
+              <defs>
+                <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#E37520"/><stop offset="1" stop-color="#FBBE4D"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div>
+              <div class="lbl">Tendance</div>
+              <span class="kpi-trend up">↗ +4 pts cette semaine</span>
+            </div>
+          </div>
+          <div class="equity-rows">
+            <div class="equity-row">
+              <div class="who"><span class="av av-a">CL</span><span>Camille L.</span></div>
+              <div class="stack-bar"><i style="left: 0; width: 42%"></i><span class="parts" style="left: 42%"></span></div>
+              <div class="vals">42% · 42%</div>
+            </div>
+            <div class="equity-row">
+              <div class="who"><span class="av av-b">NM</span><span>Nadir M.</span></div>
+              <div class="stack-bar"><i style="left: 0; width: 35%"></i><span class="parts" style="left: 38%"></span></div>
+              <div class="vals">35% · 38%</div>
+            </div>
+            <div class="equity-row">
+              <div class="who"><span class="av av-c">SO</span><span>Salomé O.</span></div>
+              <div class="stack-bar"><i style="left: 0; width: 23%"></i><span class="parts" style="left: 20%"></span></div>
+              <div class="vals">23% · 20%</div>
+            </div>
+          </div>
+          <div class="legend-row">
+            <span><span class="sw"></span>Contribution (temps + €)</span>
+            <span><span class="dash"></span>Parts</span>
+          </div>
+          <div class="ai-msg">
+            <span class="badge">IA</span>
+            <div class="txt"><b>Léger déséquilibre</b> : Salomé contribue 23% pour 20% des parts. Tendance stable — à surveiller au prochain rituel.</div>
+          </div>
+        </div>
+
+        <!-- Projets en cours -->
+        <div class="widget w-span-4">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="3" width="10" height="8" rx="1.2" stroke="currentColor" stroke-width="1.5"/><path d="M2 6h10" stroke="currentColor" stroke-width="1.5"/></svg></span>Projets en cours</div>
+            <span class="w-meta">4 actifs</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="proj-card">
+              <div class="top">
+                <span class="name">Atelier Rive · Onboarding</span>
+                <span class="tasks">5/12 tâches</span>
+              </div>
+              <div class="row-end">
+                <div class="bar"><i style="width: 42%"></i></div>
+                <span class="pct">42%</span>
+              </div>
+            </div>
+            <div class="proj-card">
+              <div class="top">
+                <span class="name">Pricing v2</span>
+                <span class="tasks">9/14 tâches</span>
+              </div>
+              <div class="row-end">
+                <div class="bar"><i style="width: 64%"></i></div>
+                <span class="pct">64%</span>
+              </div>
+            </div>
+            <div class="proj-card">
+              <div class="top">
+                <span class="name">Refonte landing</span>
+                <span class="tasks">11/12 tâches</span>
+              </div>
+              <div class="row-end">
+                <div class="bar"><i style="width: 92%"></i></div>
+                <span class="pct">92%</span>
+              </div>
+            </div>
+            <div class="proj-card">
+              <div class="top">
+                <span class="name">Pacte d'associés v3</span>
+                <span class="tasks">2/8 tâches</span>
+              </div>
+              <div class="row-end">
+                <div class="bar"><i style="width: 25%"></i></div>
+                <span class="pct">25%</span>
+              </div>
+            </div>
+          </div>
+          <a href="#" class="w-link">+ Nouveau projet</a>
+        </div>
+
+        <!-- Temps cette semaine -->
+        <div class="widget w-span-4">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><path d="M2 11h10M3 8.5L5 6l2 2 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Temps cette semaine</div>
+            <span class="w-meta">Sem. 20</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 10px;">
+            <span class="kpi-big">32h 15m</span>
+            <span class="kpi-trend up">+12%</span>
+          </div>
+          <div class="time-chart">
+            <div class="time-bar-col"><div class="time-bar" style="height: 65%"></div><div class="h">5h</div><div class="lbl">Lun</div></div>
+            <div class="time-bar-col"><div class="time-bar" style="height: 80%"></div><div class="h">6h30</div><div class="lbl">Mar</div></div>
+            <div class="time-bar-col"><div class="time-bar" style="height: 50%"></div><div class="h">4h</div><div class="lbl">Mer</div></div>
+            <div class="time-bar-col"><div class="time-bar" style="height: 90%"></div><div class="h">7h</div><div class="lbl">Jeu</div></div>
+            <div class="time-bar-col"><div class="time-bar" style="height: 75%"></div><div class="h">6h</div><div class="lbl">Ven</div></div>
+            <div class="time-bar-col"><div class="time-bar" style="height: 30%"></div><div class="h">2h30</div><div class="lbl">Sam</div></div>
+            <div class="time-bar-col"><div class="time-bar today" style="height: 18%"></div><div class="h">1h15</div><div class="lbl">Dim</div></div>
+          </div>
+        </div>
+
+        <!-- ═══ SOLO: Revenus / TEAM: Trésorerie & MRR ═══ -->
+        <div class="widget w-span-4 solo-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><path d="M3 3v8h8M5.5 8.5L7.5 7l1.5 1L11 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Revenus ce mois</div>
+            <a href="#" class="w-link">Voir finances →</a>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 12px;">
+            <span class="kpi-big">4 850&nbsp;€</span>
+            <span class="kpi-trend up">+12%</span>
+          </div>
+          <span class="w-meta">vs mois dernier · 4 330 €</span>
+          <svg class="spark" viewBox="0 0 240 50" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="sp1" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#E37520" stop-opacity="0.35"/>
+                <stop offset="1" stop-color="#FBBE4D" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,38 L30,32 L60,36 L90,28 L120,30 L150,22 L180,26 L210,16 L240,20 L240,50 L0,50 Z" fill="url(#sp1)"/>
+            <path d="M0,38 L30,32 L60,36 L90,28 L120,30 L150,22 L180,26 L210,16 L240,20" fill="none" stroke="#E37520" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="widget w-span-4 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="4" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><circle cx="7" cy="7.5" r="1.5" stroke="currentColor" stroke-width="1.5"/></svg></span>Trésorerie &amp; MRR</div>
+            <a href="#" class="w-link">Finances →</a>
+          </div>
+          <div class="mrr-row">
+            <div class="mrr-side" style="flex: 1;">
+              <span class="lbl">Trésorerie</span>
+              <span class="kpi-big" style="font-size: 28px;">12 450&nbsp;€</span>
+              <span class="w-meta">+2 100 € ce mois</span>
+            </div>
+            <div class="mrr-side" style="flex: 1;">
+              <span class="lbl">MRR</span>
+              <span class="v">3 200&nbsp;€</span>
+              <span class="kpi-trend up" style="margin-top: 4px;">+8%</span>
+            </div>
+          </div>
+          <svg class="spark" viewBox="0 0 240 50" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="sp2" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#E37520" stop-opacity="0.35"/>
+                <stop offset="1" stop-color="#FBBE4D" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,42 L40,38 L80,30 L120,26 L160,22 L200,16 L240,12 L240,50 L0,50 Z" fill="url(#sp2)"/>
+            <path d="M0,42 L40,38 L80,30 L120,26 L160,22 L200,16 L240,12" fill="none" stroke="#E37520" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <!-- Alertes IA (widget mis en valeur) -->
+        <div class="widget w-span-4 ai">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><rect x="3" y="4" width="8" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><circle cx="5.5" cy="7.5" r=".7" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".7" fill="currentColor"/><path d="M7 2v2M5 9.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Alertes IA</div>
+            <span class="tag ai">3 nouvelles</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; gap: 12px; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px;">
+              <span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; background: rgba(245,158,11,0.20); color: #B45309; display: grid; place-items: center;">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2L1.5 11h10L6.5 2zM6.5 5.5v2.5M6.5 9.5h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <div style="font-size: 13px; line-height: 1.5; color: rgba(236,236,236,0.85); font-weight: 500;">
+                <b style="color: #ECECEC;">Déséquilibre détecté</b> · Léa a contribué 38% du temps pour 35% des parts.
+              </div>
+            </div>
+            <div style="display: flex; gap: 12px; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px;">
+              <span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; background: rgba(59,130,246,0.16); color: #1D4ED8; display: grid; place-items: center;">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 4v3M6.5 9h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </span>
+              <div style="font-size: 13px; line-height: 1.5; color: rgba(236,236,236,0.85); font-weight: 500;">
+                <b style="color: #ECECEC;">Clause de vesting à revoir</b> · Pacte v3 ne couvre pas le départ à l'amiable.
+              </div>
+            </div>
+            <div style="display: flex; gap: 12px; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px;">
+              <span style="flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px; background: rgba(34,197,94,0.16); color: #15803D; display: grid; place-items: center;">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 6.5l2.5 2.5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <div style="font-size: 13px; line-height: 1.5; color: rgba(236,236,236,0.85); font-weight: 500;">
+                <b style="color: #ECECEC;">Bonne semaine</b> · 3 décisions closes à l'unanimité.
+              </div>
+            </div>
+          </div>
+          <a href="#" class="w-link">Ouvrir l'Agent IA →</a>
+        </div>
+
+        <!-- ═══ TEAM: Vue d'ensemble équipe ═══ -->
+        <div class="widget w-span-4 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><circle cx="4.5" cy="5" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="9.5" cy="6" r="1.6" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 12c0-1.7 1.3-3 3-3s3 1.3 3 3M8 12c0-1.3 1-2.4 2.3-2.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Équipe</div>
+            <span class="w-meta">3 associés</span>
+          </div>
+          <div class="list" style="margin: -6px;">
+            <div class="member-row">
+              <span class="av av-a">CL</span>
+              <div class="info">
+                <div class="nm">Camille L.</div>
+                <div class="role">CEO · 42% parts</div>
+              </div>
+              <span class="status-dot">En ligne</span>
+            </div>
+            <div class="member-row">
+              <span class="av av-b">NM</span>
+              <div class="info">
+                <div class="nm">Nadir M.</div>
+                <div class="role">CTO · 38% parts</div>
+              </div>
+              <span class="status-dot">En ligne</span>
+            </div>
+            <div class="member-row">
+              <span class="av av-c">SO</span>
+              <div class="info">
+                <div class="nm">Salomé O.</div>
+                <div class="role">COO · 20% parts</div>
+              </div>
+              <span class="status-dot leave">En congé</span>
+            </div>
+          </div>
+          <a href="#" class="w-link">+ Inviter un associé</a>
+        </div>
+
+        <!-- ═══ TEAM: Contributions cette semaine ═══ -->
+        <div class="widget w-span-8 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="6" width="2.5" height="6" stroke="currentColor" stroke-width="1.5"/><rect x="5.75" y="3" width="2.5" height="9" stroke="currentColor" stroke-width="1.5"/><rect x="9.5" y="7" width="2.5" height="5" stroke="currentColor" stroke-width="1.5"/></svg></span>Contributions cette semaine</div>
+            <span class="w-meta">96h total</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 14px; padding-top: 4px;">
+            <div class="wl-row">
+              <div class="who"><span class="av av-a" style="width: 22px; height: 22px; margin-right: 6px; display: inline-grid;">CL</span> Camille L.</div>
+              <div class="bar-wl"><i class="ok" style="width: 100%"></i></div>
+              <div class="vals">38h</div>
+            </div>
+            <div class="wl-row">
+              <div class="who"><span class="av av-b" style="width: 22px; height: 22px; margin-right: 6px; display: inline-grid;">NM</span> Nadir M.</div>
+              <div class="bar-wl"><i class="ok" style="width: 84%"></i></div>
+              <div class="vals">32h</div>
+            </div>
+            <div class="wl-row">
+              <div class="who"><span class="av av-c" style="width: 22px; height: 22px; margin-right: 6px; display: inline-grid;">SO</span> Salomé O.</div>
+              <div class="bar-wl"><i class="busy" style="width: 68%"></i></div>
+              <div class="vals">26h</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ TEAM: Charge équipe ═══ -->
+        <div class="widget w-span-4 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><path d="M2 11h10M3 9.5L5 6l2 2 4-5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Charge équipe</div>
+            <a href="#" class="w-link">Rééquilibrer →</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="wl-row">
+              <div class="who">Camille</div>
+              <div class="bar-wl"><i class="ok" style="width: 65%"></i></div>
+              <div class="vals">8/15</div>
+            </div>
+            <div class="wl-row">
+              <div class="who">Nadir</div>
+              <div class="bar-wl"><i class="busy" style="width: 88%"></i></div>
+              <div class="vals">13/15</div>
+            </div>
+            <div class="wl-row">
+              <div class="who">Salomé</div>
+              <div class="bar-wl"><i class="over" style="width: 110%; max-width: 100%;"></i></div>
+              <div class="vals">17/15</div>
+            </div>
+          </div>
+          <div class="ai-msg" style="margin-top: 0;">
+            <span class="badge">IA</span>
+            <div class="txt"><b>Salomé est surchargée</b> · 17 tâches actives (norme : 15 max). Réassigner 2 tâches à Camille ?</div>
+          </div>
+        </div>
+
+        <!-- Statistiques temps -->
+        <div class="widget w-span-4">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M7 2v5l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Répartition temps</div>
+            <span class="w-meta">7 derniers jours</span>
+          </div>
+          <div class="donut-wrap">
+            <div class="donut"></div>
+            <div class="donut-leg">
+              <div class="item"><span class="sw" style="background: #E37520;"></span> Atelier Rive <span class="pct">32%</span></div>
+              <div class="item"><span class="sw" style="background: #FBBE4D;"></span> Pricing v2 <span class="pct">24%</span></div>
+              <div class="item"><span class="sw" style="background: #2B4F6F;"></span> Refonte landing <span class="pct">18%</span></div>
+              <div class="item"><span class="sw" style="background: #6B3FA0;"></span> Pacte v3 <span class="pct">14%</span></div>
+              <div class="item"><span class="sw" style="background: #C13C5C;"></span> Autres <span class="pct">12%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ TEAM: Règles de gouvernance ═══ -->
+        <div class="widget w-span-4 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><path d="M2 4h10v6H2zM5 7.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Règles actives</div>
+            <a href="#" class="w-link">+ Ajouter</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div class="rule-row">
+              <span class="ico"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/></svg></span>
+              <div>
+                <div class="nm">Dépenses &gt; 500€</div>
+                <div class="desc">Validation par vote 2/3</div>
+              </div>
+              <span class="stamp vote">VOTE</span>
+            </div>
+            <div class="rule-row">
+              <span class="ico"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/></svg></span>
+              <div>
+                <div class="nm">Recrutement &gt; 60k€/an</div>
+                <div class="desc">Décision CEO seul</div>
+              </div>
+              <span class="stamp solo">SOLO</span>
+            </div>
+            <div class="rule-row">
+              <span class="ico"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/></svg></span>
+              <div>
+                <div class="nm">Dilution, exit, levée</div>
+                <div class="desc">Unanimité requise</div>
+              </div>
+              <span class="stamp unanimous">UNANI.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ TEAM: Chrono global ═══ -->
+        <div class="widget w-span-4 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="8" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M7 5.5v2.5l1.6 1.2M7 2v1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Chrono global</div>
+            <span class="w-meta">42h 15m aujourd'hui</span>
+          </div>
+          <div class="list" style="margin: -6px;">
+            <div class="cg-row">
+              <span class="av av-a">CL</span>
+              <div class="info"><div class="nm">Camille L.</div><div class="proj">Onboarding · Atelier Rive</div></div>
+              <span class="timer-val">01:24:36</span>
+            </div>
+            <div class="cg-row">
+              <span class="av av-b">NM</span>
+              <div class="info"><div class="nm">Nadir M.</div><div class="proj">Stack technique · Pricing v2</div></div>
+              <span class="timer-val">00:38:12</span>
+            </div>
+            <div class="cg-row">
+              <span class="av av-c">SO</span>
+              <div class="info"><div class="nm">Salomé O.</div><div class="proj">En pause</div></div>
+              <span class="w-meta">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prochaines échéances -->
+        <div class="widget w-span-4 solo-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><path d="M3 4l1 8h6l1-8M5 4V2.5h4V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Échéances</div>
+            <span class="w-meta">7 prochains jours</span>
+          </div>
+          <div class="list" style="margin: -8px;">
+            <div class="row">
+              <span class="dot-prio h"></span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; font-weight: 700; color: #ECECEC;">Relire pacte v3</div>
+                <div style="font-size: 11.5px; color: rgba(236,236,236,0.55);">Gouvernance</div>
+              </div>
+              <span class="tag warn">Aujourd'hui</span>
+            </div>
+            <div class="row">
+              <span class="dot-prio m"></span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; font-weight: 700; color: #ECECEC;">Préparer board Q3</div>
+                <div style="font-size: 11.5px; color: rgba(236,236,236,0.55);">Stratégie</div>
+              </div>
+              <span class="tag">Dans 2 jours</span>
+            </div>
+            <div class="row">
+              <span class="dot-prio l"></span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; font-weight: 700; color: #ECECEC;">Maquetter onboarding</div>
+                <div style="font-size: 11.5px; color: rgba(236,236,236,0.55);">Atelier Rive</div>
+              </div>
+              <span class="tag">Dans 4 jours</span>
+            </div>
+            <div class="row">
+              <span class="dot-prio m"></span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; font-weight: 700; color: #ECECEC;">Bilan trimestre</div>
+                <div style="font-size: 11.5px; color: rgba(236,236,236,0.55);">Finances</div>
+              </div>
+              <span class="tag">Dans 6 jours</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ TEAM: Dépenses récentes ═══ -->
+        <div class="widget w-span-4 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="4" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M2 7h10" stroke="currentColor" stroke-width="1.5"/></svg></span>Dépenses récentes</div>
+            <a href="#" class="w-link">Toutes →</a>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
+            <span class="kpi-big" style="font-size: 22px;">2 340 €</span>
+            <span class="w-meta">ce mois</span>
+          </div>
+          <div class="list" style="margin: 0 -8px;">
+            <div class="exp-row">
+              <span class="d">15 mai</span>
+              <div class="nm">Notion équipe<small>Abonnement annuel</small></div>
+              <span class="amt">240 €</span>
+              <span class="tag success">Validée</span>
+            </div>
+            <div class="exp-row">
+              <span class="d">12 mai</span>
+              <div class="nm">Figma Pro<small>3 sièges</small></div>
+              <span class="amt">135 €</span>
+              <span class="tag success">Validée</span>
+            </div>
+            <div class="exp-row">
+              <span class="d">08 mai</span>
+              <div class="nm">Stack OVH<small>Hébergement</small></div>
+              <span class="amt">98 €</span>
+              <span class="tag warn">En attente</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ TEAM: Journal récent ═══ -->
+        <div class="widget w-span-4 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><path d="M4 3h7v9H4z" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 6h3M6.5 8h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Journal récent</div>
+            <a href="#" class="w-link">Tout voir →</a>
+          </div>
+          <div class="list" style="margin: 0;">
+            <div class="j-row">
+              <span class="ico v"><svg viewBox="0 0 11 11" fill="none"><path d="M2.5 5.5l2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <div class="txt"><b>Vote validé</b> · Refonte landing à l'unanimité.</div>
+              <span class="when">14:02</span>
+            </div>
+            <div class="j-row">
+              <span class="ico d"><svg viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M3 3.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+              <div class="txt"><b>Apport 12 400 €</b> · Camille L.</div>
+              <span class="when">11:48</span>
+            </div>
+            <div class="j-row">
+              <span class="ico r"><svg viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.5"/></svg></span>
+              <div class="txt"><b>Règle modifiée</b> · Seuil dépense COO 2k €.</div>
+              <span class="when">09:15</span>
+            </div>
+            <div class="j-row">
+              <span class="ico v"><svg viewBox="0 0 11 11" fill="none"><path d="M2.5 5.5l2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <div class="txt"><b>Pacte v3 signé</b> · 3/3 associés.</div>
+              <span class="when">Hier</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ TEAM: Performance posts ═══ -->
+        <div class="widget w-span-8 team-only">
+          <div class="w-head">
+            <div class="w-title"><span class="ico"><svg viewBox="0 0 14 14" fill="none"><rect x="3" y="2" width="8" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 11.5h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Posts sociaux</div>
+            <span class="w-meta">30 derniers jours</span>
+          </div>
+          <div class="post-stat">
+            <div class="tile"><div class="lbl">Publiés</div><div class="v">14</div></div>
+            <div class="tile"><div class="lbl">Portée</div><div class="v">28 400</div></div>
+            <div class="tile"><div class="lbl">Engagement</div><div class="v">4,8%</div></div>
+          </div>
+          <svg class="spark" viewBox="0 0 240 50" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="sp3" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#E37520" stop-opacity="0.35"/>
+                <stop offset="1" stop-color="#FBBE4D" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,40 L24,32 L48,28 L72,34 L96,22 L120,28 L144,18 L168,22 L192,14 L216,18 L240,10 L240,50 L0,50 Z" fill="url(#sp3)"/>
+            <path d="M0,40 L24,32 L48,28 L72,34 L96,22 L120,28 L144,18 L168,22 L192,14 L216,18 L240,10" fill="none" stroke="#E37520" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="top-post">
+            <div class="thumb">📝</div>
+            <div style="flex: 1;">
+              <div class="nm">« Pourquoi 80% des startups explosent à cause des associés »</div>
+              <div class="ms">LinkedIn · 4 jours · 8 400 portée · 412 réactions</div>
+            </div>
+            <a href="#" class="w-link">Détail →</a>
+          </div>
+        </div>
+
+        <!-- Add widget -->
+        <button class="widget add w-span-4" type="button">
+          <span class="plus">
+            <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <span class="lab">Ajouter un widget</span>
+        </button>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// Mode toggle Solo / Équipe
+(function () {
+  const app = document.getElementById('app');
+  const toggle = document.querySelector('.mode-toggle');
+  const slider = toggle.querySelector('.slider');
+  const buttons = toggle.querySelectorAll('button[data-mode]');
+
+  function positionSlider(btn) {
+    const tRect = toggle.getBoundingClientRect();
+    const bRect = btn.getBoundingClientRect();
+    slider.style.left = (bRect.left - tRect.left) + 'px';
+    slider.style.width = bRect.width + 'px';
+  }
+  function select(mode) {
+    buttons.forEach(b => {
+      const active = b.dataset.mode === mode;
+      b.classList.toggle('on', active);
+      b.setAttribute('aria-selected', active ? 'true' : 'false');
+      if (active) positionSlider(b);
+    });
+    app.classList.toggle('mode-team', mode === 'team');
+  }
+  buttons.forEach(b => b.addEventListener('click', () => select(b.dataset.mode)));
+  requestAnimationFrame(() => positionSlider(toggle.querySelector('button.on')));
+  window.addEventListener('resize', () => {
+    const active = toggle.querySelector('button.on');
+    if (active) positionSlider(active);
+  });
+})();
+
+// Sidebar collapse
+(function () {
+  const app = document.getElementById('app');
+  const btn = document.getElementById('sb-toggle');
+  if (!btn) return;
+  btn.addEventListener('click', () => app.classList.toggle('collapsed'));
+})();
+
+// Live chrono tick
+(function () {
+  let totalSec = 1 * 3600 + 24 * 60 + 36;
+  const h = document.getElementById('chrono-h');
+  const m = document.getElementById('chrono-m');
+  const s = document.getElementById('chrono-s');
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  setInterval(() => {
+    totalSec++;
+    h.textContent = pad(Math.floor(totalSec / 3600));
+    m.textContent = pad(Math.floor((totalSec % 3600) / 60));
+    s.textContent = pad(totalSec % 60);
+  }, 1000);
+})();
+
+// Tasks: toggle done on checkbox click
+document.querySelectorAll('.task-row').forEach(row => {
+  row.addEventListener('click', (e) => {
+    if (e.target.closest('a, button')) return;
+    const cb = row.querySelector('.checkbox');
+    cb.classList.toggle('done');
+    row.classList.toggle('done');
+  });
+});
+
+// Vote buttons: micro feedback
+document.querySelectorAll('.decision .vote-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const all = btn.parentElement.querySelectorAll('.vote-btn');
+    all.forEach(b => b.style.opacity = '0.4');
+    btn.style.opacity = '1';
+    btn.style.background = 'var(--ink)';
+    btn.style.color = '#fff';
+    btn.style.borderColor = 'var(--ink)';
+  });
+});
+</script>
+</body>
+</html>

@@ -50,11 +50,12 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Fonts */
-  --font-sans: var(--font-menbere), "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-madimi), var(--font-menbere), serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-heading: var(--font-sans);
+  /* Fonts (cf. brandguidline.md §2.2) */
+  --font-sans: var(--font-body), "Montserrat", system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-body), system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-heading: var(--font-display);
+  --font-brand: var(--font-brand), serif;
 
   /* Radius (Bloom scale — généreux) */
   --radius: 1rem;                          /* base 16px */
@@ -70,13 +71,81 @@
 
 /* ─── A · shadcn bridge values ─── */
 :root {
+  /* ═══════════════════════════════════════════════════════════════
+     BLOOM v3 — Reference HTML tokens (cf. brandguidline.md §2)
+     Exacts depuis `reference bloom/*.html` — ne pas modifier sans
+     mettre à jour le HTML reference + brandguidline.md.
+     ═══════════════════════════════════════════════════════════════ */
+
+  /* Light mode surfaces (landing + onboarding) */
+  --bloom-bg:           #FFFFFF;
+  --bloom-surface:      #F4F2EE;
+  --bloom-surface-2:    #FAF9F6;
+  --bloom-surface-3:    #EEEAE3;
+  --bloom-ink:          #0E0E10;
+  --bloom-ink-2:        #2A2A2A;
+  --bloom-muted:        #6B6B6B;
+  --bloom-faint:        #9A9A9A;
+  --bloom-border:       rgba(17, 17, 17, 0.08);
+  --bloom-border-strong: rgba(17, 17, 17, 0.14);
+
+  /* Dark mode surfaces (dashboard + settings) */
+  --bloom-dark:         #0E0E10;
+  --bloom-dark-2:       #16161A;
+  --bloom-dark-3:       #1F1F25;
+  --bloom-on-dark:      #ECECEC;
+  --bloom-on-dark-muted: rgba(236, 236, 236, 0.62);
+  --bloom-on-dark-faint: rgba(236, 236, 236, 0.38);
+  --bloom-border-dark:  rgba(255, 255, 255, 0.08);
+
+  /* Brand accent (signature gradient orange) */
+  --bloom-orange:    #E37520;
+  --bloom-orange-2:  #FBBE4D;
+  --bloom-gradient:        linear-gradient(135deg, #E37520 0%, #FBBE4D 100%);
+  --bloom-gradient-soft:   linear-gradient(135deg, rgba(227,117,32,0.10) 0%, rgba(251,190,77,0.05) 100%);
+
+  /* Semantic (light/dark equivalents per brandguidline.md §2.1) */
+  --bloom-success: #22C55E;
+  --bloom-warning: #F59E0B;
+  --bloom-danger:  #EF4444;
+  --bloom-info:    #3B82F6;
+
+  /* Radius */
+  --bloom-r-panel: 32px;
+  --bloom-r-card:  22px;
+  --bloom-r-btn:   14px;
+  --bloom-r-pill:  9999px;
+
+  /* Shadows */
+  --bloom-shadow-pill:
+    0 10px 32px -10px rgba(17, 17, 17, 0.14),
+    0 0 0 1px rgba(17, 17, 17, 0.05);
+  --bloom-shadow-card:
+    0 14px 40px -20px rgba(17, 17, 17, 0.16),
+    0 0 0 1px rgba(17, 17, 17, 0.05);
+  --bloom-shadow-cta:
+    0 14px 32px -10px rgba(227, 117, 32, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  --bloom-shadow-dark-cta:
+    0 14px 32px -10px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+
+  /* Container */
+  --bloom-max: 1240px;
+  --bloom-pad: 80px;
+
+  /* ═══════════════════════════════════════════════════════════════
+     Legacy shadcn + Bloom tokens — aligned on the canonical values
+     above. Existing components keep working.
+     ═══════════════════════════════════════════════════════════════ */
+
   /* Map to Bloom dark theme (the only theme — pas de light global) */
-  --background: #111111;
-  --foreground: #ECECEC;
-  --card: #1A1A1A;
-  --card-foreground: #ECECEC;
-  --popover: #1A1A1A;
-  --popover-foreground: #ECECEC;
+  --background: var(--bloom-dark);
+  --foreground: var(--bloom-on-dark);
+  --card: var(--bloom-dark-2);
+  --card-foreground: var(--bloom-on-dark);
+  --popover: var(--bloom-dark-2);
+  --popover-foreground: var(--bloom-on-dark);
 
   --primary: #F1962D;                      /* accent solid (gradient via utility) */
   --primary-foreground: #111111;
@@ -110,20 +179,20 @@
 
   /* ─── B · Bloom design tokens ─── */
 
-  /* Surfaces */
-  --bg-page: #111111;
-  --bg-panel-light: #ECECEC;
-  --bg-panel-deep: #1A1A1A;
-  --bg-surface-subtle: #16161B;
-  --bg-surface-elev: #1F1F26;
+  /* Surfaces (aliases vers les bloom-* canoniques) */
+  --bg-page:           var(--bloom-dark);          /* #0E0E10 */
+  --bg-panel-light:    var(--bloom-surface);       /* #F4F2EE */
+  --bg-panel-deep:     var(--bloom-dark-2);        /* #16161A */
+  --bg-surface-subtle: var(--bloom-dark-2);
+  --bg-surface-elev:   var(--bloom-dark-3);        /* #1F1F25 */
 
   /* Ink */
-  --ink-on-dark-primary: #ECECEC;
-  --ink-on-dark-muted: #C9C9C9;
-  --ink-on-dark-subtle: #8A8A8F;
-  --ink-on-light-primary: #111111;
-  --ink-on-light-muted: #4B4B4B;
-  --ink-on-light-subtle: #6B6B6B;
+  --ink-on-dark-primary: var(--bloom-on-dark);
+  --ink-on-dark-muted:   var(--bloom-on-dark-muted);
+  --ink-on-dark-subtle:  var(--bloom-on-dark-faint);
+  --ink-on-light-primary: var(--bloom-ink);
+  --ink-on-light-muted:   var(--bloom-muted);
+  --ink-on-light-subtle:  var(--bloom-faint);
 
   /* Accent */
   --accent-start: #E37520;
