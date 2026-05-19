@@ -10,8 +10,8 @@ import { ChatPanel } from '@/components/ai/ChatPanel'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { CookieBanner } from '@/components/cookies/CookieBanner'
 
-// Public routes — landing, login, onboarding (no app nav, no sidebar)
-const PUBLIC_ROUTES = ['/', '/login', '/onboard']
+// Public routes — landing, login, onboarding, reset password
+const PUBLIC_ROUTES = ['/', '/login', '/onboard', '/auth/reset']
 // Routes légales — full-width sans sidebar mais doivent garder la bannière cookies
 const LEGAL_ROUTES = ['/privacy', '/terms', '/cookies', '/pricing']
 // Full-bleed routes — la page apporte son propre chrome (sidebar/topbar)
@@ -25,6 +25,8 @@ const FULL_BLEED_ROUTES = [
   '/chrono',
   '/calendrier',
   '/decisions',
+  '/expenses',
+  '/contributions',
 ]
 const FULL_BLEED_PREFIXES = ['/projects/', '/decisions/']
 

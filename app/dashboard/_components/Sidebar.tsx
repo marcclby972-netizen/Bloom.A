@@ -123,14 +123,30 @@ const TEAM: NavItem[] = [
     ),
   },
   {
-    label: 'Finances',
-    href: '/dashboard',
+    label: 'Dépenses',
+    href: '/expenses',
     teamOnly: true,
     icon: (
       <svg viewBox="0 0 18 18" fill="none">
         <rect x="2.5" y="4.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
         <circle cx="9" cy="9" r="2" stroke="currentColor" strokeWidth="1.6" />
         <path d="M2.5 4.5l3-2M15.5 4.5l-3-2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Contributions',
+    href: '/contributions',
+    teamOnly: true,
+    icon: (
+      <svg viewBox="0 0 18 18" fill="none">
+        <path
+          d="M9 2v14M3 5h12M2 14l1.5-7L5 14M9 14l1.5-7L12 14M14.5 14L13 7l-1.5 7"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     ),
   },

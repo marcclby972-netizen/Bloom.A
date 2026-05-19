@@ -250,6 +250,57 @@ export type TimeStats = {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Expenses (dépenses équipe + auto-vote si seuil dépassé)
+// ─────────────────────────────────────────────────────────────
+
+export type ExpenseStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+
+export type Expense = {
+  id: string
+  teamId: string
+  createdBy: string
+  amountCents: number
+  currency: string
+  category: string | null
+  description: string
+  receiptUrl: string | null
+  status: ExpenseStatus
+  /** ID de la décision liée si auto-vote déclenché, null sinon. */
+  decisionId: string | null
+  /** ISO date 'YYYY-MM-DD'. */
+  spentAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+// ─────────────────────────────────────────────────────────────
+// Equity / Contributions (agrégation pour une team)
+// ─────────────────────────────────────────────────────────────
+
+export type MemberContribution = {
+  userId: string
+  membershipId: string
+  role: TeamRole
+  sharesPct: number | null
+  /** Secondes totales trackées sur la période. */
+  timeSeconds: number
+  /** Total dépensé en centimes par ce membre (toutes catégories). */
+  expensesCents: number
+}
+
+export type TeamContributionsResult = {
+  teamId: string
+  /** Période couverte (ISO timestamps). */
+  from: string
+  to: string
+  members: MemberContribution[]
+  /** Score d'équité 0..100 (cf. lib/rules/equity-score). */
+  equityScore: number
+  /** Alertes textuelles à afficher à l'utilisateur. */
+  equityAlerts: string[]
+}
+
+// ─────────────────────────────────────────────────────────────
 // Events (calendrier natif Bloom)
 // ─────────────────────────────────────────────────────────────
 

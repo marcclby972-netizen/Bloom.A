@@ -25,9 +25,11 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(
-    null
-  )
+  const [oauthLoading, setOauthLoading] = useState<
+    'google' | 'linkedin' | null
+  >(null)
+  const [resetMode, setResetMode] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const submit = async (e: React.FormEvent) => {
@@ -50,13 +52,17 @@ export default function LoginPage() {
     }
   }
 
-  const signInWith = async (provider: 'google' | 'apple') => {
+  const signInWith = async (provider: 'google' | 'linkedin') => {
     setError(null)
     setOauthLoading(provider)
     try {
       const supabase = createClient()
+      // Supabase utilise `linkedin_oidc` comme provider key pour LinkedIn
+      // Sign in with OpenID Connect (déprécié `linkedin` legacy).
+      const sbProvider: 'google' | 'linkedin_oidc' =
+        provider === 'linkedin' ? 'linkedin_oidc' : 'google'
       const { error: authError } = await supabase.auth.signInWithOAuth({
-        provider,
+        provider: sbProvider,
         options: {
           redirectTo:
             typeof window !== 'undefined'
@@ -68,6 +74,30 @@ export default function LoginPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : `${provider} échoué`)
       setOauthLoading(null)
+    }
+  }
+
+  const submitReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      const supabase = createClient()
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email,
+        {
+          redirectTo:
+            typeof window !== 'undefined'
+              ? `${window.location.origin}/auth/reset`
+              : undefined,
+        }
+      )
+      if (resetError) throw resetError
+      setResetSent(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Envoi impossible')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -159,15 +189,15 @@ export default function LoginPage() {
             <button
               type="button"
               className="oauth-btn"
-              onClick={() => signInWith('apple')}
+              onClick={() => signInWith('linkedin')}
               disabled={oauthLoading !== null || loading}
             >
-              <svg viewBox="0 0 18 18" fill="currentColor" aria-hidden="true">
-                <path d="M14.6 13.7c-.3.6-.6 1.2-1.1 1.8-.6.8-1.2 1.4-1.7 1.6-.6.3-1.3.3-2 0-.5-.2-1-.3-1.5-.3s-1 .1-1.5.3c-.7.3-1.3.3-2 0-.5-.3-1.1-.8-1.7-1.6-.6-.8-1.1-1.8-1.5-2.9C1 11.4.8 10.2.8 9c0-1.4.3-2.6.9-3.5.5-.8 1.1-1.4 1.9-1.8.8-.4 1.6-.7 2.5-.7.5 0 1.1.1 1.7.3.6.2 1 .3 1.2.3.1 0 .5-.1 1.3-.3.7-.2 1.4-.3 1.9-.3 1.5.1 2.6.7 3.4 1.7-1.3.8-2 2-2 3.6 0 1.2.4 2.2 1.3 3 .4.4.8.7 1.3.9-.1.3-.2.6-.3.9zm-3.4-12c0 1-.4 1.9-1.1 2.7-.9 1-2 1.5-3.2 1.4 0-1 .4-1.9 1.1-2.7C8.7 2.5 9.5 2 10.4 1.8c.4-.1.6-.1.8-.1z" />
+              <svg viewBox="0 0 18 18" fill="#0A66C2" aria-hidden="true">
+                <path d="M3.5 1.5C2.4 1.5 1.5 2.4 1.5 3.5S2.4 5.5 3.5 5.5 5.5 4.6 5.5 3.5 4.6 1.5 3.5 1.5zM2 7v9.5h3V7H2zM7 7v9.5h3v-5c0-.8.7-1.5 1.5-1.5s1.5.7 1.5 1.5v5h3v-5.5c0-2.2-1.8-4-4-4-1 0-1.9.4-2.5 1V7H7z" />
               </svg>
-              {oauthLoading === 'apple'
+              {oauthLoading === 'linkedin'
                 ? 'Redirection…'
-                : 'Continuer avec Apple'}
+                : 'Continuer avec LinkedIn'}
             </button>
 
             <div className="divider">ou avec un email</div>
@@ -223,6 +253,73 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          {/* Mot de passe oublié — toggle reset mode */}
+          <div style={{ textAlign: 'center', marginTop: 12 }}>
+            {!resetMode ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setResetMode(true)
+                  setResetSent(false)
+                  setError(null)
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(236,236,236,0.55)',
+                  fontSize: 12.5,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  textDecoration: 'underline',
+                }}
+              >
+                Mot de passe oublié ?
+              </button>
+            ) : resetSent ? (
+              <p style={{ fontSize: 13, color: '#86EFAC' }}>
+                ✓ Email de réinitialisation envoyé à <strong>{email}</strong>.
+                Vérifie ta boîte mail.
+              </p>
+            ) : (
+              <form
+                onSubmit={submitReset}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  alignItems: 'center',
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 12.5,
+                    color: 'rgba(236,236,236,0.55)',
+                  }}
+                >
+                  Entre ton email ci-dessus et clique pour recevoir un lien
+                  de réinitialisation.
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={loading || !email.includes('@')}
+                  >
+                    {loading ? '…' : 'Envoyer le lien'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost-dark"
+                    onClick={() => setResetMode(false)}
+                    disabled={loading}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
 
           {error && (
             <p

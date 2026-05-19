@@ -135,6 +135,24 @@ export type DbNotification = {
   created_at: string
 }
 
+// ─── Expenses v3 ───────────────────────────────────────────────
+
+export type DbExpense = {
+  id: string
+  team_id: string
+  created_by: string
+  amount_cents: number
+  currency: string
+  category: string | null
+  description: string
+  receipt_url: string | null
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  decision_id: string | null
+  spent_at: string                     // 'YYYY-MM-DD'
+  created_at: string
+  updated_at: string
+}
+
 // ─── Events v3 ─────────────────────────────────────────────────
 
 export type DbEvent = {
