@@ -1,20 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import {
-  Geist_Mono, Madimi_One, Montserrat, Bricolage_Grotesque,
-} from "next/font/google";
+import { Geist_Mono, Madimi_One, Montserrat } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
-// Display font — headlines, hero, section titles (per brandguidline.md §2.2)
-const bricolage = Bricolage_Grotesque({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  display: "swap",
-});
-
-// Body / UI font — primary product font
+// Montserrat — police unique du produit. Sert pour body ET display
+// (les "headlines" héritent simplement d'un weight 700/800 + spacing
+// négatif, on garde une seule famille pour la cohérence).
 const montserrat = Montserrat({
   variable: "--font-body",
   subsets: ["latin"],
@@ -22,7 +14,8 @@ const montserrat = Montserrat({
   display: "swap",
 });
 
-// Brand mark — logo "Bloom" only (extremely parcimonious)
+// Brand mark — réservé STRICTEMENT au mot "Bloom" dans le logo / header.
+// N'importez nulle part ailleurs.
 const madimiOne = Madimi_One({
   variable: "--font-brand",
   subsets: ["latin"],
@@ -36,14 +29,15 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-// Legacy aliases kept so existing `--font-madimi` / `--font-menbere`
-// usages in components keep rendering. New code should use the canonical
-// `--font-display`, `--font-body`, `--font-brand` instead.
+// `--font-display` est aliasé sur Montserrat pour la rétro-compat — toutes
+// les références existantes (h1/h2/h3 dans dashboard/settings/calendrier
+// etc.) restent valides et basculent automatiquement vers Montserrat.
+// Idem pour les vieux noms `--font-madimi` / `--font-menbere`.
 const fontVars = [
-  bricolage.variable,
   montserrat.variable,
   madimiOne.variable,
   geistMono.variable,
+  `[--font-display:var(--font-body)]`,
   `[--font-madimi:var(--font-brand)]`,
   `[--font-menbere:var(--font-body)]`,
 ].join(" ")

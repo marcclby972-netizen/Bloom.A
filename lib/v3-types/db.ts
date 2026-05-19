@@ -134,3 +134,21 @@ export type DbNotification = {
   read: boolean                        // legacy bool, à wrapper en readAt
   created_at: string
 }
+
+// ─── Events v3 ─────────────────────────────────────────────────
+
+export type DbEvent = {
+  id: string
+  user_id: string
+  team_id: string | null
+  project_id: string | null
+  task_id: string | null
+  title: string
+  description: string | null
+  starts_at: string                    // ISO
+  ends_at: string                      // ISO
+  all_day: boolean
+  color: string | null
+  created_at: string
+  updated_at: string
+}

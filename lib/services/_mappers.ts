@@ -11,7 +11,7 @@
 
 import type {
   Team, Membership, Project, Task, TimeEntry,
-  GovernanceRule, Decision, Vote, Notification,
+  GovernanceRule, Decision, Vote, Notification, Event,
   VoteValue, TaskStatus, TaskPriority, ProjectStatus,
   TeamRole, GovernanceRuleType, ValidationMode,
   DecisionKind, DecisionStatus, NotificationType,
@@ -19,7 +19,7 @@ import type {
 } from '@/lib/v3-types'
 import type {
   DbTeam, DbMembership, DbProject, DbTask, DbTimeEntry,
-  DbGovernanceRule, DbDecision, DbVote, DbNotification,
+  DbGovernanceRule, DbDecision, DbVote, DbNotification, DbEvent,
 } from '@/lib/v3-types/db'
 
 // ─────────────────────────────────────────────────────────────
@@ -196,5 +196,27 @@ export function fromDbNotification(row: DbNotification): Notification {
     payload: row.payload || {},
     readAt: row.read ? row.created_at : null,
     createdAt: row.created_at,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Event v3 (calendrier)
+// ─────────────────────────────────────────────────────────────
+
+export function fromDbEvent(row: DbEvent): Event {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    teamId: row.team_id,
+    projectId: row.project_id,
+    taskId: row.task_id,
+    title: row.title,
+    description: row.description,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    allDay: row.all_day,
+    color: row.color,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   }
 }

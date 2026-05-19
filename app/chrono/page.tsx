@@ -15,6 +15,8 @@ import {
 } from '../dashboard/_components/DashboardShell'
 import { useCurrentTeam, useProjects, useTasks, useTimer } from '@/hooks'
 import { getTimeEntriesAction } from '@/lib/actions/time'
+import { createTaskAction } from '@/lib/actions/tasks'
+import { createProjectAction } from '@/lib/actions/projects'
 import type { Project, Task, TimeEntry } from '@/lib/v3-types'
 
 function pad(n: number): string {
@@ -65,6 +67,13 @@ function ChronoContent() {
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // Inline quick-create state
+  const [quickTaskMode, setQuickTaskMode] = useState(false)
+  const [quickTaskTitle, setQuickTaskTitle] = useState('')
+  const [quickBusy, setQuickBusy] = useState(false)
+  const [quickProjectMode, setQuickProjectMode] = useState(false)
+  const [quickProjectName, setQuickProjectName] = useState('')
 
   const projectsById = useMemo(
     () => new Map(projects.map((p) => [p.id, p])),
@@ -119,6 +128,46 @@ function ChronoContent() {
       setError(err instanceof Error ? err.message : 'Impossible d’arrêter')
     } finally {
       setBusy(false)
+    }
+  }
+
+  /** Crée une tâche inline sur le projet sélectionné et la sélectionne. */
+  const handleQuickCreateTask = async () => {
+    if (!selectedProjectId || !quickTaskTitle.trim()) return
+    setQuickBusy(true)
+    setError(null)
+    const r = await createTaskAction({
+      projectId: selectedProjectId,
+      title: quickTaskTitle.trim(),
+      priority: 'medium',
+    })
+    setQuickBusy(false)
+    if (r.ok) {
+      setSelectedTaskId(r.data.id)
+      setQuickTaskTitle('')
+      setQuickTaskMode(false)
+    } else {
+      setError(r.error.message)
+    }
+  }
+
+  /** Crée un projet inline (scope team courante) et le sélectionne. */
+  const handleQuickCreateProject = async () => {
+    if (!quickProjectName.trim()) return
+    setQuickBusy(true)
+    setError(null)
+    const r = await createProjectAction({
+      name: quickProjectName.trim(),
+      teamId: teamId ?? undefined,
+    })
+    setQuickBusy(false)
+    if (r.ok) {
+      setSelectedProjectId(r.data.id)
+      setSelectedTaskId('')
+      setQuickProjectName('')
+      setQuickProjectMode(false)
+    } else {
+      setError(r.error.message)
     }
   }
 
@@ -230,65 +279,212 @@ function ChronoContent() {
               margin: '0 auto 16px',
             }}
           >
-            <select
-              value={selectedProjectId}
-              onChange={(e) => {
-                setSelectedProjectId(e.target.value)
-                setSelectedTaskId('')
-              }}
-              style={{
-                background: 'var(--surface-2)',
-                border: '1px solid var(--border)',
-                borderRadius: 12,
-                color: 'var(--ink)',
-                padding: '12px 14px',
-                fontSize: 14,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="">— Sans projet —</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={selectedTaskId}
-              onChange={(e) => setSelectedTaskId(e.target.value)}
-              disabled={!selectedProjectId || tasks.length === 0}
-              style={{
-                background: 'var(--surface-2)',
-                border: '1px solid var(--border)',
-                borderRadius: 12,
-                color: 'var(--ink)',
-                padding: '12px 14px',
-                fontSize: 14,
-                fontFamily: 'inherit',
-                cursor: selectedProjectId ? 'pointer' : 'not-allowed',
-                opacity: selectedProjectId ? 1 : 0.5,
-              }}
-            >
-              <option value="">— Sans tâche —</option>
-              {tasks.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title}
-                </option>
-              ))}
-            </select>
+            {/* PROJET — select ou input inline si quickProjectMode */}
+            {quickProjectMode ? (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  autoFocus
+                  type="text"
+                  value={quickProjectName}
+                  onChange={(e) => setQuickProjectName(e.target.value)}
+                  placeholder="Nom du nouveau projet"
+                  maxLength={120}
+                  disabled={quickBusy}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void handleQuickCreateProject()
+                    }
+                    if (e.key === 'Escape') {
+                      setQuickProjectMode(false)
+                      setQuickProjectName('')
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    background: 'var(--bloom-surface-2)',
+                    border: '1px solid var(--orange-2)',
+                    borderRadius: 12,
+                    color: 'var(--bloom-text)',
+                    padding: '12px 14px',
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleQuickCreateProject}
+                  disabled={quickBusy || !quickProjectName.trim()}
+                  className="btn btn-primary"
+                  style={{ padding: '0 14px' }}
+                >
+                  ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickProjectMode(false)
+                    setQuickProjectName('')
+                  }}
+                  className="btn btn-ghost-dark"
+                  style={{ padding: '0 14px' }}
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <select
+                  value={selectedProjectId}
+                  onChange={(e) => {
+                    setSelectedProjectId(e.target.value)
+                    setSelectedTaskId('')
+                  }}
+                  style={{
+                    flex: 1,
+                    background: 'var(--bloom-surface-2)',
+                    border: '1px solid var(--bloom-border)',
+                    borderRadius: 12,
+                    color: 'var(--bloom-text)',
+                    padding: '12px 14px',
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="">— Travail libre —</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setQuickProjectMode(true)}
+                  className="btn btn-ghost-dark"
+                  style={{ padding: '0 14px', fontSize: 18, lineHeight: 1 }}
+                  title="Créer un nouveau projet rapidement"
+                >
+                  +
+                </button>
+              </div>
+            )}
+
+            {/* TÂCHE — select ou input inline si quickTaskMode */}
+            {quickTaskMode && selectedProjectId ? (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  autoFocus
+                  type="text"
+                  value={quickTaskTitle}
+                  onChange={(e) => setQuickTaskTitle(e.target.value)}
+                  placeholder="Nouvelle tâche…"
+                  maxLength={200}
+                  disabled={quickBusy}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void handleQuickCreateTask()
+                    }
+                    if (e.key === 'Escape') {
+                      setQuickTaskMode(false)
+                      setQuickTaskTitle('')
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    background: 'var(--bloom-surface-2)',
+                    border: '1px solid var(--orange-2)',
+                    borderRadius: 12,
+                    color: 'var(--bloom-text)',
+                    padding: '12px 14px',
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleQuickCreateTask}
+                  disabled={quickBusy || !quickTaskTitle.trim()}
+                  className="btn btn-primary"
+                  style={{ padding: '0 14px' }}
+                >
+                  ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickTaskMode(false)
+                    setQuickTaskTitle('')
+                  }}
+                  className="btn btn-ghost-dark"
+                  style={{ padding: '0 14px' }}
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <select
+                  value={selectedTaskId}
+                  onChange={(e) => setSelectedTaskId(e.target.value)}
+                  disabled={!selectedProjectId}
+                  style={{
+                    flex: 1,
+                    background: 'var(--bloom-surface-2)',
+                    border: '1px solid var(--bloom-border)',
+                    borderRadius: 12,
+                    color: 'var(--bloom-text)',
+                    padding: '12px 14px',
+                    fontSize: 14,
+                    fontFamily: 'inherit',
+                    cursor: selectedProjectId ? 'pointer' : 'not-allowed',
+                    opacity: selectedProjectId ? 1 : 0.5,
+                  }}
+                >
+                  <option value="">
+                    {selectedProjectId ? '— Sans tâche —' : 'Choisis un projet'}
+                  </option>
+                  {tasks.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setQuickTaskMode(true)}
+                  disabled={!selectedProjectId}
+                  className="btn btn-ghost-dark"
+                  style={{
+                    padding: '0 14px',
+                    fontSize: 18,
+                    lineHeight: 1,
+                    opacity: selectedProjectId ? 1 : 0.4,
+                    cursor: selectedProjectId ? 'pointer' : 'not-allowed',
+                  }}
+                  title="Créer une nouvelle tâche rapidement"
+                >
+                  +
+                </button>
+              </div>
+            )}
+
             <input
               type="text"
-              placeholder="Note (optionnel)"
+              placeholder="Note libre (optionnel) — utile sans projet/tâche"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={200}
               style={{
                 gridColumn: '1 / -1',
-                background: 'var(--surface-2)',
-                border: '1px solid var(--border)',
+                background: 'var(--bloom-surface-2)',
+                border: '1px solid var(--bloom-border)',
                 borderRadius: 12,
-                color: 'var(--ink)',
+                color: 'var(--bloom-text)',
                 padding: '12px 14px',
                 fontSize: 14,
                 fontFamily: 'inherit',

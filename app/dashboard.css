@@ -40,7 +40,7 @@
   --info:    #3B82F6;
 
   --font: 'Montserrat', system-ui, sans-serif;
-  --font-display: 'Bricolage Grotesque', 'Montserrat', system-ui, sans-serif;
+  --font-display: 'Montserrat', system-ui, sans-serif;
 
   --r-widget: 22px;
   --r-card:   14px;
@@ -89,27 +89,46 @@ img, svg { display: block; }
 ul { list-style: none; }
 input { font-family: inherit; }
 
-/* ╔════════════ SHELL ════════════╗ */
+/* ╔════════════ SHELL ════════════╗
+ * Sidebar flottante : marges externes (top/left/bottom) pour ne toucher
+ * aucun bord de l'écran, radius 20 pour matcher l'identité produit.
+ * Le grid garde sidebar | main mais on ajoute un padding-left sur le main
+ * pour compenser visuellement le gap quand collapsed.
+ */
 .app {
   display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-columns: calc(var(--sidebar-w) + 28px) 1fr;
   min-height: 100vh;
+  transition: grid-template-columns 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
-.app.collapsed { grid-template-columns: var(--sidebar-w-collapsed) 1fr; }
+.app.collapsed {
+  grid-template-columns: calc(var(--sidebar-w-collapsed) + 28px) 1fr;
+}
 
 /* ╔════════════ SIDEBAR ════════════╗ */
 .sidebar {
   background: var(--surface-dark);
-  border-right: 1px solid var(--border-dark);
+  border: 1px solid var(--border-dark);
+  border-radius: 20px;
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   position: sticky;
-  top: 0;
-  height: 100vh;
+  top: 14px;
+  margin: 14px 0 14px 14px;
+  height: calc(100vh - 28px);
+  width: var(--sidebar-w);
   overflow-y: auto;
   scrollbar-width: thin;
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.4);
+  transition:
+    width 250ms cubic-bezier(0.4, 0, 0.2, 1),
+    padding 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.app.collapsed .sidebar {
+  width: var(--sidebar-w-collapsed);
+  padding: 18px 8px;
 }
 .sidebar::-webkit-scrollbar { width: 6px; }
 .sidebar::-webkit-scrollbar-thumb { background: var(--bloom-surface-3); border-radius: 3px; }
@@ -177,6 +196,18 @@ input { font-family: inherit; }
 }
 .app.collapsed .sb-item { justify-content: center; padding: 11px; }
 .app.collapsed .sb-item .label, .app.collapsed .sb-item .badge { display: none; }
+
+/* Collapsed : brand label "Bloom" se cache, mark reste centré */
+.app.collapsed .sb-brand {
+  font-size: 0;                        /* hide the "Bloom" text node */
+  justify-content: center;
+}
+.app.collapsed .sb-head {
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 0 14px;
+}
+.app.collapsed .sb-collapse svg { transform: rotate(180deg); }
 .sb-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-dark); display: flex; flex-direction: column; gap: 4px; }
 
 /* ╔════════════ MAIN ════════════╗ */

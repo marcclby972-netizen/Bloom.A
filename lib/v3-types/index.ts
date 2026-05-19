@@ -250,6 +250,30 @@ export type TimeStats = {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Events (calendrier natif Bloom)
+// ─────────────────────────────────────────────────────────────
+
+export type Event = {
+  id: string
+  userId: string
+  /** null = évènement perso (solo). Sinon scopé à une team. */
+  teamId: string | null
+  /** Lien optionnel vers un projet. */
+  projectId: string | null
+  /** Lien optionnel vers une tâche. */
+  taskId: string | null
+  title: string
+  description: string | null
+  startsAt: string                      // ISO
+  endsAt: string                        // ISO
+  allDay: boolean
+  /** Hex couleur (ex. '#E37520'). Null = couleur par défaut. */
+  color: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// ─────────────────────────────────────────────────────────────
 // Errors — types métier (pas Error JS — payload structuré)
 // ─────────────────────────────────────────────────────────────
 

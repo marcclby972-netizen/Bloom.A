@@ -16,7 +16,7 @@
   --gradient-soft: linear-gradient(135deg, rgba(227,117,32,0.10) 0%, rgba(251,190,77,0.05) 100%);
 
   --font: 'Montserrat', system-ui, sans-serif;
-  --font-display: 'Bricolage Grotesque', 'Montserrat', system-ui, sans-serif;
+  --font-display: 'Montserrat', system-ui, sans-serif;
 
   --r-card: 24px;
   --r-btn: 14px;
