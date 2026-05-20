@@ -153,6 +153,33 @@ export type DbExpense = {
   updated_at: string
 }
 
+// ─── Social drafts + targets v3 ────────────────────────────────
+
+export type DbSocialPlatform = 'linkedin' | 'x' | 'instagram' | 'tiktok'
+export type DbSocialDraftStatus = 'brouillon' | 'planifie' | 'publie'
+
+export type DbSocialDraft = {
+  id: string
+  user_id: string
+  team_id: string | null
+  platform: DbSocialPlatform
+  title: string
+  content: string
+  status: DbSocialDraftStatus
+  scheduled_at: string | null
+  published_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type DbSocialTarget = {
+  user_id: string
+  platform: DbSocialPlatform
+  target_per_day: number
+  target_per_week: number
+  updated_at: string
+}
+
 // ─── Events v3 ─────────────────────────────────────────────────
 
 export type DbEvent = {

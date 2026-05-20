@@ -11,6 +11,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireUser, ServiceFailure } from '@/lib/supabase/auth-helpers'
+import { assertPlanFeature } from './_plan'
 import type { Team, Membership, TeamRole } from '@/lib/v3-types'
 import type { DbTeam, DbMembership } from '@/lib/v3-types/db'
 import { fromDbTeam, fromDbMembership } from './_mappers'
@@ -122,6 +123,13 @@ export async function inviteMember(input: {
 }): Promise<{ inviteId: string }> {
   const sbUser = await requireUser()
   const supabase = await createClient()
+
+  // Enforcement : team_invite réservé au plan Team
+  await assertPlanFeature(
+    sbUser,
+    'team_invite',
+    "L'invitation d'associés nécessite le plan Team (29€/mois)."
+  )
 
   const email = input.email.trim().toLowerCase()
   if (!email.includes('@')) {

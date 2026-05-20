@@ -9,6 +9,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireUser, ServiceFailure } from '@/lib/supabase/auth-helpers'
+import { getUserPlan } from './_plan'
+import { getProjectLimit } from '@/lib/rules/plan-capabilities'
 import type { Project, ProjectStatus } from '@/lib/v3-types'
 import type { DbProject } from '@/lib/v3-types/db'
 import { fromDbProject } from './_mappers'
@@ -79,6 +81,24 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
       code: 'validation',
       message: 'Le nom du projet doit faire entre 1 et 120 caractères',
     })
+  }
+
+  // Enforcement plan : count des projets actifs vs limite plan
+  const plan = await getUserPlan(sbUser)
+  const limit = getProjectLimit(plan)
+  if (Number.isFinite(limit)) {
+    const { count } = await supabase
+      .from('projects_v3')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_user_id', sbUser.id)
+      .eq('status', 'active')
+    if ((count ?? 0) >= limit) {
+      throw new ServiceFailure({
+        code: 'plan_limit',
+        message: `Limite atteinte : ${limit} projets max sur le plan ${plan.toUpperCase()}. Passez à Solo pour des projets illimités.`,
+        details: { plan, limit, current: count ?? 0 },
+      })
+    }
   }
 
   const { data, error } = await supabase

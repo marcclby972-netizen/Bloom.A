@@ -19,6 +19,7 @@ import {
   useDashboardShell,
 } from '../dashboard/_components/DashboardShell'
 import { useTeamContributions } from '@/hooks'
+import { PaywallEmpty } from '../dashboard/_components/PaywallEmpty'
 import type { MemberContribution } from '@/lib/v3-types'
 
 function formatHours(seconds: number): string {
@@ -56,24 +57,11 @@ function ContributionsContent() {
     return (
       <>
         <PageHeader eyebrow="Mode solo" title="Contributions" />
-        <div
-          style={{
-            background: 'var(--bloom-surface)',
-            border: '1px solid var(--bloom-border)',
-            borderRadius: 18,
-            padding: 32,
-            textAlign: 'center',
-            color: 'var(--bloom-text-muted)',
-          }}
-        >
-          <p style={{ marginBottom: 16, fontSize: 14, lineHeight: 1.55 }}>
-            Le score d&apos;équité compare les contributions de chaque
-            associé aux parts déclarées. Crée une équipe pour l&apos;activer.
-          </p>
-          <Link href="/onboard" className="btn btn-primary">
-            Créer une équipe
-          </Link>
-        </div>
+        <PaywallEmpty
+          feature="Équité"
+          title="Score d'équité automatique"
+          description="Bloom compare ce que chaque associé apporte (temps + €) à ses parts déclarées. Score 0-100 et alertes si déséquilibre. Inclus dans le plan Team."
+        />
       </>
     )
   }

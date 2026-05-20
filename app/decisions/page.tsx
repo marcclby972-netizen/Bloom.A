@@ -14,6 +14,7 @@ import {
   PageHeader,
 } from '../dashboard/_components/DashboardShell'
 import { useCurrentTeam, useDecisions } from '@/hooks'
+import { PaywallEmpty } from '../dashboard/_components/PaywallEmpty'
 import type {
   Decision,
   DecisionKind,
@@ -131,30 +132,11 @@ function DecisionsContent() {
     return (
       <>
         <PageHeader eyebrow="Mode solo" title="Décisions" />
-        <div
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r-card)',
-            padding: 32,
-            textAlign: 'center',
-          }}
-        >
-          <p
-            style={{
-              color: 'rgba(236,236,236,0.75)',
-              marginBottom: 16,
-              fontSize: 14,
-              lineHeight: 1.55,
-            }}
-          >
-            Les décisions sont une feature de gouvernance équipe. Crée une
-            équipe pour voter avec tes associés.
-          </p>
-          <Link href="/onboard" className="btn btn-primary">
-            Créer une équipe
-          </Link>
-        </div>
+        <PaywallEmpty
+          feature="Gouvernance"
+          title="Voter sans flou"
+          description="Les décisions, votes et règles de gouvernance sont inclus dans le plan Team. Crée une équipe pour valider tes prochaines décisions avec tes associés."
+        />
       </>
     )
   }

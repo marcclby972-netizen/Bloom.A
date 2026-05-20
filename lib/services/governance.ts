@@ -14,6 +14,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireUser, ServiceFailure } from '@/lib/supabase/auth-helpers'
 import { computeDecisionStatusPure } from '@/lib/rules/decision-status'
+import { assertPlanFeature } from './_plan'
 import type {
   GovernanceRule, GovernanceRuleType, ValidationMode,
   Decision, DecisionKind, DecisionComputedStatus, Vote, VoteValue,
@@ -159,6 +160,13 @@ export async function createDecision(input: CreateDecisionInput): Promise<Decisi
   const sbUser = await requireUser()
   const supabase = await createClient()
 
+  // Enforcement : gouvernance/décisions = plan Team uniquement
+  await assertPlanFeature(
+    sbUser,
+    'decisions',
+    'Les décisions et votes nécessitent le plan Team.'
+  )
+
   const title = input.title.trim()
   if (!title || title.length > 200) {
     throw new ServiceFailure({
@@ -206,6 +214,9 @@ export async function voteOnDecision(
       message: 'Tu ne peux voter qu\'en ton nom',
     })
   }
+
+  // Enforcement plan : voter nécessite plan Team
+  await assertPlanFeature(sbUser, 'decisions', 'Voter nécessite le plan Team.')
 
   const supabase = await createClient()
 

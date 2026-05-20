@@ -23,6 +23,7 @@ import {
 } from '../dashboard/_components/DashboardShell'
 import { useExpenses } from '@/hooks'
 import { createExpenseAction } from '@/lib/actions/expenses'
+import { PaywallEmpty } from '../dashboard/_components/PaywallEmpty'
 import type { Expense, ExpenseStatus } from '@/lib/v3-types'
 
 const STATUS_LABEL: Record<ExpenseStatus, string> = {
@@ -69,30 +70,11 @@ function ExpensesContent() {
     return (
       <>
         <PageHeader eyebrow="Mode solo" title="Dépenses" />
-        <div
-          style={{
-            background: 'var(--bloom-surface)',
-            border: '1px solid var(--bloom-border)',
-            borderRadius: 18,
-            padding: 32,
-            textAlign: 'center',
-          }}
-        >
-          <p
-            style={{
-              color: 'var(--bloom-text-muted)',
-              marginBottom: 16,
-              fontSize: 14,
-              lineHeight: 1.55,
-            }}
-          >
-            Les dépenses sont une feature d&apos;équipe (auto-vote selon les
-            règles de gouvernance). Crée une équipe pour t&apos;en servir.
-          </p>
-          <Link href="/onboard" className="btn btn-primary">
-            Créer une équipe
-          </Link>
-        </div>
+        <PaywallEmpty
+          feature="Finances"
+          title="Dépenses + auto-vote"
+          description="Déclare une dépense ; si elle dépasse le seuil de tes règles, Bloom lance automatiquement un vote entre associés. Inclus dans le plan Team."
+        />
       </>
     )
   }

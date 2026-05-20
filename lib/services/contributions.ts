@@ -13,6 +13,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireUser, ServiceFailure } from '@/lib/supabase/auth-helpers'
 import { computeEquityScorePure } from '@/lib/rules/equity-score'
+import { assertPlanFeature } from './_plan'
 import type {
   TeamContributionsResult,
   MemberContribution,
@@ -25,7 +26,12 @@ export async function getTeamContributions(opts: {
   from?: string
   to?: string
 }): Promise<TeamContributionsResult> {
-  await requireUser()
+  const sbUser = await requireUser()
+  await assertPlanFeature(
+    sbUser,
+    'contributions_equity',
+    "Le score d'équité nécessite le plan Team."
+  )
   const supabase = await createClient()
 
   const to = opts.to ?? new Date().toISOString()

@@ -22,6 +22,7 @@ import { ProfileSection } from './_components/ProfileSection'
 import { AccountSection } from './_components/AccountSection'
 import { NotificationsSection } from './_components/NotificationsSection'
 import { AppearanceSection } from './_components/AppearanceSection'
+import { PlanSection } from './_components/PlanSection'
 import { TeamSection } from './_components/TeamSection'
 import { DataSection } from './_components/DataSection'
 import { DangerZone } from './_components/DangerZone'
@@ -60,6 +61,20 @@ const NAV_ITEMS: NavItem[] = [
           d="M5.5 7V5a3.5 3.5 0 017 0v2"
           stroke="currentColor"
           strokeWidth="1.5"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: 'plan',
+    label: 'Plan',
+    icon: (
+      <svg viewBox="0 0 18 18" fill="none">
+        <path
+          d="M9 1.5l2.5 5L17 7l-4 4 1 5.5L9 13.8 4 16.5l1-5.5-4-4 5.5-0.5L9 1.5z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
         />
       </svg>
     ),
@@ -171,6 +186,7 @@ function SettingsContent() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <ProfileSection />
           <AccountSection />
+          <PlanSection />
           <NotificationsSection />
           <AppearanceSection />
           {teamId && <TeamSection />}

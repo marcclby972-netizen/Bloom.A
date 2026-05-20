@@ -21,9 +21,24 @@
 
 export type UserRole = 'admin' | 'user'
 
+/**
+ * Plan d'abonnement Bloom (cf. Notion "💰 Stratégie de pricing") :
+ *  - free : 2 projets max, pas d'équipe, pas de gouvernance/finances
+ *  - solo : projets/marketing illimités, pas d'équipe
+ *  - team : tout débloqué + 3 membres inclus + add-on +9€/membre au-delà
+ */
+export type Plan = 'free' | 'solo' | 'team'
+
 export type UserSettings = {
   language?: 'fr' | 'en'
   timezone?: string                     // ex: "Europe/Paris"
+  /**
+   * Plan actif. Default computé côté server :
+   *  - users créés avant PRICING_LAUNCH_DATE → 'team' (grandfathered beta)
+   *  - users créés après → 'free'
+   * Source de vérité = DB, mais fallback safe côté UI.
+   */
+  plan?: Plan
   notifications?: {
     email?: boolean
     push?: boolean
@@ -301,6 +316,37 @@ export type TeamContributionsResult = {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Social drafts (content planner multi-plateforme)
+// ─────────────────────────────────────────────────────────────
+
+export type SocialPlatform = 'linkedin' | 'x' | 'instagram' | 'tiktok'
+export type SocialDraftStatus = 'brouillon' | 'planifie' | 'publie'
+
+export type SocialDraft = {
+  id: string
+  userId: string
+  teamId: string | null
+  platform: SocialPlatform
+  title: string
+  content: string
+  status: SocialDraftStatus
+  /** ISO timestamp si planifié. */
+  scheduledAt: string | null
+  /** ISO timestamp si l'user a marqué le post comme publié. */
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type SocialTarget = {
+  userId: string
+  platform: SocialPlatform
+  targetPerDay: number
+  targetPerWeek: number
+  updatedAt: string
+}
+
+// ─────────────────────────────────────────────────────────────
 // Events (calendrier natif Bloom)
 // ─────────────────────────────────────────────────────────────
 
@@ -335,6 +381,7 @@ export type ServiceError = {
     | 'forbidden'
     | 'conflict'                        // ex: timer déjà actif
     | 'validation'
+    | 'plan_limit'                      // ex: 3ème projet refusé en Free
     | 'unknown'
   message: string
   details?: Record<string, unknown>

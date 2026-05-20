@@ -7,13 +7,32 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireUser, ServiceFailure } from '@/lib/supabase/auth-helpers'
-import type { User, UserSettings, UserRole } from '@/lib/v3-types'
+import type { User, UserSettings, UserRole, Plan } from '@/lib/v3-types'
 import { isAdmin } from '@/lib/admin'
 
 const DEFAULT_SETTINGS: UserSettings = {
   language: 'fr',
   timezone: 'Europe/Paris',
   notifications: { email: true, push: false },
+}
+
+/**
+ * Date de lancement du pricing payant.
+ * Les users créés avant cette date passent automatiquement 'team' gratuit
+ * (grandfathered beta) ; ceux créés après → 'free' par défaut.
+ *
+ * À modifier quand le lancement officiel sera annoncé.
+ */
+const PRICING_LAUNCH_DATE = '2026-05-19T00:00:00Z'
+
+/**
+ * Calcule le plan par défaut selon la date de création du user.
+ * Appelé uniquement si `settings.plan` n'est pas déjà set côté DB.
+ */
+function computeDefaultPlan(createdAt: string): Plan {
+  const isGrandfathered =
+    new Date(createdAt).getTime() < new Date(PRICING_LAUNCH_DATE).getTime()
+  return isGrandfathered ? 'team' : 'free'
 }
 
 /**
@@ -33,6 +52,11 @@ export async function getCurrentUser(): Promise<User> {
   const settings: UserSettings = {
     ...DEFAULT_SETTINGS,
     ...((settingsRow?.settings as UserSettings | undefined) ?? {}),
+  }
+
+  // Grandfather plan : si plan absent en DB → compute selon createdAt.
+  if (!settings.plan) {
+    settings.plan = computeDefaultPlan(sbUser.created_at)
   }
 
   const role: UserRole = isAdmin(sbUser.email) ? 'admin' : 'user'

@@ -16,6 +16,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireUser, ServiceFailure } from '@/lib/supabase/auth-helpers'
+import { assertPlanFeature } from './_plan'
 import type { Expense, GovernanceRule } from '@/lib/v3-types'
 import type { DbExpense, DbGovernanceRule } from '@/lib/v3-types/db'
 import { fromDbGovernanceRule } from './_mappers'
@@ -103,6 +104,9 @@ export async function createExpense(input: CreateExpenseInput): Promise<{
 }> {
   const sbUser = await requireUser()
   const supabase = await createClient()
+
+  // Enforcement plan : dépenses = plan Team
+  await assertPlanFeature(sbUser, 'expenses', 'Les dépenses nécessitent le plan Team.')
 
   // ─── 1. Validation ───
   if (input.amountCents <= 0) {
