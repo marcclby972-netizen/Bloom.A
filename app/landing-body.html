@@ -396,48 +396,82 @@
   <div class="container">
     <div class="pricing-head reveal">
       <div class="eyebrow" style="justify-content: center;">Tarif simple</div>
-      <h2 class="section-heading">Un plan. Un prix. <span class="accent">Zéro embrouille.</span></h2>
-      <p>Pas de tiers, pas de pièges. Vous payez par utilisateur, mensuellement ou annuellement, et tout est inclus.</p>
+      <h2 class="section-heading">Un OS pour cofondateurs. <span class="accent">Un prix par workspace.</span></h2>
+      <p>Le fondateur paie. Ses associés rejoignent gratuitement dans la limite du plan. Pas de seat tax cachée.</p>
     </div>
 
-    <div class="billing-toggle reveal" role="tablist" aria-label="Période de facturation">
-      <span class="slider" id="billing-slider"></span>
-      <button type="button" class="on" data-billing="monthly" role="tab" aria-selected="true">Mensuel</button>
-      <button type="button" data-billing="annual" role="tab" aria-selected="false">Annuel <span class="save-badge">−30 %</span></button>
-    </div>
+    <div class="reveal" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 1040px; margin: 0 auto;">
 
-    <div class="price-card reveal">
-      <div class="price-col-left">
-        <span class="price-label">Tout inclus</span>
-        <div class="price-amount">
-          <span id="price-value">8&nbsp;€</span><span class="unit">/ utilisateur / mois</span>
+      <!-- ─── FREE ─── -->
+      <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 22px; padding: 28px 24px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+          <h3 style="font-family: var(--font-display); font-size: 22px; font-weight: 800; color: #fff;">Free</h3>
+          <span style="font-size: 12px; color: rgba(255,255,255,0.55);">Découverte</span>
         </div>
-        <div class="price-billed" id="price-billed">Facturé mensuellement · sans engagement.</div>
-        <div class="price-sub">Un prix par associé. Tous les modules débloqués dès le premier jour. Résiliable en 1 clic.</div>
-        <a href="/onboard" class="btn btn-primary btn-lg" style="margin-top: 24px; align-self: flex-start;">
-          Commencer maintenant
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </a>
-      </div>
-      <div class="price-col-right">
-        <div style="font-size: 11.5px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 20px;">Inclus dès le premier jour</div>
-        <ul class="price-features">
-          <li><span class="check"><svg viewBox="0 0 11 11" fill="none"><path d="M2.5 5.5l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Tous les modules : projets, to-do, agenda, time tracking</li>
-          <li><span class="check"><svg viewBox="0 0 11 11" fill="none"><path d="M2.5 5.5l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Mode Associés : parts, gouvernance, contributions</li>
-          <li><span class="check"><svg viewBox="0 0 11 11" fill="none"><path d="M2.5 5.5l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Décisions, votes &amp; journal immuable</li>
-          <li><span class="check"><svg viewBox="0 0 11 11" fill="none"><path d="M2.5 5.5l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Agent IA coach d'équité (alertes &amp; résumés)</li>
-          <li><span class="check"><svg viewBox="0 0 11 11" fill="none"><path d="M2.5 5.5l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Wizard pacte d'associés</li>
-          <li><span class="check"><svg viewBox="0 0 11 11" fill="none"><path d="M2.5 5.5l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Planificateur social (LinkedIn, X, Instagram)</li>
-          <li><span class="check"><svg viewBox="0 0 11 11" fill="none"><path d="M2.5 5.5l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Audio → IA (note, tâche, post, résumé)</li>
-          <li><span class="check"><svg viewBox="0 0 11 11" fill="none"><path d="M2.5 5.5l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>100 requêtes IA / mois &amp; 1 Go de stockage inclus</li>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span style="font-family: var(--font-display); font-size: 44px; font-weight: 800; color: #fff; letter-spacing: -0.025em;">0&nbsp;€</span>
+          <span style="font-size: 14px; color: rgba(255,255,255,0.55);">/ mois</span>
+        </div>
+        <span style="font-size: 12px; padding: 4px 10px; background: rgba(255,255,255,0.06); border-radius: 8px; align-self: flex-start;">1 membre</span>
+        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; color: rgba(255,255,255,0.85);">
+          <li>✓ Chrono &amp; time tracking</li>
+          <li>✓ Jusqu'à 2 projets</li>
+          <li>✓ Tâches illimitées</li>
+          <li>✓ Dashboard solo</li>
+          <li>✓ Stats basiques</li>
         </ul>
-        <div class="price-overage">
-          <b>Au-delà du forfait</b> · +2 € / 100 requêtes IA &nbsp;·&nbsp; +1 € / Go de stockage
-        </div>
+        <a href="/onboard?plan=free" class="btn btn-dark btn-lg" style="margin-top: auto; width: 100%; justify-content: center;">Commencer gratuitement</a>
       </div>
+
+      <!-- ─── SOLO (highlight) ─── -->
+      <div style="position: relative; background: linear-gradient(180deg, rgba(227,117,32,0.10), rgba(255,255,255,0.04) 60%); border: 1.5px solid rgba(251,190,77,0.45); border-radius: 22px; padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 0 0 1px rgba(227,117,32,0.10), 0 24px 60px -20px rgba(227,117,32,0.30);">
+        <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg,#E37520,#FBBE4D); color: #111; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 12px; border-radius: 999px;">Populaire freelance</span>
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+          <h3 style="font-family: var(--font-display); font-size: 22px; font-weight: 800; color: #fff;">Solo</h3>
+          <span style="font-size: 12px; color: rgba(255,255,255,0.65);">Freelance / founder</span>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span style="font-family: var(--font-display); font-size: 44px; font-weight: 800; color: #fff; letter-spacing: -0.025em;">9&nbsp;€</span>
+          <span style="font-size: 14px; color: rgba(255,255,255,0.65);">/ mois</span>
+        </div>
+        <span style="font-size: 12px; padding: 4px 10px; background: rgba(255,255,255,0.06); border-radius: 8px; align-self: flex-start;">1 membre</span>
+        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; color: rgba(255,255,255,0.92);">
+          <li>✓ Tout Free, projets illimités</li>
+          <li>✓ Stats complètes &amp; globales</li>
+          <li>✓ Module marketing (posts + calendrier)</li>
+          <li>✓ Résumé de semaine IA</li>
+          <li>✓ Rédaction posts LinkedIn (5/mois)</li>
+        </ul>
+        <a href="/onboard?plan=solo" class="btn btn-primary btn-lg" style="margin-top: auto; width: 100%; justify-content: center;">Choisir Solo</a>
+      </div>
+
+      <!-- ─── TEAM ─── -->
+      <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 22px; padding: 28px 24px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+          <h3 style="font-family: var(--font-display); font-size: 22px; font-weight: 800; color: #fff;">Team</h3>
+          <span style="font-size: 12px; color: rgba(255,255,255,0.55);">Cofondateurs</span>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span style="font-family: var(--font-display); font-size: 44px; font-weight: 800; color: #fff; letter-spacing: -0.025em;">29&nbsp;€</span>
+          <span style="font-size: 14px; color: rgba(255,255,255,0.55);">/ mois</span>
+        </div>
+        <span style="font-size: 12px; padding: 4px 10px; background: rgba(255,255,255,0.06); border-radius: 8px; align-self: flex-start;">3 membres inclus</span>
+        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; color: rgba(255,255,255,0.85);">
+          <li>✓ Tout Solo, pour toute l'équipe</li>
+          <li>✓ Score d'équité automatique</li>
+          <li>✓ Votes &amp; décisions</li>
+          <li>✓ Règles de gouvernance + dépenses</li>
+          <li>✓ IA illimitée (résumés, équilibre…)</li>
+        </ul>
+        <a href="/onboard?plan=team" class="btn btn-dark btn-lg" style="margin-top: auto; width: 100%; justify-content: center;">Choisir Team</a>
+      </div>
+
     </div>
+
+    <p class="reveal" style="text-align: center; font-size: 13px; color: rgba(255,255,255,0.65); margin: 24px auto 0; max-width: 720px; padding: 12px 18px; background: rgba(227,117,32,0.06); border: 1px solid rgba(227,117,32,0.18); border-radius: 12px;">
+      <strong style="color: #fff;">Plus de 3 associés ?</strong> +9&nbsp;€/mois par membre supplémentaire à partir du 4e — ajustable à tout moment, sans changer de plan.
+    </p>
+
     <p class="price-ideal reveal">Parfait pour les équipes de 2 à 5 cofondateurs — et confortable pour les freelances solo.</p>
   </div>
 </section>
@@ -452,11 +486,11 @@
     <div class="faq-grid reveal">
       <details class="faq-item">
         <summary>Bloom est-il adapté aux freelances solo ? <span class="plus"></span></summary>
-        <div class="answer">Oui. Tous les modules sont inclus pour 8 € / mois. Le Mode Associés reste utile pour cadrer vos partenariats ponctuels et le coach IA fonctionne sur vos propres contributions et projets.</div>
+        <div class="answer">Oui. Le plan Solo à 9 €/mois te donne tous les modules productivité, marketing et stats. Le plan Free (0 €) suffit aussi pour tester avec jusqu'à 2 projets. Le Mode Associés (plan Team) reste utile pour cadrer tes partenariats ponctuels.</div>
       </details>
       <details class="faq-item">
-        <summary>Que se passe-t-il si on dépasse les 100 requêtes IA ? <span class="plus"></span></summary>
-        <div class="answer">Bloom continue à fonctionner — vous êtes facturé +2 € pour 100 requêtes supplémentaires, sans engagement. Vous pouvez aussi définir un plafond pour éviter toute surprise.</div>
+        <summary>Quelles sont les limites IA selon le plan ? <span class="plus"></span></summary>
+        <div class="answer">Free : 3 suggestions de tâches / mois. Solo : 15 suggestions + résumé de semaine + 5 posts LinkedIn / mois. Team : tout illimité + détection de déséquilibre d'équité + prévision de charge. Tu peux passer d'un plan à l'autre en 1 clic.</div>
       </details>
       <details class="faq-item">
         <summary>Mes données sont-elles sécurisées ? <span class="plus"></span></summary>
