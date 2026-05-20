@@ -45,7 +45,8 @@ export async function updateSession(request: NextRequest) {
     pathname === '/bloom-logo.png' ||
     isLegalPage
 
-  const isPublicPage = isLandingPage || isLoginPage || isOnboardPage
+  const isBloomDash = pathname === '/bloom-dash'
+  const isPublicPage = isLandingPage || isLoginPage || isOnboardPage || isBloomDash
 
   if (isPublicAsset || isAuthCallback) {
     return supabaseResponse

@@ -19,6 +19,7 @@ const LEGAL_ROUTES = ['/privacy', '/terms', '/cookies', '/pricing']
 // AppShell se contente de rendre children + bandeau cookies.
 const FULL_BLEED_ROUTES = [
   '/dashboard',
+  '/bloom-dash',
   '/settings',
   '/projects',
   '/tasks',
@@ -27,6 +28,9 @@ const FULL_BLEED_ROUTES = [
   '/decisions',
   '/expenses',
   '/contributions',
+  '/brouillons',
+  '/stats',
+  '/gouvernance',
 ]
 const FULL_BLEED_PREFIXES = ['/projects/', '/decisions/']
 
